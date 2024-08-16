@@ -149,7 +149,7 @@ chroot rootfs /bin/bash -c "systemctl daemon-reload"
 chroot rootfs /bin/bash -c "systemctl enable sound-patch.service"
 chroot rootfs /bin/bash -c "systemctl daemon-reload"
 
-chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/ucosnole-4g-cm4.py"
+chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/uconsole-4g-cm4.py"
 chroot rootfs /bin/bash -c "systemctl daemon-reload"
 chroot rootfs /bin/bash -c "systemctl enable uconsole-4g-cm4.service"
 chroot rootfs /bin/bash -c "systemctl daemon-reload"
