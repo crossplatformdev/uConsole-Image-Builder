@@ -59,7 +59,7 @@ if [ $OS == "UBUNTU" ]; then
     
     #Mount the image
     losetup -D
-    losetup -f -P ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img
+    losetup /dev/loop0 -P ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img
 
     mkdir rootfs
     mount /dev/loop0p2 rootfs    
@@ -106,7 +106,7 @@ else
     # Mount the image
     mkdir rootfs
     losetup -D
-    losetup -f -P  20231109_raspi_4_bookworm.img
+    losetup /dev/loop0 -P  20231109_raspi_4_bookworm.img
     mount /dev/loop0p2 rootfs   
     mkdir rootfs/boot/firmware
     mount /dev/loop0p1 rootfs/boot/firmware
