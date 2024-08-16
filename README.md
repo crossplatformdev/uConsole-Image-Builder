@@ -1,9 +1,9 @@
 # uConsole-Image-Builder
-A Collection of BASH scripts to create a image for the uConsole CM4.
+A collection of BASH scripts to create a image for the uConsole CM4.
 
 # Usage:
 
-(as root)# ./create_image [UBUNTU | DEBIAN | ARMBIAN]
+```(as root)# ./create_image.sh [UBUNTU | DEBIAN | ARMBIAN]```
 
 It will first create the ```.deb``` package for the gpio related scripts and services.
 
