@@ -34,6 +34,7 @@ git pull
 apt install -y libncurses-dev gawk flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf llvm debhelper-compat
 
 losetup -D
+rm /dev/loop777
 
 if [ $OS == "UBUNTU" ]; then
     KERNEL=kernel8
@@ -59,12 +60,12 @@ if [ $OS == "UBUNTU" ]; then
     
     #Mount the image
     losetup -D
-    losetup /dev/loop0 -P ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img
+    losetup /dev/loop777 -P ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img
 
     mkdir rootfs
-    mount /dev/loop0p2 rootfs    
+    mount /dev/loop777p2 rootfs    
     mkdir rootfs/boot/firmware
-    mount /dev/loop0p1 rootfs/boot/firmware
+    mount /dev/loop777p1 rootfs/boot/firmware
 
 elif [ $OS == "ARMBIAN_NOBLE" ] || [ $OS == "ARMBIAN_BUSTER"]; then
     ### NOTE: The script should work too for Armbian, but it is not tested yet. ###
@@ -106,10 +107,10 @@ else
     # Mount the image
     mkdir rootfs
     losetup -D
-    losetup /dev/loop0 -P  20231109_raspi_4_bookworm.img
-    mount /dev/loop0p2 rootfs   
+    losetup /dev/loop777 -P  20231109_raspi_4_bookworm.img
+    mount /dev/loop777p2 rootfs   
     mkdir rootfs/boot/firmware
-    mount /dev/loop0p1 rootfs/boot/firmware
+    mount /dev/loop777p1 rootfs/boot/firmware
 fi
 
 mount --bind /dev rootfs/dev
@@ -218,6 +219,7 @@ else
 fi
 
 losetup -D
+rm /dev/loop777
 
 #Flash the xz image
 #xzcat uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
