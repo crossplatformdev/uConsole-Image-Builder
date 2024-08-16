@@ -48,7 +48,7 @@ if [ $OS == "UBUNTU" ]; then
     #fakeroot debian/rules clean
     #fakeroot debian/rules editconfigs 
     
-    fakeroot debian/rules binary
+    make deb-pkg -j4 LOCALVERSION=-raspi KDEB_PKGVERSION=1
     
     cd ..
 
