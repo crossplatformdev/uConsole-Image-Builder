@@ -2,7 +2,7 @@
 
 mkdir uconsole-cm4-gpio && mkdir uconsole-cm4-gpio/DEBIAN
 
-mkdir -p uconsole-cm4-gpio/usr/local/bin 
+mkdir -p uconsole-cm4-gpio/usr/local/bin
 mkdir -p uconsole-cm4-gpio/etc/systemd/system
 
 cat << 'EOF' > uconsole-cm4-gpio/usr/local/bin/temp_fan_daemon.py
@@ -32,7 +32,7 @@ def measure_temp():
 def init_fan_gpio():
     FAN = lgpio.gpiochip_open(0)
     lgpio.gpio_claim_output(FAN, PIN)
-    
+
 def fan_on():
     init_fan_gpio()
     lgpio.gpio_write(FAN, PIN, 1)
@@ -52,7 +52,7 @@ while True:
         fan_on()
     else:
         fan_off()
-    
+
     time.sleep(5)
 EOF
 
@@ -146,7 +146,6 @@ def disable4g():
 
 PIN_1 = 24
 PIN_2 = 15
-
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python3 uconsole-4g-cm4.py enable|disable")
@@ -182,7 +181,7 @@ Description=Clockworkpi patch for audio speaker
 [Service]
 Type=simple
 ExecStart=/usr/bin/python3 /usr/local/bin/sound-patch.py
-ExecStop=/usr/bin/rm /tmp/.sound-patch 
+ExecStop=/usr/bin/rm /tmp/.sound-patch
 
 [Install]
 WantedBy=multi-user.target
