@@ -2,8 +2,8 @@
 
 
 ############################################################################################################
-# This script is for the ClockworkPi Devterm, uConsole, and GameShell. It will compile a custom kernel     #
-# for the Raspberry Pi Compute Module 4 and install it on an Ubuntu 22.04.4 image.                           #
+# This script is for the ClockworkPi Devterm and uConsole. It will compile a custom kernel                 #
+# for the Raspberry Pi Compute Module 4 and install it on an Ubuntu 22.04.4 image.                         #
 ############################################################################################################
 
 ### Instructions ###
@@ -34,7 +34,6 @@ git pull
 apt install -y libncurses-dev gawk flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf llvm debhelper-compat
 
 losetup -D
-rm /dev/loop777
 
 if [ $OS == "UBUNTU" ]; then
     KERNEL=kernel8
@@ -67,8 +66,9 @@ if [ $OS == "UBUNTU" ]; then
     mkdir rootfs/boot/firmware
     mount /dev/loop777p1 rootfs/boot/firmware
 
-elif [ $OS == "ARMBIAN_NOBLE" ] || [ $OS == "ARMBIAN_BUSTER"]; then
+elif [ $OS == "ARMBIAN_NOBLE" ]; then
     ### NOTE: The script should work too for Armbian, but it is not tested yet. ###
+
 
     #1. download armbian image
     if [ $OS == "ARMBIAN_BUSTER" ]; then
@@ -81,19 +81,11 @@ elif [ $OS == "ARMBIAN_NOBLE" ] || [ $OS == "ARMBIAN_BUSTER"]; then
        unxz Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img.xz
        losetup -f -P Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
     fi
-
-    prepare native armhf/arm64 build env
-
-    apt install -y devscripts fakeroot
-    
-    KERNEL=kernel8
-    
-    make bcm2711_defconfig
-    #make menuconfig
-    debuild -i -us -uc -b 
-
-    fakeroot debian/rules binary-arch
+    ## Compile the kernel
+    ## Uncompress the image
+    ## Mount the image
 else
+    #DEBIAN
     KERNEL=kernel8
     
     make bcm2711_defconfig
@@ -103,6 +95,7 @@ else
 
     wget https://raspi.debian.net/tested/20231109_raspi_4_bookworm.img.xz
     unxz 20231109_raspi_4_bookworm.img.xz
+
 
     # Mount the image
     mkdir rootfs
@@ -206,20 +199,20 @@ rmdir rootfs
 
 if [ $OS == "UBUNTU" ]; then
     dd if=/dev/loop0 of=uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
-    xz -v uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img  
+    xz -T0 -v uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img  
 elif [ $OS == "ARMBIAN_NOBLE" ]; then  
     dd if=/dev/loop0 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
-    xz -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
+    xz -T0 -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
 elif [ $OS == "ARMBIAN_BUSTER" ]; then
     dd if=/dev/loop0 of=uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img bs=4M status=progress
-    xz -v uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img
+    xz -T0 -v uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img
 else
     dd if=/dev/loop0 of=uConsole-20231109_raspi_4_bookworm.img bs=4M status=progress
-    xz -v uConsole-20231109_raspi_4_bookworm.img
+    xz -T0 -v uConsole-20231109_raspi_4_bookworm.img
 fi
 
 losetup -D
-rm /dev/loop777
+
 
 #Flash the xz image
 #xzcat uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
