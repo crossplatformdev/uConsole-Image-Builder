@@ -31,13 +31,13 @@ git checkout rpi-6.9.y
 git pull
 
 #Compile the kernel
-apt install -y libncurses-dev gawk flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf llvm debhelper-compat
-
+sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev debhelper-compat 
+sudo apt install -y crossbuild-essential-arm64
 losetup -D
 
 if [ $OS == "UBUNTU" ]; then
     KERNEL=kernel8
-    make bcm2711_defconfig
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
     
     #make-kpkg nconfig
     #make deb-pkg -j4 LOCALVERSION=-raspi KDEB_PKGVERSION=1
@@ -48,7 +48,7 @@ if [ $OS == "UBUNTU" ]; then
     #fakeroot debian/rules clean
     #fakeroot debian/rules editconfigs 
     
-    make deb-pkg -j4 LOCALVERSION=-raspi KDEB_PKGVERSION=1
+    make -j`nproc --all` LOCALVERSION=-raspi KDEB_PKGVERSION=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- deb-pkg 
     
     cd ..
 
@@ -88,9 +88,9 @@ else
     #DEBIAN
     KERNEL=kernel8
     
-    make bcm2711_defconfig
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
     #make menuconfig
-    make deb-pkg -j4 LOCALVERSION=-raspi KDEB_PKGVERSION=1
+    make -j`nproc --all` LOCALVERSION=-raspi KDEB_PKGVERSION=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- deb-pkg 
     cd ..
 
     wget https://raspi.debian.net/tested/20231109_raspi_4_bookworm.img.xz
