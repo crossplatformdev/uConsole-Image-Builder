@@ -7,7 +7,7 @@
 ############################################################################################################
 
 ### Instructions ###
-# 1. On an Ubuntu or Debian amd64 host machine, download and run this script as sudo.
+# 1. On an Ubuntu or Debian amd64 oe arm64 host machine, download and run this script as sudo.
 # 2. The script will download the Ubuntu 22.04.4 image, clone the ak-rex kernel, compile the kernel, and install it on the image.
 # 3. Flash the image to a microSD card and insert it into the Devterm, uConsole, or GameShell.
 # 4. Boot the device and enjoy the new kernel.
