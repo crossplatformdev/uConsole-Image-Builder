@@ -2,7 +2,7 @@
 
 mkdir uconsole-cm4-gpio && mkdir uconsole-cm4-gpio/DEBIAN
 
-mkdir -p uconsole-cm4-gpio/usr/local/bin
+mkdir -p uconsole-cm4-gpio/usr/local/bin 
 mkdir -p uconsole-cm4-gpio/etc/systemd/system
 
 cat << 'EOF' > uconsole-cm4-gpio/usr/local/bin/temp_fan_daemon.py
@@ -32,7 +32,7 @@ def measure_temp():
 def init_fan_gpio():
     FAN = lgpio.gpiochip_open(0)
     lgpio.gpio_claim_output(FAN, PIN)
-
+    
 def fan_on():
     init_fan_gpio()
     lgpio.gpio_write(FAN, PIN, 1)
@@ -52,24 +52,46 @@ while True:
         fan_on()
     else:
         fan_off()
-
+    
     time.sleep(5)
-EOF
-
-cat << 'EOF' > uconsole-cm4-gpio/usr/local/bin/clockworkpi-audio-shutdown.py
-import lgpio
-import time
-
-headphones = lgpio.gpiochip_open(0)
-lgpio.gpio_claim_input(headphones, 10)
-
-lgpio.gpio_write(speaker, 10, 1)
 EOF
 
 cat << 'EOF' > uconsole-cm4-gpio/usr/local/bin/sound-patch.py
 import lgpio
 import time
 import os
+import sys
+import threading
+
+def run():
+    try:
+        while os.path.exists(path):
+            tmp = lgpio.gpio_read(headphones, 10)
+            #print(tmp)
+            if tmp == 0:
+                #print("on")
+                lgpio.gpio_write(speaker, 11, 1)
+            elif tmp == 1:
+                #print("off")
+                lgpio.gpio_write(speaker, 11, 0)
+    except:
+        #Stop the speaker
+        lgpio.gpio_write(speaker, 11, 0)
+    halt()
+
+def start():
+    thread.start()
+
+def stop():
+    thread.stop()
+    halt()
+
+#Stop the speaker
+def halt():
+    lgpio.gpio_write(speaker, 11, 0)
+    lgpio.gpiochip_close(speaker)
+    lgpio.gpiochip_close(headphones)
+
 
 speaker = lgpio.gpiochip_open(0)
 lgpio.gpio_claim_output(speaker, 11)
@@ -78,23 +100,16 @@ headphones = lgpio.gpiochip_open(0)
 lgpio.gpio_claim_input(headphones, 10)
 path = "/tmp/.sound-patch"
 open(path, "w").close()
-run = True
-while run:
-    tmp = lgpio.gpio_read(headphones, 10)
-    #print(tmp)
-    if tmp == 0:
-        #print("on")
-        lgpio.gpio_write(speaker, 11, 1)
-    elif tmp == 1:
-        #print("off")
-        lgpio.gpio_write(speaker, 11, 0)
+thread = threading.Thread(target = run)
+if(sys.argv[1] == "start"):
+    running = True
+    thread.start()
+elif(sys.argv[1] == "stop"):
+    running = False
+    thread.stop()
+else:
+    print("Invalid argument")
 
-    run = os.path.exists(path)
-
-    time.sleep(1)
-
-#Stop the speaker
-lgpio.gpio_write(speaker, 11, 0)
 EOF
 
 # 4gextension fix for Ubuntu / Armbian
@@ -146,6 +161,7 @@ def disable4g():
 
 PIN_1 = 24
 PIN_2 = 15
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python3 uconsole-4g-cm4.py enable|disable")
@@ -180,8 +196,9 @@ Description=Clockworkpi patch for audio speaker
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/local/bin/sound-patch.py
+ExecStart=/usr/bin/python3 /usr/local/bin/sound-patch.py start &
 ExecStop=/usr/bin/rm /tmp/.sound-patch
+ExecStopPost=/usr/bin/python3 /usr/local/bin/sound-patch.py stop
 
 [Install]
 WantedBy=multi-user.target
@@ -201,7 +218,7 @@ EOF
 
 cat << 'EOF' > uconsole-cm4-gpio/DEBIAN/control
 Package: uconsole-cm4-gpio
-Version: 0.1
+Version: 0.2
 Maintainer: ElijaxApps
 Architecture: all
 Description: uConsole CM4 GPIO control scripts.
@@ -215,11 +232,12 @@ chmod +x uconsole-cm4-gpio/usr/local/bin/temp_fan_daemon.py
 cat << 'EOF' > uconsole-cm4-gpio/DEBIAN/postinst
 #!/bin/bash
 
+systemctl daemon-reload
+
 systemctl enable --now sound-patch.service
 systemctl enable --now uconsole-4g-cm4.service
 systemctl enable --now devterm-fan-temp-daemon.service
 
-systemctl daemon-reload
 EOF
 
 chmod +x uconsole-cm4-gpio/DEBIAN/postinst
