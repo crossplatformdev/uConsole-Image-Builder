@@ -73,7 +73,8 @@ def run():
                 lgpio.gpio_write(speaker, 11, 1)
             elif tmp == 1:
                 #print("off")
-                lgpio.gpio_write(speaker, 11, 0)
+                lgpio.gpio_write(speaker, 11, 0
+            sleep(3)
     except:
         #Stop the speaker
         lgpio.gpio_write(speaker, 11, 0)
