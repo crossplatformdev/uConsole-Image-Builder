@@ -61,10 +61,10 @@ import lgpio
 import time
 import os
 import sys
-import threading
 
-def run():
+def start():
     try:
+        open(path, "w").close()
         while os.path.exists(path):
             tmp = lgpio.gpio_read(headphones, 10)
             #print(tmp)
@@ -73,22 +73,15 @@ def run():
                 lgpio.gpio_write(speaker, 11, 1)
             elif tmp == 1:
                 #print("off")
-                lgpio.gpio_write(speaker, 11, 0
-            sleep(3)
+                lgpio.gpio_write(speaker, 11, 0)
     except:
         #Stop the speaker
         lgpio.gpio_write(speaker, 11, 0)
-    halt()
-
-def start():
-    thread.start()
+    stop()
 
 def stop():
-    thread.stop()
-    halt()
-
-#Stop the speaker
-def halt():
+    # delete the file
+    os.remove(path)
     lgpio.gpio_write(speaker, 11, 0)
     lgpio.gpiochip_close(speaker)
     lgpio.gpiochip_close(headphones)
@@ -99,15 +92,13 @@ lgpio.gpio_claim_output(speaker, 11)
 
 headphones = lgpio.gpiochip_open(0)
 lgpio.gpio_claim_input(headphones, 10)
+
 path = "/tmp/.sound-patch"
-open(path, "w").close()
-thread = threading.Thread(target = run)
+
 if(sys.argv[1] == "start"):
-    running = True
-    thread.start()
+    start()
 elif(sys.argv[1] == "stop"):
-    running = False
-    thread.stop()
+    stop()
 else:
     print("Invalid argument")
 
