@@ -74,7 +74,7 @@ def start():
             elif tmp == 1:
                 #print("off")
                 lgpio.gpio_write(speaker, 11, 0)
-            sleep(5)
+            time.sleep(5)
     except:
         #Stop the speaker
         lgpio.gpio_write(speaker, 11, 0)
