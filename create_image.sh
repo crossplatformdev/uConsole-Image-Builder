@@ -198,16 +198,16 @@ umount rootfs
 rmdir rootfs
 
 if [ $OS == "UBUNTU" ]; then
-    dd if=/dev/loop0 of=uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
+    dd if=/dev/loop777 of=uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
     xz -T0 -v uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img  
 elif [ $OS == "ARMBIAN_NOBLE" ]; then  
-    dd if=/dev/loop0 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
+    dd if=/dev/loop777 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
     xz -T0 -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
 elif [ $OS == "ARMBIAN_BUSTER" ]; then
-    dd if=/dev/loop0 of=uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img bs=4M status=progress
+    dd if=/dev/loop777 of=uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img bs=4M status=progress
     xz -T0 -v uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img
 else
-    dd if=/dev/loop0 of=uConsole-20231109_raspi_4_bookworm.img bs=4M status=progress
+    dd if=/dev/loop777 of=uConsole-20231109_raspi_4_bookworm.img bs=4M status=progress
     xz -T0 -v uConsole-20231109_raspi_4_bookworm.img
 fi
 
