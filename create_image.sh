@@ -52,14 +52,14 @@ if [ $OS == "UBUNTU" ]; then
     
     cd ..
 
-    wget https://cdimage.ubuntu.com/releases/22.04/release/ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz
+    wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
 
     #Extract the image
-    unxz ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz
+    unxz ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
     
     #Mount the image
     losetup -D
-    losetup /dev/loop777 -P ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img
+    losetup /dev/loop777 -P ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
     mkdir rootfs
     mount /dev/loop777p2 rootfs    
@@ -198,8 +198,8 @@ umount rootfs
 rmdir rootfs
 
 if [ $OS == "UBUNTU" ]; then
-    dd if=/dev/loop777 of=uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
-    xz -T0 -v uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img  
+    dd if=/dev/loop777 of=uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
+    xz -T0 -v uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 elif [ $OS == "ARMBIAN_NOBLE" ]; then  
     dd if=/dev/loop777 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
     xz -T0 -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
