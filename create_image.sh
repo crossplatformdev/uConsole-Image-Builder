@@ -3,13 +3,13 @@
 
 ############################################################################################################
 # This script is for the ClockworkPi Devterm and uConsole. It will compile a custom kernel                 #
-# for the Raspberry Pi Compute Module 4 and install it on an Ubuntu 22.04.4 image.                         #
+# for the Raspberry Pi Compute Module 4 and install it on an Ubuntu 22.04.5 image.                         #
 ############################################################################################################
 
 ### Instructions ###
 # 1. On an Ubuntu or Debian amd64 oe arm64 host machine, download and run this script as sudo.
-# 2. The script will download the Ubuntu 22.04.4 image, clone the ak-rex kernel, compile the kernel, and install it on the image.
-# 3. Flash the image to a microSD card and insert it into the Devterm, uConsole, or GameShell.
+# 2. The script will download the Ubuntu 22.04.5 image, clone the ak-rex kernel, compile the kernel, and install it on the image.
+# 3. Flash the image to a microSD card and insert it into the uConsole.
 # 4. Boot the device and enjoy the new kernel.
 
 # Usage: ./create_uconsole_image.sh [DEBIAN | UBUNTU | ARMBIAN_NOBLE | ARMBIAN_BUSTER]
