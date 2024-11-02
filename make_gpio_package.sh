@@ -227,9 +227,9 @@ cat << 'EOF' > uconsole-cm4-gpio/DEBIAN/postinst
 
 systemctl daemon-reload
 
-systemctl enable --now sound-patch.service
-systemctl enable --now uconsole-4g-cm4.service
-systemctl enable --now devterm-fan-temp-daemon.service
+systemctl enable sound-patch.service
+systemctl enable uconsole-4g-cm4.service
+systemctl enable devterm-fan-temp-daemon.service
 
 EOF
 
