@@ -12,7 +12,7 @@
 # 3. Flash the image to a microSD card and insert it into the uConsole.
 # 4. Boot the device and enjoy the new kernel.
 
-# Usage: ./create_uconsole_image.sh [DEBIAN | UBUNTU | ARMBIAN_NOBLE | ARMBIAN_BUSTER]
+# Usage: ./create_uconsole_image.sh [DEBIAN | UBUNTU | POP_OS | ARMBIAN_NOBLE | ARMBIAN_BUSTER]
 
 #If @1 is not provided, default to UBUNTU
 if [ -z "$1" ]; then
@@ -62,10 +62,30 @@ if [ $OS == "UBUNTU" ]; then
     losetup /dev/loop777 -P ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
     mkdir rootfs
-    mount /dev/loop777p2 rootfs    
+    mount /dev/loop777p2 rootfs
     mkdir rootfs/boot/firmware
     mount /dev/loop777p1 rootfs/boot/firmware
+elif [ $OS == "POP_OS" ]; then
+    KERNEL=kernel8
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
+    
+    make -j`nproc --all` LOCALVERSION=-raspi KDEB_PKGVERSION=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- deb-pkg 
+    
+    cd ..
 
+    wget https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
+
+    #Extract the image
+    unxz pop-os_22.04_arm64_raspi_4.img.xz
+    
+    #Mount the image
+    losetup -D
+    losetup /dev/loop777 -P pop-os_22.04_arm64_raspi_4.img
+
+    mkdir rootfs
+    mount /dev/loop777p2 rootfs
+    mkdir rootfs/boot/firmware
+    mount /dev/loop777p1 rootfs/boot/firmware
 elif [ $OS == "ARMBIAN_NOBLE" ]; then
     ### NOTE: The script should work too for Armbian, but it is not tested yet. ###
 
@@ -101,7 +121,7 @@ else
     mkdir rootfs
     losetup -D
     losetup /dev/loop777 -P  20231109_raspi_4_bookworm.img
-    mount /dev/loop777p2 rootfs   
+    mount /dev/loop777p2 rootfs
     mkdir rootfs/boot/firmware
     mount /dev/loop777p1 rootfs/boot/firmware
 fi
@@ -200,6 +220,9 @@ rmdir rootfs
 if [ $OS == "UBUNTU" ]; then
     dd if=/dev/loop777 of=uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
     xz -T0 -v uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
+elif [ $OS == "POP_OS" ]; then
+    dd if=/dev/loop777 of=uConsole-pop-os_22.04_arm64_raspi_4.img bs=4M status=progress
+    xz -T0 -v uConsole-pop-os_22.04_arm64_raspi_4.img
 elif [ $OS == "ARMBIAN_NOBLE" ]; then  
     dd if=/dev/loop777 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
     xz -T0 -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
