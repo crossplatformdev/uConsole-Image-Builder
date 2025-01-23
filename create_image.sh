@@ -12,99 +12,65 @@
 # 3. Flash the image to a microSD card and insert it into the uConsole.
 # 4. Boot the device and enjoy the new kernel.
 
-# Usage: ./create_uconsole_image.sh [DEBIAN | UBUNTU | ARMBIAN_NOBLE | ARMBIAN_BUSTER]
-
-#If @1 is not provided, default to UBUNTU
-if [ -z "$1" ]; then
-    OS="UBUNTU"
-else
-    OS=$1
-fi
+# Usage: ./create_uconsole_image.sh 
 
 #Create GPIO package
 ./make_gpio_package.sh
 
-#Clone ak-rex kernel from github
-git clone https://github.com/ak-rex/ClockworkPi-linux.git
-cd ClockworkPi-linux
-git checkout rpi-6.9.y
-git pull
-
 #Compile the kernel
+sudo apt build-dep -y linux linux-image-unsigned-6.8.0-49-generic linux-image-unsigned-6.8.0-49-lowlatency
+sudo apt install -y libncurses-dev gawk flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf \
+     curl llvm git qemu-user-static gcc-12 g++-12 qemu-user-static binfmt-support
+
 sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev debhelper-compat 
 sudo apt install -y crossbuild-essential-arm64
+
+#Clone ak-rex kernel from github
+#git clone -b ubuntu/jammy-updates https://git.launchpad.net/ubuntu/+source/linux-raspi
+#cd linux-raspi
+
+git clone -b rpi-6.9.y https://github.com/raspberrypi/linux.git
+cd linux
+
+
+wget https://github.com/raspberrypi/linux/compare/rpi-6.6.y...ak-rex:ClockworkPi-linux:rpi-6.6.y.diff
+patch -p1 < rpi-6.6.y...ak-rex:ClockworkPi-linux:rpi-6.6.y.diff
+
+#git clone -b rpi-6.6.y https://github.com/ak-rex/ClockworkPi-linux.git
+#cd ClockworkPi-linux
+git pull
+
+
+export $(dpkg-architecture -aarm64)
+export CROSS_COMPILE=aarch64-linux-gnu-
+
+#chmod a+x debian/rules
+#chmod a+x debian/scripts/*
+#chmod a+x debian/scripts/misc/*
+#fakeroot debian/rules clean
+#fakeroot debian/rules editconfigs 
+#fakeroot debian/rules binary
+
+KERNEL=kernel8
+make bcm2711_defconfig
+make -j6 deb-pkg LOCALVERSION=-raspi
+
+cd ..
+
+wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+
+#Extract the image
+unxz ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+
+#Mount the image
 losetup -D
+losetup /dev/loop777 -P ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
-if [ $OS == "UBUNTU" ]; then
-    KERNEL=kernel8
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
-    
-    #make-kpkg nconfig
-    #make deb-pkg -j4 LOCALVERSION=-raspi KDEB_PKGVERSION=1
-    
-    #chmod a+x debian/rules
-    #chmod a+x debian/scripts/*
-    #chmod a+x debian/scripts/misc/*
-    #fakeroot debian/rules clean
-    #fakeroot debian/rules editconfigs 
-    
-    make -j`nproc --all` LOCALVERSION=-raspi KDEB_PKGVERSION=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- deb-pkg 
-    
-    cd ..
+mkdir rootfs
+mount /dev/loop777p2 rootfs    
+mkdir rootfs/boot/firmware
+mount /dev/loop777p1 rootfs/boot/firmware
 
-    wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
-
-    #Extract the image
-    unxz ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
-    
-    #Mount the image
-    losetup -D
-    losetup /dev/loop777 -P ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
-
-    mkdir rootfs
-    mount /dev/loop777p2 rootfs    
-    mkdir rootfs/boot/firmware
-    mount /dev/loop777p1 rootfs/boot/firmware
-
-elif [ $OS == "ARMBIAN_NOBLE" ]; then
-    ### NOTE: The script should work too for Armbian, but it is not tested yet. ###
-
-
-    #1. download armbian image
-    if [ $OS == "ARMBIAN_BUSTER" ]; then
-       wget https://dl.armbian.com/rpi4b/archive/Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img.xz
-       unxz Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img.xz
-       losetup -f -P Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img
-    fi
-    if [ $OS == "ARMBIAN_NOBLE" ]; then
-       wget https://dl.armbian.com/rpi4b/archive/Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img.xz
-       unxz Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img.xz
-       losetup -f -P Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
-    fi
-    ## Compile the kernel
-    ## Uncompress the image
-    ## Mount the image
-else
-    #DEBIAN
-    KERNEL=kernel8
-    
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
-    #make menuconfig
-    make -j`nproc --all` LOCALVERSION=-raspi KDEB_PKGVERSION=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- deb-pkg 
-    cd ..
-
-    wget https://raspi.debian.net/tested/20231109_raspi_4_bookworm.img.xz
-    unxz 20231109_raspi_4_bookworm.img.xz
-
-
-    # Mount the image
-    mkdir rootfs
-    losetup -D
-    losetup /dev/loop777 -P  20231109_raspi_4_bookworm.img
-    mount /dev/loop777p2 rootfs   
-    mkdir rootfs/boot/firmware
-    mount /dev/loop777p1 rootfs/boot/firmware
-fi
 
 mount --bind /dev rootfs/dev
 mount --bind /dev/pts rootfs/dev/pts
@@ -115,23 +81,27 @@ mv rootfs/etc/resolv.conf rootfs/etc/resolv.conf.bak
 cp /etc/resolv.conf rootfs/etc/resolv.conf
 
 #Copy the .deb files to the image chroot environment and install them
-cp linux-image-6.9.9-v8-raspi_1_arm64.deb rootfs/usr/local/src
-cp linux-headers-6.9.9-v8-raspi_1_arm64.deb rootfs/usr/local/src
-cp linux-libc-dev_1_arm64.deb rootfs/usr/local/src
-cp uconsole-cm4-gpio.deb rootfs/usr/local/src
+mkdir rootfs/usr/local/src/ClockworkPi-linux
+cp linux-headers-6.9.12-v8-raspi_6.9.12-*.deb  rootfs/usr/local/src/ClockworkPi-linux
+cp linux-image-6.9.12-v8-raspi_6.9.12-*arm64.deb rootfs/usr/local/src/ClockworkPi-linux
+cp linux-libc-dev_6.9.12-*arm64.deb  rootfs/usr/local/src/ClockworkPi-linux
+cp linux-raspi-tools-*arm64.deb rootfs/usr/local/src/ClockworkPi-linux
+cp uconsole-cm4-gpio.deb rootfs/usr/local/src/ClockworkPi-linux
+
 #cp linux-upstream_1_.orig.tar.xz rootfs/usr/local/src
 
 chroot rootfs /bin/bash -c "apt purge -y --allow-change-held-packages linux-image* linux-headers*"
 
-chroot rootfs /bin/bash -c "cd /usr/local/src &&  dpkg -i linux-headers-6.9.9-v8-raspi_1_arm64.deb linux-image-6.9.9-v8-raspi_1_arm64.deb linux-libc-dev_1_arm64.deb uconsole-cm4-gpio.deb"
-chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.9-v8-raspi linux-headers-6.9.9-v8-raspi"
+##Append the following to /etc/apt/sources.list
+#echo "#Ubuntu noble main repository, needed for gcc-13" >> rootfs/etc/apt/sources.list
+#echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble main restricted" >> rootfs/etc/apt/sources.list
 
-chroot rootfs /bin/bash -c "cd /boot/ && rm initrd.img initrd.img.old vmlinuz vmlinuz.old"
-chroot rootfs /bin/bash -c "cd /boot/ && ln -s vmlinuz-6.9.9-v8-raspi vmlinuz"
-chroot rootfs /bin/bash -c "cd /boot/ && ln -s initrd.img-6.9.9-v8-raspi initrd.img"
-chroot rootfs /bin/bash -c "cp /usr/lib/linux-image-6.9.9-v8-raspi/overlays/** /boot/firmware/overlays/"
-chroot rootfs /bin/bash -c "cp /usr/lib/linux-image-6.9.9-v8-raspi/broadcom/** /boot/firmware/"
-chroot rootfs /bin/bash -c "cp /boot/vmlinuz-6.9.9-v8-raspi /boot/firmware/vmlinuz"
+chroot rootfs /bin/bash -c "apt update && apt install -y linux-tools-common"
+
+chroot rootfs /bin/bash -c "cd /usr/local/src/ClockworkPi-linux &&  dpkg -i *.deb"
+chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.12-v8-raspi linux-headers-6.9.12-v8-raspi linux-libc-dev"
+
+#echo "APT::Default-Release \"jammy\"" >> rootfs/etc/apt/apt.conf.d/01-vendor-ubuntu
 
 ## Sound fix for Ubuntu / Armbian
 chroot rootfs /bin/bash -c "apt update"
@@ -197,27 +167,13 @@ umount rootfs
 
 rmdir rootfs
 
-if [ $OS == "UBUNTU" ]; then
-    dd if=/dev/loop777 of=uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
-    xz -T0 -v uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
-elif [ $OS == "ARMBIAN_NOBLE" ]; then  
-    dd if=/dev/loop777 of=uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img bs=4M status=progress
-    xz -T0 -v uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img
-elif [ $OS == "ARMBIAN_BUSTER" ]; then
-    dd if=/dev/loop777 of=uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img bs=4M status=progress
-    xz -T0 -v uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img
-else
-    dd if=/dev/loop777 of=uConsole-20231109_raspi_4_bookworm.img bs=4M status=progress
-    xz -T0 -v uConsole-20231109_raspi_4_bookworm.img
-fi
+dd if=/dev/loop777 of=uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
+xz -T0 -v uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
 losetup -D
 
 
 #Flash the xz image
 #xzcat uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
-#xzcat uConsole-Armbian_24.5.1_Rpi4b_noble_current_6.6.31_gnome_desktop.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
-#xzcat uConsole-Armbian_24.5.3_Rpi4b_bookworm_current_6.6.35_minimal.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
-#xzcat uConsole-20231109_raspi_4_bookworm.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
 
 
