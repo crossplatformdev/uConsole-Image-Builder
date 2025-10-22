@@ -1,0 +1,25 @@
+name: Build Ubuntu Jammy Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/build-image.sh'
+      - 'scripts/setup-ubuntu-chroot.sh'
+      - '.github/workflows/build-jammy.yml'
+      - '.github/workflows/build-image.yml'
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 02:00 UTC
+
+jobs:
+  build-jammy:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      distro: jammy
+      script-path: ./scripts/setup-ubuntu-chroot.sh
+      tag-prefix: jammy-
+      suite: jammy
+    permissions:
+      contents: write

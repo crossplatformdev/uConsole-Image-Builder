@@ -1,0 +1,25 @@
+name: Build Debian Trixie Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/build-image.sh'
+      - 'scripts/setup-trixie-chroot.sh'
+      - '.github/workflows/build-trixie.yml'
+      - '.github/workflows/build-image.yml'
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 02:00 UTC
+
+jobs:
+  build-trixie:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      distro: trixie
+      script-path: ./scripts/setup-trixie-chroot.sh
+      tag-prefix: trixie-
+      suite: trixie
+    permissions:
+      contents: write

@@ -1,0 +1,25 @@
+name: Build Pop!_OS Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/build-image.sh'
+      - 'scripts/setup-popos-chroot.sh'
+      - '.github/workflows/build-popos.yml'
+      - '.github/workflows/build-image.yml'
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 02:00 UTC
+
+jobs:
+  build-popos:
+    uses: ./.github/workflows/build-image.yml
+    with:
+      distro: popos
+      script-path: ./scripts/setup-popos-chroot.sh
+      tag-prefix: popos-
+      suite: jammy
+    permissions:
+      contents: write
