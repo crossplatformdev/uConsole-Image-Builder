@@ -101,11 +101,13 @@ chroot rootfs /bin/bash -c "apt update && apt install -y linux-tools-common"
 chroot rootfs /bin/bash -c "cd /usr/local/src/ClockworkPi-linux &&  dpkg -i *.deb"
 chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.12-v8-raspi linux-headers-6.9.12-v8-raspi linux-libc-dev"
 
-#echo "APT::Default-Release \"jammy\"" >> rootfs/etc/apt/apt.conf.d/01-vendor-ubuntu
-
-## Sound fix for Ubuntu / Armbian
+# Sound fix for Ubuntu / Armbian: replaced python3-lgpio install with ClockworkPi APT repo flow for Debian Trixie
+chroot rootfs /bin/bash -c "apt update || true"
+chroot rootfs /bin/bash -c "apt install -y gnupg wget ca-certificates || true"
+chroot rootfs /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg >/dev/null"
+chroot rootfs /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | tee /etc/apt/sources.list.d/clockworkpi.list"
 chroot rootfs /bin/bash -c "apt update"
-chroot rootfs /bin/bash -c "apt install -y python3-lgpio"
+chroot rootfs /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-firmware || true"
 
 chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/sound-patch.py"
 chroot rootfs /bin/bash -c "systemctl daemon-reload"
@@ -122,35 +124,67 @@ mv rootfs/boot/firmware/config.txt rootfs/boot/firmware/config.txt.bak
 
 cat << 'EOF' > rootfs/boot/firmware/config.txt
 
-[all]
-kernel=vmlinuz
-cmdline=cmdline.txt
-initramfs initrd.img followkernel
+# For more options and information see
+# http://rptl.io/configtxt
+# Some settings may impact device functionality. See link above for details
 
+# Uncomment some or all of these to enable the optional hardware interfaces
+#dtparam=i2c_arm=on
+#dtparam=i2s=on
+#dtparam=spi=on
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+# Additional overlays and parameters are documented
+# /boot/firmware/overlays/README
+
+# Automatically load overlays for detected cameras
 camera_auto_detect=1
+
+# Automatically load overlays for detected DSI displays
 display_auto_detect=1
 
-# Config settings specific to arm64
-arm_64bit=1
+# Automatically load initramfs files, if found
+auto_initramfs=1
 
-disable_overscan=1
-dtparam=audio=on
+# Enable DRM VC4 V3D driver
+#dtoverlay=vc4-kms-v3d
 
 max_framebuffers=2
 
+# Don't have the firmware create an initial video= setting in cmdline.txt.
+# Use the kernel's default instead.
+#disable_fw_kms_setup=1
+
+# Run in 64-bit mode
+arm_64bit=1
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+# Run as fast as firmware / board allows
+arm_boost=1
+
+# Enable host mode on the 2711 built-in XHCI USB controller.
+# This line should be removed if the legacy DWC2 controller is required
+# (e.g. for USB device mode) or if USB support is not required.
+#otg_mode=1
+
 ignore_lcd=1
-dtoverlay=dwc2,dr_mode=host
-dtoverlay=vc4-kms-v3d-pi4,cma-384
-#dtoverlay=clockworkpi-devterm
-dtoverlay=clockworkpi-uconsole
+display_auto_detect=0
 dtoverlay=audremap,pins_12_13
+dtoverlay=dwc2,dr_mode=host
+dtparam=ant2
 
+# Enable DRM VC4 V3D driver (Clockworkpi uConsole CM4)
+dtoverlay=clockworkpi-uconsole
+dtoverlay=vc4-kms-v3d-pi4,cma-384
+dtparam=pciex1=off
 dtparam=spi=on
-#dtparam=ant2
-
-##Comment out the device not needed in [all]
-dtparam=pciex1_gen=3
-gpu_mem=256
+enable_uart=1
+#dtparam=drm_fb0_rp1_dsi1
+#initial_turbo=0
 EOF
 
 
@@ -167,6 +201,7 @@ umount rootfs
 
 rmdir rootfs
 
+
 dd if=/dev/loop777 of=uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img bs=4M status=progress
 xz -T0 -v uConsole-ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
@@ -175,5 +210,3 @@ losetup -D
 
 #Flash the xz image
 #xzcat uConsole-ubuntu-22.04.4-preinstalled-desktop-arm64+raspi.img.xz | dd of=<SELECT BLOCK DEVICE> bs=32M
-
-
