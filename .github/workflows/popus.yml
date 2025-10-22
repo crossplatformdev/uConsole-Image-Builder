@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           POP_URL="https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz"
           echo "Downloading $POP_URL"
-          wget -c "$POP_URL" -O pop-os.img.xz
+          wget "$POP_URL" -O pop-os.img.xz
           echo "Downloaded: $(stat -c%s pop-os.img.xz) bytes"
           echo "Testing xz archive"
           unxz -t pop-os.img.xz
