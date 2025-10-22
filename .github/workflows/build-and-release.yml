@@ -1,0 +1,107 @@
+name: Build and Release uConsole Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        suite: [trixie, jammy]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up QEMU for cross-architecture
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap qemu-user-static binfmt-support
+      
+      - name: Build rootfs for ${{ matrix.suite }}
+        run: |
+          sudo SUITE=${{ matrix.suite }} ARCH=arm64 ./scripts/build-image.sh build-output
+      
+      - name: Apply ${{ matrix.suite }} customizations
+        run: |
+          if [ "${{ matrix.suite }}" = "trixie" ]; then
+            sudo ./scripts/setup-trixie-chroot.sh build-output
+          else
+            sudo ./scripts/setup-ubuntu-chroot.sh build-output
+          fi
+      
+      - name: Create tarball artifact
+        run: |
+          cd build-output
+          sudo tar -czf uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz rootfs-${{ matrix.suite }}-arm64
+          sudo chown $USER:$USER uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
+          ls -lh uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uconsole-${{ matrix.suite }}-arm64-rootfs
+          path: build-output/uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
+          retention-days: 30
+  
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: List downloaded artifacts
+        run: |
+          ls -R artifacts/
+      
+      - name: Generate release tag
+        id: tag
+        run: |
+          echo "tag=release-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: uConsole Image Build ${{ steps.tag.outputs.tag }}
+          body: |
+            Automated build of uConsole rootfs images
+            
+            This release contains:
+            - Debian 13 (trixie) arm64 rootfs
+            - Ubuntu 22.04 (jammy) arm64 rootfs
+            
+            Built on: ${{ github.event.head_commit.timestamp }}
+            Commit: ${{ github.sha }}
+            
+            ## Usage
+            1. Download the appropriate rootfs tarball for your distribution
+            2. Extract: `tar -xzf uconsole-<suite>-arm64-rootfs.tar.gz`
+            3. Follow uConsole documentation for kernel installation and setup
+          files: |
+            artifacts/uconsole-trixie-arm64-rootfs/uconsole-trixie-arm64-rootfs.tar.gz
+            artifacts/uconsole-jammy-arm64-rootfs/uconsole-jammy-arm64-rootfs.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
