@@ -6,6 +6,7 @@ A collection of BASH scripts to create images for the uConsole CM4.
 
 - **Debian 13 (trixie)** - Default
 - **Ubuntu 22.04 (jammy)**
+- **Pop!_OS 22.04** - ARM64 for Raspberry Pi 4
 
 ## Quick Start
 
