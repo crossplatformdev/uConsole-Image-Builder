@@ -43,7 +43,56 @@ find a `.xz` compressed image whose name starts with `uConsole-`.
 
 ## CI/CD
 
-This repository includes GitHub Actions workflows that automatically build rootfs artifacts for both Debian trixie and Ubuntu jammy when changes are pushed to the main branch. Built artifacts are available as releases.
+This repository includes automated GitHub Actions workflows that build and publish uConsole images daily.
+
+### Automated Daily Builds
+
+Three separate workflows build rootfs images for:
+- **Pop!_OS 22.04** (based on Ubuntu 22.04 jammy) - tagged as `popos-YYYYMMDD`
+- **Debian 13 (trixie)** - tagged as `trixie-YYYYMMDD`
+- **Ubuntu 22.04 (jammy)** - tagged as `jammy-YYYYMMDD`
+
+Builds run automatically:
+- **Daily at 02:00 UTC** via scheduled cron
+- **On push to main** when relevant scripts or workflows change
+- **Manually** via workflow_dispatch
+
+### Build Artifacts
+
+Each successful build:
+1. Creates a tarball artifact (`uconsole-<distro>-arm64-rootfs.tar.gz`)
+2. Uploads the artifact to GitHub Actions (retained for 30 days)
+3. Creates a git tag with format `<distro>-YYYYMMDD` (e.g., `popos-20251022`)
+
+### Manual Workflow Triggers
+
+To manually trigger a build:
+
+1. Go to the **Actions** tab in the repository
+2. Select the workflow you want to run:
+   - "Build Pop!_OS Image"
+   - "Build Debian Trixie Image" 
+   - "Build Ubuntu Jammy Image"
+3. Click **Run workflow** and select the branch
+4. Click **Run workflow** to start the build
+
+### Downloading Build Artifacts
+
+Build artifacts are available in two ways:
+
+1. **From workflow runs**: Go to Actions → Select a workflow run → Scroll to Artifacts section
+2. **From git tags**: Each successful build creates a dated tag (e.g., `jammy-20251022`)
+
+### Workflow Architecture
+
+The CI uses a reusable workflow (`.github/workflows/build-image.yml`) that:
+- Sets up QEMU for ARM64 cross-compilation
+- Runs debootstrap to create base rootfs
+- Applies distro-specific customizations
+- Creates and uploads tarball artifacts
+- Tags successful builds with date-stamped tags
+
+Individual distro workflows (build-popos.yml, build-trixie.yml, build-jammy.yml) call the reusable workflow with distro-specific parameters.
 
 ## Requirements
 
