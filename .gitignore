@@ -2,3 +2,20 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/settings.json
+
+# Build artifacts
+output/
+build-output/
+rootfs/
+*.img
+*.img.xz
+*.tar.gz
+*.deb
+linux/
+linux-raspi/
+ClockworkPi-linux/
+uconsole-cm4-gpio/
+
+# Temporary files
+*.bak
+*.tmp
