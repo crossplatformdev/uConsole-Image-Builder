@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-rootfs:
     runs-on: ubuntu-22.04
     timeout-minutes: 1440
     strategy:
@@ -58,7 +58,7 @@ jobs:
           retention-days: 30
   
   release:
-    needs: build
+    needs: build-rootfs
     runs-on: ubuntu-22.04
     if: github.ref == 'refs/heads/main'
     
