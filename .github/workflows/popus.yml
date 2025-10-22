@@ -31,7 +31,8 @@ jobs:
       - name: Download Pop!_OS image
         run: |
           set -euo pipefail
-          POP_URL="https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz"
+          POP_VERSION="22.04"
+          POP_URL="https://iso.pop-os.org/${POP_VERSION}/arm64/raspi/4/pop-os_${POP_VERSION}_arm64_raspi_4.img.xz"
           echo "Downloading $POP_URL"
           wget "$POP_URL" -O pop-os.img.xz
           echo "Downloaded: $(stat -c %s pop-os.img.xz) bytes"
