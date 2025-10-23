@@ -286,7 +286,7 @@ else
     fi
          
     chroot "$ROOTFS" /bin/bash -c "apt-get update"
-    chroot "$ROOTFS" /bin/bash -c "apt-get -y install uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-firmware"
+    chroot "$ROOTFS" /bin/bash -c "apt-get -y install uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
     
     # Note: The actual package installation would depend on what packages are available in the repo
     # For now, we document this in the README
