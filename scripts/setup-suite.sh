@@ -23,7 +23,7 @@ SUITE="${SUITE:-jammy}"
 RECOMPILE_KERNEL="${RECOMPILE_KERNEL:-false}"
 
 # Normalize RECOMPILE_KERNEL to true/false
-if [[ "$RECOMPILE_KERNEL" =~ ^(1|yes|YES|Yes|TRUE|True)$ ]]; then
+if [[ "$RECOMPILE_KERNEL" =~ ^(1|yes|YES|Yes|true|TRUE|True)$ ]]; then
     RECOMPILE_KERNEL="true"
 else
     RECOMPILE_KERNEL="false"
