@@ -41,6 +41,12 @@ sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
 sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
+Build Pop!_OS with custom image:
+```bash
+sudo SUITE=popos IMAGE_NAME=custom-popos.img.xz IMAGE_LINK=https://example.com/custom-popos.img.xz RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+```
+
 Alternative invocation with positional arguments:
 ```bash
 # setup-suite.sh <output-dir> <suite> <recompile_kernel>
@@ -83,12 +89,17 @@ Builds run automatically:
 
 ### Environment Variables
 
-The unified build system supports two key environment variables:
+The unified build system supports the following environment variables:
 
 - **SUITE**: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
 - **RECOMPILE_KERNEL**: Kernel build mode
   - `true`: Clone and build kernel from `crossplatformdev/linux@rpi-6.12.y` using `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
   - `false`: Use prebuilt kernel/image from `crossplatformdev/uconsole-ubuntu-apt` repository (Pop!_OS uses CM4/uConsole image)
+- **IMAGE_NAME**: Name of the image file to download (for image-based distributions like Pop!_OS)
+  - Default: `pop-os_22.04_arm64_raspi_4.img.xz`
+  - The `.xz` extension is automatically removed during extraction to derive the actual image filename
+- **IMAGE_LINK**: URL to download the image from (for image-based distributions like Pop!_OS)
+  - Default: `https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz`
 
 ### Build Artifacts
 
