@@ -27,62 +27,75 @@ sudo SUITE=trixie ARCH=arm64 ./scripts/build-image.sh [output-directory]
 4. Installs minimal base packages
 5. Leaves the rootfs ready for customization
 
-### setup-trixie-chroot.sh
+### setup-suite.sh
 
-Customization script for Debian trixie images.
+Unified customization script for all supported distributions (jammy, trixie, popos).
 
 **Usage:**
 ```bash
-sudo ./scripts/setup-trixie-chroot.sh [output-directory]
+# Using environment variables
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh [output-directory]
+
+# Using positional arguments
+sudo ./scripts/setup-suite.sh [output-directory] [suite] [recompile_kernel]
 ```
+
+**Environment Variables / Arguments:**
+- `SUITE` / arg 2: Distribution to configure (`jammy`, `trixie`, or `popos`)
+- `RECOMPILE_KERNEL` / arg 3: Whether to build kernel from source (`true`/`false`, default: `false`)
+- First positional argument: Output directory (default: `output`)
 
 **What it does:**
 1. Creates `uconsole` user with sudo privileges
-2. Installs uConsole-recommended packages
+2. Installs distribution-specific packages
 3. Configures system for uConsole hardware
-4. Leaves kernel installation as a separate step
+4. **If RECOMPILE_KERNEL=true:**
+   - Clones `crossplatformdev/linux@rpi-6.12.y`
+   - Builds kernel using `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
+   - Installs resulting kernel .deb packages
+5. **If RECOMPILE_KERNEL=false:**
+   - Configures repository for prebuilt kernel packages
+   - For Pop!_OS: uses CM4/uConsole-specific image
 
-### setup-ubuntu-chroot.sh
+## Complete Build Examples
 
-Customization script for Ubuntu 22.04 (jammy) images.
-
-**Usage:**
-```bash
-sudo ./scripts/setup-ubuntu-chroot.sh [output-directory]
-```
-
-**What it does:**
-1. Creates `uconsole` user with sudo privileges
-2. Installs minimal runtime packages
-3. Configures system following the original project style
-4. Leaves kernel installation as a separate step
-
-## Complete Build Example
-
-### Building Debian trixie image:
+### Building Debian trixie image with prebuilt kernel:
 ```bash
 # Build base rootfs
 sudo SUITE=trixie ./scripts/build-image.sh my-build
 
-# Apply trixie customizations
-sudo ./scripts/setup-trixie-chroot.sh my-build
+# Apply trixie customizations with prebuilt kernel
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
 sudo tar -czf uconsole-trixie-arm64.tar.gz rootfs-trixie-arm64
 ```
 
-### Building Ubuntu jammy image:
+### Building Ubuntu jammy image with kernel recompilation:
 ```bash
 # Build base rootfs
 sudo SUITE=jammy ./scripts/build-image.sh my-build
 
-# Apply jammy customizations
-sudo ./scripts/setup-ubuntu-chroot.sh my-build
+# Apply jammy customizations and compile kernel
+sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
 sudo tar -czf uconsole-jammy-arm64.tar.gz rootfs-jammy-arm64
+```
+
+### Building Pop!_OS image:
+```bash
+# Build base rootfs (uses jammy as base)
+sudo SUITE=jammy ./scripts/build-image.sh my-build
+
+# Apply Pop!_OS customizations
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
+
+# Create tarball
+cd my-build
+sudo tar -czf uconsole-popos-arm64.tar.gz rootfs-jammy-arm64
 ```
 
 ## Requirements
@@ -90,10 +103,11 @@ sudo tar -czf uconsole-jammy-arm64.tar.gz rootfs-jammy-arm64
 - Debian or Ubuntu host system
 - Root privileges (sudo)
 - Packages: `debootstrap`, `qemu-user-static`, `binfmt-support`
+- For kernel compilation: Additional build tools (automatically installed when RECOMPILE_KERNEL=true)
 
 ## Notes
 
-- The scripts create rootfs only - kernel installation is separate
 - Default credentials: username `uconsole`, password `uconsole`
 - The user has passwordless sudo enabled
-- Kernel installation should follow uConsole documentation
+- When RECOMPILE_KERNEL=false, kernel packages can be installed from the configured repository
+- When RECOMPILE_KERNEL=true, kernel compilation adds significant build time (1-2 hours)

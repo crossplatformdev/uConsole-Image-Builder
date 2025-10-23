@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation adds support for building Debian 13 (trixie) and Ubuntu 22.04 (jammy) uConsole rootfs images using a modular script approach with automated CI/CD.
+This implementation provides a unified build system for creating Debian 13 (trixie), Ubuntu 22.04 (jammy), and Pop!_OS 22.04 uConsole rootfs images with optional kernel recompilation, using modular scripts and automated CI/CD.
 
 ## Files Added
 
@@ -15,53 +15,70 @@ This implementation adds support for building Debian 13 (trixie) and Ubuntu 22.0
    - Creates base rootfs with minimal packages
    - Supports both Debian trixie and Ubuntu jammy
 
-2. **scripts/setup-trixie-chroot.sh**
-   - Debian trixie customization
+2. **scripts/setup-suite.sh**
+   - Unified customization script for all distributions (jammy, trixie, popos)
+   - Supports RECOMPILE_KERNEL toggle for kernel build vs prebuilt
    - Creates uconsole user with sudo privileges
-   - Installs uConsole-recommended packages
-   - Leaves kernel installation as separate step
+   - Installs distribution-specific packages
+   - When RECOMPILE_KERNEL=true: clones and builds kernel from crossplatformdev/linux@rpi-6.12.y
+   - When RECOMPILE_KERNEL=false: configures prebuilt kernel repository
 
-3. **scripts/setup-ubuntu-chroot.sh**
-   - Ubuntu 22.04 (jammy) customization
-   - Follows original project script style
-   - Creates uconsole user with sudo privileges
-   - Installs minimal runtime packages
-   - Leaves kernel installation as separate step
-
-4. **scripts/README.md**
-   - Comprehensive documentation for the new scripts
-   - Usage examples for both distributions
+3. **scripts/README.md**
+   - Comprehensive documentation for the unified scripts
+   - Usage examples for all distributions
    - Requirements and notes
 
-### GitHub Actions Workflow
+### GitHub Actions Workflows
 
-1. **.github/workflows/build-and-release.yml**
-   - Matrix build for both trixie and jammy with arm64 architecture
+1. **.github/workflows/build-distro.yaml**
+   - Unified workflow replacing individual distro workflows
+   - Supports workflow_dispatch with suite and recompile_kernel inputs
+   - Matrix build for all distributions (jammy, trixie, popos) on scheduled/push events
    - Sets up QEMU for cross-architecture support
-   - Runs build-image.sh and corresponding setup script
+   - Runs build-image.sh and setup-suite.sh
    - Creates tarball artifacts for each distribution
-   - Automatically creates releases with artifacts on push to main
-   - Includes workflow_dispatch for manual triggers
+   - Automatically creates dated tags with format `<distro>-YYYYMMDD`
 
 ### Documentation
 
 1. **README.md** (updated)
-   - Documents new modular scripts
-   - Quick start guide for both distributions
-   - Maintains backward compatibility with original create_image.sh
-   - Describes CI/CD capabilities
+   - Documents unified build system
+   - Documents SUITE and RECOMPILE_KERNEL environment variables
+   - Quick start guide for all distributions
+   - Describes updated CI/CD capabilities
 
 2. **.gitignore** (updated)
    - Excludes build artifacts (output/, build-output/, rootfs/)
    - Excludes image files (*.img, *.img.xz, *.tar.gz)
    - Excludes build dependencies and temporary files
 
+## Files Removed
+
+### Old Workflows
+- **.github/workflows/build-jammy.yml**
+- **.github/workflows/build-trixie.yml**
+- **.github/workflows/build-popos.yml**
+
+### Old Setup Scripts
+- **scripts/setup-ubuntu-chroot.sh**
+- **scripts/setup-trixie-chroot.sh**
+- **scripts/setup-popos-chroot.sh**
+
 ## Key Features
 
-### Modularity
-- Separate scripts for build and customization
-- Easy to extend for additional distributions
-- Clear separation of concerns
+### Unified Build System
+- Single workflow handles all distributions
+- Single setup script with conditional logic
+- Consistent interface across all distributions
+
+### Kernel Recompilation Toggle
+- **RECOMPILE_KERNEL=true**: Builds kernel from source
+  - Clones crossplatformdev/linux@rpi-6.12.y
+  - Uses `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
+  - Installs resulting kernel packages
+- **RECOMPILE_KERNEL=false**: Uses prebuilt packages
+  - Configures uconsole-ubuntu-apt repository
+  - For Pop!_OS: uses CM4/uConsole-specific image
 
 ### Cross-Platform Support
 - Uses QEMU for cross-architecture builds
@@ -70,72 +87,59 @@ This implementation adds support for building Debian 13 (trixie) and Ubuntu 22.0
 
 ### Automation
 - Fully automated CI/CD pipeline
-- Automatic release creation with artifacts
+- Automatic tag creation with artifacts
 - Matrix builds for multiple distributions
 
 ### Flexibility
-- Environment variable configuration (SUITE, ARCH)
+- Environment variable configuration (SUITE, ARCH, RECOMPILE_KERNEL)
 - Customizable output directory
-- Manual workflow dispatch option
+- Manual workflow dispatch with selectable options
 
 ## Default Configuration
 
-- **Default Suite**: trixie (Debian 13)
+- **Default Suite**: jammy (Ubuntu 22.04)
 - **Default Architecture**: arm64
 - **Default User**: uconsole (password: uconsole)
+- **Default Kernel Mode**: RECOMPILE_KERNEL=false (prebuilt)
 - **Sudo**: Passwordless sudo enabled for uconsole user
-
-## Security Considerations
-
-- Scripts run with proper error handling (set -e)
-- Validation of SUITE parameter
-- Graceful unmounting with error handling (|| true)
-- No secrets or sensitive data in repository
-- CodeQL security scan passed with no alerts
 
 ## Build Process
 
-### For Debian trixie:
+### For Debian trixie with prebuilt kernel:
 ```bash
-sudo SUITE=trixie ./scripts/build-image.sh output
-sudo ./scripts/setup-trixie-chroot.sh output
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
-### For Ubuntu jammy:
+### For Ubuntu jammy with kernel recompilation:
+```bash
+sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
+sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
+```
+
+### For Pop!_OS:
 ```bash
 sudo SUITE=jammy ./scripts/build-image.sh output
-sudo ./scripts/setup-ubuntu-chroot.sh output
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 ## CI/CD Workflow
 
-When changes are pushed to main:
-1. Two parallel build jobs run (trixie and jammy)
-2. Each job creates a rootfs tarball
+### Scheduled/Push Events:
+1. Three parallel build jobs run (jammy, trixie, popos)
+2. Each job creates a rootfs tarball with RECOMPILE_KERNEL=false
 3. Artifacts are uploaded
-4. A release is created with both tarballs
+4. Dated tags are created for each distribution
 
-## Testing Performed
-
-- ✅ Bash syntax validation for all scripts
-- ✅ YAML syntax validation for GitHub Actions workflow
-- ✅ Invalid input handling tested
-- ✅ Script headers and permissions verified
-- ✅ CodeQL security scan (no alerts)
-- ✅ Documentation completeness verified
+### Manual Workflow Dispatch:
+1. User selects distribution (jammy, trixie, or popos)
+2. User toggles kernel recompilation (on/off)
+3. Single build job runs with selected options
+4. Artifact uploaded and tag created
 
 ## Notes
 
-- Kernel installation is intentionally left as a separate step
-- The original create_image.sh is preserved for backward compatibility
+- Kernel compilation (when enabled) adds 1-2 hours to build time
+- Pop!_OS uses jammy as debootstrap suite with custom branding
 - GitHub Actions runner requires sudo for debootstrap
 - Builds are cross-architecture (amd64 host, arm64 target)
-
-## Future Enhancements
-
-Potential areas for future development:
-- Add support for additional architectures (armhf, etc.)
-- Add support for more distributions
-- Include optional kernel build in workflow
-- Add automated testing of rootfs
-- Create bootable disk images from rootfs

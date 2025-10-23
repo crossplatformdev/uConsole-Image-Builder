@@ -10,18 +10,34 @@ A collection of BASH scripts to create images for the uConsole CM4.
 
 ## Quick Start
 
-### Using the new modular scripts (recommended):
+### Using the unified build scripts (recommended):
 
-Build a Debian trixie rootfs:
+The build process uses two environment variables:
+- `SUITE`: Distribution to build (`jammy`, `trixie`, or `popos`)
+- `RECOMPILE_KERNEL`: Whether to build kernel from source (`true`/`false`, default: `false`)
+
+Build a Debian trixie rootfs with prebuilt kernel:
 ```bash
-sudo SUITE=trixie ./scripts/build-image.sh output
-sudo ./scripts/setup-trixie-chroot.sh output
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
-Build an Ubuntu jammy rootfs:
+Build an Ubuntu jammy rootfs and compile kernel from source:
 ```bash
-sudo SUITE=jammy ./scripts/build-image.sh output
-sudo ./scripts/setup-ubuntu-chroot.sh output
+sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
+sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
+```
+
+Build Pop!_OS with prebuilt kernel:
+```bash
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+```
+
+Alternative invocation with positional arguments:
+```bash
+# setup-suite.sh <output-dir> <suite> <recompile_kernel>
+sudo ./scripts/setup-suite.sh output trixie true
 ```
 
 See [scripts/README.md](scripts/README.md) for detailed documentation.
@@ -47,15 +63,24 @@ This repository includes automated GitHub Actions workflows that build and publi
 
 ### Automated Daily Builds
 
-Three separate workflows build rootfs images for:
+A unified workflow builds rootfs images for all distributions:
 - **Pop!_OS 22.04** (based on Ubuntu 22.04 jammy) - tagged as `popos-YYYYMMDD`
 - **Debian 13 (trixie)** - tagged as `trixie-YYYYMMDD`
 - **Ubuntu 22.04 (jammy)** - tagged as `jammy-YYYYMMDD`
 
 Builds run automatically:
-- **Daily at 02:00 UTC** via scheduled cron
-- **On push to main** when relevant scripts or workflows change
-- **Manually** via workflow_dispatch
+- **Daily at 02:00 UTC** via scheduled cron (builds all distributions)
+- **On push to main** when relevant scripts or workflows change (builds all distributions)
+- **Manually** via workflow_dispatch (builds selected distribution)
+
+### Environment Variables
+
+The unified build system supports two key environment variables:
+
+- **SUITE**: Distribution to build (`jammy`, `trixie`, or `popos`)
+- **RECOMPILE_KERNEL**: Kernel build mode
+  - `true`: Clone and build kernel from `crossplatformdev/linux@rpi-6.12.y` using `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
+  - `false`: Use prebuilt kernel/image from `crossplatformdev/uconsole-ubuntu-apt` repository (Pop!_OS uses CM4/uConsole image)
 
 ### Build Artifacts
 
@@ -69,12 +94,12 @@ Each successful build:
 To manually trigger a build:
 
 1. Go to the **Actions** tab in the repository
-2. Select the workflow you want to run:
-   - "Build Pop!_OS Image"
-   - "Build Debian Trixie Image" 
-   - "Build Ubuntu Jammy Image"
-3. Click **Run workflow** and select the branch
-4. Click **Run workflow** to start the build
+2. Select **Build Distro Image (Unified)**
+3. Click **Run workflow**
+4. Select the branch
+5. Choose the distribution suite (`jammy`, `trixie`, or `popos`)
+6. Toggle **Recompile kernel from source** (default: off/prebuilt)
+7. Click **Run workflow** to start the build
 
 ### Downloading Build Artifacts
 
@@ -85,14 +110,15 @@ Build artifacts are available in two ways:
 
 ### Workflow Architecture
 
-The CI uses a reusable workflow (`.github/workflows/build-image.yml`) that:
+The unified workflow (`.github/workflows/build-distro.yaml`):
+- Accepts `suite` and `recompile_kernel` inputs via workflow_dispatch
+- Uses matrix strategy to build all distributions on scheduled/push events
 - Sets up QEMU for ARM64 cross-compilation
 - Runs debootstrap to create base rootfs
-- Applies distro-specific customizations
+- Applies suite-specific customizations via `scripts/setup-suite.sh`
+- Handles kernel compilation or prebuilt image selection based on `RECOMPILE_KERNEL`
 - Creates and uploads tarball artifacts
 - Tags successful builds with date-stamped tags
-
-Individual distro workflows (build-popos.yml, build-trixie.yml, build-jammy.yml) call the reusable workflow with distro-specific parameters.
 
 ## Requirements
 
