@@ -160,6 +160,7 @@ image:
 
 layer:
   base: ${BASE_LAYER}
+  mode: unshare  # Enable rootless mode with podman unshare
 EOF
     
     echo "Generated rpi-image-gen config:"
