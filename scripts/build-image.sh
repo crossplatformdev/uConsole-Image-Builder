@@ -43,13 +43,29 @@ apt-get install -y debootstrap qemu-user-static binfmt-support
 # Determine repository URL based on suite
 if [[ "$SUITE" == "jammy" ]]; then
     REPO_URL="http://ports.ubuntu.com/ubuntu-ports"
+    # Run debootstrap
+    echo "Running debootstrap for $SUITE ($ARCH)..."
+    debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
+elif [[ "$SUITE" == "popos" ]]; then
+    wget https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
+
+    #Extract the image
+    unxz pop-os_22.04_arm64_raspi_4.img.xz
+
+    #Mount the image
+    losetup -D
+    losetup /dev/loop123 -P pop-os_22.04_arm64_raspi_4.img
+
+    mkdir rootfs
+    mount /dev/loop123p2 rootfs
+    mkdir rootfs/boot/firmware
+    mount /dev/loop123p1 rootfs/boot/firmware
 else
     REPO_URL="http://deb.debian.org/debian"
+    # Run debootstrap
+    echo "Running debootstrap for $SUITE ($ARCH)..."
+    debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
 fi
-
-# Run debootstrap
-echo "Running debootstrap for $SUITE ($ARCH)..."
-debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
 
 # Copy qemu-user-static for cross-architecture chroot
 echo "Setting up QEMU for cross-architecture support..."
@@ -99,7 +115,9 @@ chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y
     locales \
     wget \
     ca-certificates \
-    gnupg"
+    aptitude \
+    tasksel \
+    gnupg" 
 
 # Configure locale
 echo "Configuring locale..."
