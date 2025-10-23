@@ -32,7 +32,7 @@ ROOTFS="$OUTDIR/rootfs-$SUITE-$ARCH"
 # Clean up any existing rootfs
 if [ -d "$ROOTFS" ]; then
     echo "Cleaning up existing rootfs..."
-    rm -rf "$ROOTFS"
+    rm -rf "$ROOTFS/**"
 fi
 
 # Install required packages
@@ -55,7 +55,7 @@ elif [[ "$SUITE" == "popos" ]]; then
     #Mount the image
     losetup -D
     losetup /dev/loop123 -P pop-os_22.04_arm64_raspi_4.img
-    mkdir "$ROOTFS"
+    mkdir -p "$ROOTFS"
     mount /dev/loop123p2 "$ROOTFS"
     mkdir "$ROOTFS/boot/firmware"
     mount /dev/loop123p1 "$ROOTFS/boot/firmware"
