@@ -72,6 +72,12 @@ sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
 sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
+Build Pop!_OS with custom image:
+```bash
+sudo SUITE=popos IMAGE_NAME=custom-popos.img.xz IMAGE_LINK=https://example.com/custom-popos.img.xz RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+```
+
 Alternative invocation with positional arguments:
 ```bash
 # setup-suite.sh <output-dir> <suite> <recompile_kernel>
