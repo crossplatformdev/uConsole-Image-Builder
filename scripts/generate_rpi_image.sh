@@ -152,6 +152,7 @@ else
     
     # Create temporary config for rpi-image-gen
     # Use absolute path for config file
+    mkdir -p "$OUTPUT_DIR"
     CONFIG_FILE="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-config.yaml"
     cat > "$CONFIG_FILE" << EOF
 device:
@@ -183,6 +184,7 @@ EOF
     
     # Build the image
     # Use absolute path for build directory
+    mkdir -p "$OUTPUT_DIR"
     BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
     mkdir -p "$BUILD_DIR"
     
