@@ -148,19 +148,24 @@ else
     # Use absolute path for config file
     mkdir -p "$OUTPUT_DIR"
     CONFIG_FILE="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-config.yaml"
+    
+    # Generate YAML config following rpi-image-gen best practices
+    # Reference: https://github.com/raspberrypi/rpi-image-gen/blob/main/layer/LAYER_BEST_PRACTICES
     cat > "$CONFIG_FILE" << EOF
+mmdebstrap:
+  mode: unshare
+  suite: ${BASE_LAYER}
+  target: ${IMAGE_NAME}.tar
+  variant: apt
+
 device:
-  layer: rpi-cm4  # uConsole uses CM4 (Compute Module 4)
+  layer: rpi-cm4
 
 image:
   layer: image-rpios
   boot_part_size: 512M
   root_part_size: ${ROOTFS_SIZE}M
   name: ${IMAGE_NAME}
-
-layer:
-  base: ${BASE_LAYER}
-  mode: unshare  # Enable rootless mode with podman unshare
 EOF
     
     echo "Generated rpi-image-gen config:"
