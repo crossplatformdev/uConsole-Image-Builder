@@ -115,9 +115,6 @@ import sys
 def tip():
     print("use mmcli -L to see 4G modem or not")
 
-def tip():
-    print("use mmcli -L to see 4G modem or not")
-
 def enable4g():
     print("Power on 4G module on uConsole cm4")
 
