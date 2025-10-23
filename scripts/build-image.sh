@@ -56,10 +56,10 @@ elif [[ "$SUITE" == "popos" ]]; then
     losetup -D
     losetup /dev/loop123 -P pop-os_22.04_arm64_raspi_4.img
 
-    mkdir rootfs
-    mount /dev/loop123p2 rootfs
-    mkdir rootfs/boot/firmware
-    mount /dev/loop123p1 rootfs/boot/firmware
+    mkdir "$ROOTFS"
+    mount /dev/loop123p2 "$ROOTFS"
+    mkdir "$ROOTFS/boot/firmware"
+    mount /dev/loop123p1 "$ROOTFS/boot/firmware"
 else
     REPO_URL="http://deb.debian.org/debian"
     # Run debootstrap
