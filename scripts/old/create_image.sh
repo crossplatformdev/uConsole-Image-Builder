@@ -183,7 +183,6 @@ dtoverlay=vc4-kms-v3d-pi4,cma-384
 dtparam=pciex1=off
 dtparam=spi=on
 dtparam=drm_fb0_rp1_dsi1
-dtparam=drm_fb0_rp1_dsi1
 #initial_turbo=0
 EOF
 
