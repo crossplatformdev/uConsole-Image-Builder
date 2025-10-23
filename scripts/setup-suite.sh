@@ -263,19 +263,28 @@ else
     echo "================================================"
     echo "Using prebuilt kernel from clockworkpi/apt"
     echo "================================================"
+
+    # Add uconsole-ubuntu-apt repository
+    echo "Adding uconsole-ubuntu-apt repository..."
+    chroot "$ROOTFS" /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+    chroot "$ROOTFS" /bin/bash -c "echo \"deb https://raw.githubusercontent.com/clockworkpi/apt/main/debian/ stable main\" | sudo tee  /etc/apt/sources.list.d/clockworkpi.list"
     
+   
     # Determine which prebuilt image to use
     if [[ "$SUITE" == "popos" ]]; then
+        # TODO: POPOS
+        chroot "$ROOTFS" /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main\" | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
+   
         PREBUILT_IMAGE="uconsole-cm4"
         echo "Using uConsole CM4 image for Pop!_OS"
     else
+        # TODO: Debian or Jammy
+        chroot "$ROOTFS" /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main\" | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
+   
         PREBUILT_IMAGE="generic-${SUITE}"
         echo "Using generic prebuilt image for $SUITE"
     fi
-    
-    # Add uconsole-ubuntu-apt repository
-    echo "Adding uconsole-ubuntu-apt repository..."
-    chroot "$ROOTFS" /bin/bash -c "echo 'deb [trusted=yes] https://raw.githubusercontent.com/clockworkpi/apt/main ./' > /etc/apt/sources.list.d/uconsole.list"
+         
     chroot "$ROOTFS" /bin/bash -c "apt-get update"
     chroot "$ROOTFS" /bin/bash -c "apt-get -y install uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-firmware"
     
