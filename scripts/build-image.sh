@@ -3,7 +3,7 @@ set -e
 
 ############################################################################################################
 # Unified build script for uConsole images using debootstrap                                              #
-# Supports Debian 13 (trixie) and Ubuntu 22.04 (jammy)                                                   #
+# Supports Debian 13 (trixie), Debian 12 (bookworm), and Ubuntu 22.04 (jammy)                            #
 ############################################################################################################
 
 # Default configuration
@@ -96,6 +96,12 @@ deb http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiver
 deb http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
 EOF
+elif [[ "$SUITE" == "bookworm" ]]; then
+    cat > "$ROOTFS/etc/apt/sources.list" << EOF
+deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+EOF
 else
     cat > "$ROOTFS/etc/apt/sources.list" << EOF
 deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
@@ -146,6 +152,7 @@ echo "Base rootfs created successfully at: $ROOTFS"
 echo "To customize, run the unified setup script:"
 echo "  sudo SUITE=<suite> RECOMPILE_KERNEL=<true|false> scripts/setup-suite.sh $OUTDIR"
 echo "  Examples:"
-echo "    - For trixie: SUITE=trixie RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
-echo "    - For jammy:  SUITE=jammy RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
-echo "    - For popos:  SUITE=popos RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For trixie:   SUITE=trixie RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For bookworm: SUITE=bookworm RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For jammy:    SUITE=jammy RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For popos:    SUITE=popos RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"

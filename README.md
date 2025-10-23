@@ -5,6 +5,7 @@ A collection of BASH scripts to create images for the uConsole CM4.
 ## Supported Distributions
 
 - **Debian 13 (trixie)** - Default
+- **Debian 12 (bookworm)**
 - **Ubuntu 22.04 (jammy)**
 - **Pop!_OS 22.04** - ARM64 for Raspberry Pi 4
 
@@ -13,13 +14,19 @@ A collection of BASH scripts to create images for the uConsole CM4.
 ### Using the unified build scripts (recommended):
 
 The build process uses two environment variables:
-- `SUITE`: Distribution to build (`jammy`, `trixie`, or `popos`)
+- `SUITE`: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
 - `RECOMPILE_KERNEL`: Whether to build kernel from source (`true`/`false`, default: `false`)
 
 Build a Debian trixie rootfs with prebuilt kernel:
 ```bash
 sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
 sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+```
+
+Build a Debian bookworm rootfs with prebuilt kernel:
+```bash
+sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 Build an Ubuntu jammy rootfs and compile kernel from source:
@@ -66,6 +73,7 @@ This repository includes automated GitHub Actions workflows that build and publi
 A unified workflow builds rootfs images for all distributions:
 - **Pop!_OS 22.04** (based on Ubuntu 22.04 jammy) - tagged as `popos-YYYYMMDD`
 - **Debian 13 (trixie)** - tagged as `trixie-YYYYMMDD`
+- **Debian 12 (bookworm)** - tagged as `bookworm-YYYYMMDD`
 - **Ubuntu 22.04 (jammy)** - tagged as `jammy-YYYYMMDD`
 
 Builds run automatically:
@@ -77,7 +85,7 @@ Builds run automatically:
 
 The unified build system supports two key environment variables:
 
-- **SUITE**: Distribution to build (`jammy`, `trixie`, or `popos`)
+- **SUITE**: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
 - **RECOMPILE_KERNEL**: Kernel build mode
   - `true`: Clone and build kernel from `crossplatformdev/linux@rpi-6.12.y` using `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
   - `false`: Use prebuilt kernel/image from `crossplatformdev/uconsole-ubuntu-apt` repository (Pop!_OS uses CM4/uConsole image)
@@ -97,7 +105,7 @@ To manually trigger a build:
 2. Select **Build Distro Image (Unified)**
 3. Click **Run workflow**
 4. Select the branch
-5. Choose the distribution suite (`jammy`, `trixie`, or `popos`)
+5. Choose the distribution suite (`jammy`, `trixie`, `bookworm`, or `popos`)
 6. Toggle **Recompile kernel from source** (default: off/prebuilt)
 7. Click **Run workflow** to start the build
 

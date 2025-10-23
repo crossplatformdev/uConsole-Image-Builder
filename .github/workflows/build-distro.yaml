@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: 'Distribution suite (jammy|trixie|popos)'
+        description: 'Distribution suite (jammy|trixie|bookworm|popos)'
         required: true
         type: choice
         options:
           - jammy
           - trixie
+          - bookworm
           - popos
         default: jammy
       recompile_kernel:
@@ -36,7 +37,7 @@ jobs:
     timeout-minutes: 300
     strategy:
       matrix:
-        suite: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.suite)) || fromJSON('["jammy", "trixie", "popos"]') }}
+        suite: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.suite)) || fromJSON('["jammy", "trixie", "bookworm", "popos"]') }}
     concurrency:
       group: build-${{ matrix.suite }}
       cancel-in-progress: false
@@ -87,6 +88,9 @@ jobs:
           elif [[ "${{ matrix.suite }}" == "jammy" ]]; then
             echo "debootstrap_suite=jammy" >> $GITHUB_OUTPUT
             echo "tag_prefix=jammy-" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.suite }}" == "bookworm" ]]; then
+            echo "debootstrap_suite=bookworm" >> $GITHUB_OUTPUT
+            echo "tag_prefix=bookworm-" >> $GITHUB_OUTPUT
           else
             echo "debootstrap_suite=trixie" >> $GITHUB_OUTPUT
             echo "tag_prefix=trixie-" >> $GITHUB_OUTPUT

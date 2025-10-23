@@ -16,6 +16,7 @@ sudo SUITE=trixie ARCH=arm64 ./scripts/build-image.sh [output-directory]
 **Environment Variables:**
 - `SUITE`: Distribution suite (default: `trixie`)
   - `trixie` - Debian 13
+  - `bookworm` - Debian 12
   - `jammy` - Ubuntu 22.04
 - `ARCH`: Target architecture (default: `arm64`)
 - First positional argument: Output directory (default: `output`)
@@ -29,7 +30,7 @@ sudo SUITE=trixie ARCH=arm64 ./scripts/build-image.sh [output-directory]
 
 ### setup-suite.sh
 
-Unified customization script for all supported distributions (jammy, trixie, popos).
+Unified customization script for all supported distributions (jammy, trixie, bookworm, popos).
 
 **Usage:**
 ```bash
@@ -41,7 +42,7 @@ sudo ./scripts/setup-suite.sh [output-directory] [suite] [recompile_kernel]
 ```
 
 **Environment Variables / Arguments:**
-- `SUITE` / arg 2: Distribution to configure (`jammy`, `trixie`, or `popos`)
+- `SUITE` / arg 2: Distribution to configure (`jammy`, `trixie`, `bookworm`, or `popos`)
 - `RECOMPILE_KERNEL` / arg 3: Whether to build kernel from source (`true`/`false`, default: `false`)
 - First positional argument: Output directory (default: `output`)
 
@@ -70,6 +71,19 @@ sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
 # Create tarball
 cd my-build
 sudo tar -czf uconsole-trixie-arm64.tar.gz rootfs-trixie-arm64
+```
+
+### Building Debian bookworm image with prebuilt kernel:
+```bash
+# Build base rootfs
+sudo SUITE=bookworm ./scripts/build-image.sh my-build
+
+# Apply bookworm customizations with prebuilt kernel
+sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
+
+# Create tarball
+cd my-build
+sudo tar -czf uconsole-bookworm-arm64.tar.gz rootfs-bookworm-arm64
 ```
 
 ### Building Ubuntu jammy image with kernel recompilation:

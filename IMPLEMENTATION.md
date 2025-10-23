@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation provides a unified build system for creating Debian 13 (trixie), Ubuntu 22.04 (jammy), and Pop!_OS 22.04 uConsole rootfs images with optional kernel recompilation, using modular scripts and automated CI/CD.
+This implementation provides a unified build system for creating Debian 13 (trixie), Debian 12 (bookworm), Ubuntu 22.04 (jammy), and Pop!_OS 22.04 uConsole rootfs images with optional kernel recompilation, using modular scripts and automated CI/CD.
 
 ## Files Added
 
@@ -13,10 +13,10 @@ This implementation provides a unified build system for creating Debian 13 (trix
    - Defaults: SUITE=trixie, ARCH=arm64
    - Accepts OUTDIR as first positional argument
    - Creates base rootfs with minimal packages
-   - Supports both Debian trixie and Ubuntu jammy
+   - Supports Debian trixie, Debian bookworm, and Ubuntu jammy
 
 2. **scripts/setup-suite.sh**
-   - Unified customization script for all distributions (jammy, trixie, popos)
+   - Unified customization script for all distributions (jammy, trixie, bookworm, popos)
    - Supports RECOMPILE_KERNEL toggle for kernel build vs prebuilt
    - Creates uconsole user with sudo privileges
    - Installs distribution-specific packages
@@ -33,7 +33,7 @@ This implementation provides a unified build system for creating Debian 13 (trix
 1. **.github/workflows/build-distro.yaml**
    - Unified workflow replacing individual distro workflows
    - Supports workflow_dispatch with suite and recompile_kernel inputs
-   - Matrix build for all distributions (jammy, trixie, popos) on scheduled/push events
+   - Matrix build for all distributions (jammy, trixie, bookworm, popos) on scheduled/push events
    - Sets up QEMU for cross-architecture support
    - Runs build-image.sh and setup-suite.sh
    - Creates tarball artifacts for each distribution
@@ -111,6 +111,12 @@ sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
 sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
+### For Debian bookworm with prebuilt kernel:
+```bash
+sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+```
+
 ### For Ubuntu jammy with kernel recompilation:
 ```bash
 sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
@@ -126,13 +132,13 @@ sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ## CI/CD Workflow
 
 ### Scheduled/Push Events:
-1. Three parallel build jobs run (jammy, trixie, popos)
+1. Four parallel build jobs run (jammy, trixie, bookworm, popos)
 2. Each job creates a rootfs tarball with RECOMPILE_KERNEL=false
 3. Artifacts are uploaded
 4. Dated tags are created for each distribution
 
 ### Manual Workflow Dispatch:
-1. User selects distribution (jammy, trixie, or popos)
+1. User selects distribution (jammy, trixie, bookworm, or popos)
 2. User toggles kernel recompilation (on/off)
 3. Single build job runs with selected options
 4. Artifact uploaded and tag created

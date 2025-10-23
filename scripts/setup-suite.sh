@@ -2,7 +2,7 @@
 set -e
 
 ############################################################################################################
-# Unified setup script for uConsole - supports jammy, trixie, and popos                                  #
+# Unified setup script for uConsole - supports jammy, trixie, bookworm, and popos                        #
 # Supports RECOMPILE_KERNEL toggle to either build kernel from source or use prebuilt                    #
 ############################################################################################################
 
@@ -79,8 +79,8 @@ chroot "$ROOTFS" /bin/bash -c "chmod 0440 /etc/sudoers.d/uconsole"
 # Install runtime packages based on suite
 echo "Installing runtime packages for $SUITE..."
 
-if [[ "$SUITE" == "trixie" ]]; then
-    # Debian trixie packages
+if [[ "$SUITE" == "trixie" ]] || [[ "$SUITE" == "bookworm" ]]; then
+    # Debian trixie/bookworm packages
     chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
         network-manager \
         wpasupplicant \
@@ -296,7 +296,7 @@ fi
 
 # Per-suite wait timing differences (as mentioned in original scripts)
 # These wait times may be needed for certain operations to complete
-if [[ "$SUITE" == "trixie" ]]; then
+if [[ "$SUITE" == "trixie" ]] || [[ "$SUITE" == "bookworm" ]]; then
     echo "Applying Debian-specific wait timing..."
     sleep 1
 elif [[ "$SUITE" == "popos" ]]; then
