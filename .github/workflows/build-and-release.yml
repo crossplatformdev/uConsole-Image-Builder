@@ -34,12 +34,8 @@ jobs:
       - name: Determine debootstrap suite
         id: suite_info
         run: |
-          if [[ "${{ matrix.suite }}" == "popos" ]]; then
-            echo "debootstrap_suite=jammy" >> $GITHUB_OUTPUT
-          else
             echo "debootstrap_suite=${{ matrix.suite }}" >> $GITHUB_OUTPUT
-          fi
-      
+
       - name: Build rootfs for ${{ matrix.suite }}
         run: |
           sudo SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
