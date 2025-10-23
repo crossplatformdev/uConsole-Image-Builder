@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 1440
     strategy:
       matrix:
-        suite: [trixie, jammy]
+        suite: [trixie, jammy, popos]
     
     steps:
       - name: Checkout repository
@@ -31,22 +31,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y debootstrap qemu-user-static binfmt-support
       
+      - name: Determine debootstrap suite
+        id: suite_info
+        run: |
+          if [[ "${{ matrix.suite }}" == "popos" ]]; then
+            echo "debootstrap_suite=jammy" >> $GITHUB_OUTPUT
+          else
+            echo "debootstrap_suite=${{ matrix.suite }}" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Build rootfs for ${{ matrix.suite }}
         run: |
-          sudo SUITE=${{ matrix.suite }} ARCH=arm64 ./scripts/build-image.sh build-output
+          sudo SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
       
       - name: Apply ${{ matrix.suite }} customizations
         run: |
-          if [ "${{ matrix.suite }}" = "trixie" ]; then
-            sudo ./scripts/setup-trixie-chroot.sh build-output
-          else
-            sudo ./scripts/setup-ubuntu-chroot.sh build-output
-          fi
+          sudo SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=false ./scripts/setup-suite.sh build-output
       
       - name: Create tarball artifact
         run: |
           cd build-output
-          sudo tar -czf uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz rootfs-${{ matrix.suite }}-arm64
+          sudo tar -czf uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz rootfs-${{ steps.suite_info.outputs.debootstrap_suite }}-arm64
           sudo chown $USER:$USER uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
           ls -lh uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
       
@@ -91,6 +96,7 @@ jobs:
             This release contains:
             - Debian 13 (trixie) arm64 rootfs
             - Ubuntu 22.04 (jammy) arm64 rootfs
+            - Pop!_OS 22.04 arm64 rootfs
             
             Built on: ${{ github.event.head_commit.timestamp }}
             Commit: ${{ github.sha }}
@@ -102,6 +108,7 @@ jobs:
           files: |
             artifacts/uconsole-trixie-arm64-rootfs/uconsole-trixie-arm64-rootfs.tar.gz
             artifacts/uconsole-jammy-arm64-rootfs/uconsole-jammy-arm64-rootfs.tar.gz
+            artifacts/uconsole-popos-arm64-rootfs/uconsole-popos-arm64-rootfs.tar.gz
           draft: false
           prerelease: false
         env:

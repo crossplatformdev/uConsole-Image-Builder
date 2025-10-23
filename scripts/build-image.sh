@@ -125,6 +125,9 @@ ff02::2         ip6-allrouters
 EOF
 
 echo "Base rootfs created successfully at: $ROOTFS"
-echo "To customize, run the appropriate setup script:"
-echo "  - For trixie: scripts/setup-trixie-chroot.sh $OUTDIR"
-echo "  - For jammy: scripts/setup-ubuntu-chroot.sh $OUTDIR"
+echo "To customize, run the unified setup script:"
+echo "  sudo SUITE=<suite> RECOMPILE_KERNEL=<true|false> scripts/setup-suite.sh $OUTDIR"
+echo "  Examples:"
+echo "    - For trixie: SUITE=trixie RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For jammy:  SUITE=jammy RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
+echo "    - For popos:  SUITE=popos RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
