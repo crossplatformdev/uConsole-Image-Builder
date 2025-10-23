@@ -20,10 +20,10 @@ echo "Output directory: $OUTDIR"
 echo "================================================"
 
 # Validate suite
-if [[ "$SUITE" != "trixie" ]] && [[ "$SUITE" != "jammy" ]]; then
-    echo "Error: SUITE must be 'trixie' or 'jammy'"
-    exit 1
-fi
+#if [[ "$SUITE" != "trixie" ]] && [[ "$SUITE" != "jammy" ]]; then
+    #echo "Error: SUITE must be 'trixie' or 'jammy'"
+    #exit 1
+#fi
 
 # Create output directory
 mkdir -p "$OUTDIR"
