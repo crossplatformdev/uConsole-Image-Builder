@@ -151,14 +151,15 @@ else
     esac
     
     # Create temporary config for rpi-image-gen
-    CONFIG_FILE="$OUTPUT_DIR/rpi-image-gen-config.yaml"
+    # Use absolute path for config file
+    CONFIG_FILE="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-config.yaml"
     cat > "$CONFIG_FILE" << EOF
 device:
-  layer: rpi4  # uConsole uses CM4 which is based on rpi4
+  layer: cm4  # uConsole uses CM4 (Compute Module 4)
 
 image:
   layer: image-rpios
-  boot_part_size: 256M
+  boot_part_size: 512M
   root_part_size: ${ROOTFS_SIZE}M
   name: ${IMAGE_NAME}
 
@@ -181,12 +182,13 @@ EOF
     fi
     
     # Build the image
-    BUILD_DIR="$OUTPUT_DIR/rpi-image-gen-build"
+    # Use absolute path for build directory
+    BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
     mkdir -p "$BUILD_DIR"
     
-    # Run rpi-image-gen
-    echo "Running: ./rpi-image-gen build -c $CONFIG_FILE"
-    BUILD_DIR="$BUILD_DIR" ./rpi-image-gen build -c "$CONFIG_FILE" || {
+    # Run rpi-image-gen with absolute paths
+    echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
+    ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
         echo "WARNING: rpi-image-gen build failed, falling back to manual rootfs creation"
         
         # Fallback: Create rootfs manually using debootstrap
