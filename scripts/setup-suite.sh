@@ -93,7 +93,6 @@ if [[ "$SUITE" == "trixie" ]]; then
         bluez-tools \
         python3 \
         python3-pip \
-        python3-lgpio \
         build-essential \
         git \
         vim \
@@ -130,6 +129,31 @@ elif [[ "$SUITE" == "popos" ]]; then
         pulseaudio \
         gnome-terminal \
         dbus"
+elif [[ "$SUITE" == "jammy" ]]; then
+    # Jammy specific packages
+    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        network-manager \
+        wpasupplicant \
+        wireless-tools \
+        linux-firmware \
+        bluez \
+        bluez-tools \
+        python3 \
+        python3-pip \
+        python3-lgpio \
+        build-essential \
+        git \
+        vim \
+        nano \
+        htop \
+        openssh-server \
+        curl \
+        wget \
+        net-tools \
+        alsa-utils \
+        pulseaudio \
+        gnome-terminal \
+        dbus"        
 else
     # Ubuntu jammy packages
     chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -141,7 +165,6 @@ else
         bluez-tools \
         python3 \
         python3-pip \
-        python3-lgpio \
         build-essential \
         git \
         vim \
