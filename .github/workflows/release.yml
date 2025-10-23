@@ -101,7 +101,7 @@ jobs:
           submodules: recursive
       
       - name: Download kernel packages
-        if: github.event_name == 'workflow_dispatch' && inputs.kernel_mode == 'build' || github.event_name == 'push'
+        if: (github.event_name == 'workflow_dispatch' && inputs.kernel_mode == 'build') || github.event_name == 'push'
         uses: actions/download-artifact@v4
         with:
           name: kernel-debs
