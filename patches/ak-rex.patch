@@ -1,0 +1,72 @@
+# ClockworkPi uConsole Kernel Patch (ak-rex)
+
+This is a placeholder for the ak-rex kernel patch for ClockworkPi uConsole devices.
+
+## About the Patch
+
+The ak-rex patch adds support for ClockworkPi uConsole devices to the Raspberry Pi kernel.
+It includes:
+- Device tree overlays for uConsole-specific hardware
+- Audio configuration for the uConsole speaker
+- Display drivers and settings
+- GPIO mappings for the uConsole keyboard and buttons
+
+## Obtaining the Patch
+
+The actual patch can be obtained from one of these sources:
+
+1. **ClockworkPi apt repository**: https://github.com/clockworkpi/apt
+   - Contains prebuilt kernel packages with the patch already applied
+   
+2. **ClockworkPi Linux kernel source**: Various community forks exist
+   - https://github.com/clockworkpi/uConsole (official repository with kernel downloads)
+   - Community forks by ak-rex and others on GitHub
+   
+3. **Generate from kernel source diff**:
+   ```bash
+   # Clone the base Raspberry Pi kernel
+   git clone https://github.com/raspberrypi/linux.git rpi-linux
+   cd rpi-linux
+   git checkout rpi-6.12.y  # or appropriate version
+   
+   # Clone the ClockworkPi kernel
+   git clone https://github.com/[source]/ClockworkPi-linux.git clockworkpi-linux
+   cd clockworkpi-linux
+   git checkout [appropriate-branch]
+   
+   # Generate diff/patch
+   git diff rpi-6.12.y..HEAD > ../ak-rex.patch
+   ```
+
+## Using Prebuilt Kernels (Recommended)
+
+Instead of applying patches and building from source, the recommended approach is to use
+the prebuilt kernel packages from the ClockworkPi apt repository. See 
+`scripts/install_clockworkpi_kernel.sh` for the implementation.
+
+## Building from Source with Patch
+
+If you need to build from source:
+
+1. Place the actual patch file in this directory as `ak-rex.patch`
+2. The `scripts/build_clockworkpi_kernel.sh` script will apply it during the kernel build
+3. Update the patch application command in that script if needed
+
+## Patch Format
+
+The patch should be in unified diff format and compatible with `git am` or `patch -p1`.
+
+Example application:
+```bash
+cd /path/to/kernel/source
+git am < /path/to/patches/ak-rex.patch
+# or
+patch -p1 < /path/to/patches/ak-rex.patch
+```
+
+## TODO
+
+- [ ] Obtain actual ak-rex patch file from upstream source
+- [ ] Verify patch applies cleanly to target kernel version
+- [ ] Document specific kernel version compatibility
+- [ ] Add patch metadata (author, date, description)

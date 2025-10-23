@@ -9,13 +9,27 @@ build-output/
 rootfs/
 *.img
 *.img.xz
+*.img.gz
 *.tar.gz
-*.deb
 linux/
 linux-raspi/
 ClockworkPi-linux/
 uconsole-cm4-gpio/
 
+# Kernel build artifacts (exclude from repo but keep directory structure)
+artifacts/kernel-debs/*.deb
+artifacts/kernel-debs/*.changes
+artifacts/kernel-debs/*.buildinfo
+artifacts/kernel-debs/INSTALL.txt
+
+# rpi-image-gen build outputs
+rpi-image-gen/build/
+rpi-image-gen/deploy/
+
 # Temporary files
 *.bak
 *.tmp
+*.log
+
+# Loop device temporary mounts
+temp_mount/

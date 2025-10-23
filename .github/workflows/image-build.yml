@@ -1,0 +1,145 @@
+name: Build uConsole Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Distribution suite to build'
+        required: true
+        type: choice
+        options:
+          - jammy
+          - focal
+          - bookworm
+          - bullseye
+          - trixie
+          - all
+        default: jammy
+      kernel_mode:
+        description: 'Kernel installation mode'
+        required: true
+        type: choice
+        options:
+          - prebuilt
+          - build
+          - none
+        default: prebuilt
+      compress_format:
+        description: 'Image compression format'
+        required: true
+        type: choice
+        options:
+          - xz
+          - gzip
+          - none
+        default: xz
+  pull_request:
+    paths:
+      - 'scripts/generate_rpi_image.sh'
+      - 'scripts/build_clockworkpi_kernel.sh'
+      - 'scripts/install_clockworkpi_kernel.sh'
+      - 'scripts/common_mounts.sh'
+      - '.github/workflows/image-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480  # 8 hours for kernel builds
+    strategy:
+      matrix:
+        suite: ${{ github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' && fromJSON('["jammy", "focal", "bookworm", "bullseye", "trixie"]') || fromJSON(format('["{0}"]', inputs.suite))) || fromJSON('["jammy"]') }}
+      fail-fast: false
+    
+    env:
+      SUITE: ${{ matrix.suite }}
+      KERNEL_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.kernel_mode || 'prebuilt' }}
+      COMPRESS_FORMAT: ${{ github.event_name == 'workflow_dispatch' && inputs.compress_format || 'xz' }}
+    
+    steps:
+      - name: Maximize build space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      
+      - name: Set up QEMU for cross-architecture
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap \
+            qemu-user-static \
+            binfmt-support \
+            kpartx \
+            parted \
+            dosfstools \
+            rsync \
+            xz-utils \
+            gzip
+      
+      - name: Install kernel build dependencies
+        if: env.KERNEL_MODE == 'build'
+        run: |
+          sudo apt-get install -y \
+            build-essential \
+            bc \
+            kmod \
+            cpio \
+            flex \
+            libncurses5-dev \
+            libelf-dev \
+            libssl-dev \
+            bison \
+            fakeroot \
+            dpkg-dev \
+            debhelper
+      
+      - name: Build uConsole image for ${{ matrix.suite }}
+        run: |
+          sudo SUITE=${{ matrix.suite }} \
+               KERNEL_MODE=${{ env.KERNEL_MODE }} \
+               COMPRESS_FORMAT=${{ env.COMPRESS_FORMAT }} \
+               OUTPUT_DIR=output/images \
+               ./scripts/generate_rpi_image.sh
+        env:
+          DEBIAN_FRONTEND: noninteractive
+      
+      - name: Generate checksums
+        run: |
+          cd output/images
+          sha256sum uconsole-${{ matrix.suite }}-*.img* > uconsole-${{ matrix.suite }}-arm64.sha256
+          cat uconsole-${{ matrix.suite }}-arm64.sha256
+      
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uconsole-${{ matrix.suite }}-image
+          path: |
+            output/images/uconsole-${{ matrix.suite }}-*.img*
+            output/images/uconsole-${{ matrix.suite }}-*.sha256
+          retention-days: 30
+          compression-level: 0  # Images are already compressed
+      
+      - name: Upload kernel debs artifact
+        if: env.KERNEL_MODE == 'build'
+        uses: actions/upload-artifact@v4
+        with:
+          name: uconsole-${{ matrix.suite }}-kernel-debs
+          path: artifacts/kernel-debs/*.deb
+          retention-days: 90
