@@ -261,7 +261,7 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
     echo "Kernel compilation and installation complete"
 else
     echo "================================================"
-    echo "Using prebuilt kernel from crossplatformdev/uconsole-ubuntu-apt"
+    echo "Using prebuilt kernel from clockworkpi/apt"
     echo "================================================"
     
     # Determine which prebuilt image to use
@@ -275,7 +275,7 @@ else
     
     # Add uconsole-ubuntu-apt repository
     echo "Adding uconsole-ubuntu-apt repository..."
-    chroot "$ROOTFS" /bin/bash -c "echo 'deb [trusted=yes] https://raw.githubusercontent.com/crossplatformdev/uconsole-ubuntu-apt/main ./' > /etc/apt/sources.list.d/uconsole.list"
+    chroot "$ROOTFS" /bin/bash -c "echo 'deb [trusted=yes] https://raw.githubusercontent.com/clockworkpi/apt/main ./' > /etc/apt/sources.list.d/uconsole.list"
     chroot "$ROOTFS" /bin/bash -c "apt-get update"
     
     # Note: The actual package installation would depend on what packages are available in the repo
