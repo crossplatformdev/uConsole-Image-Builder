@@ -250,6 +250,8 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
     
     # Install kernel debs
     echo "Installing kernel packages..."
+    chroot "$ROOTFS" /bin/bash -c "apt-get update"
+    chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
     chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
         dpkg -i linux-*.deb || true && \
         apt-get install -f -y"
@@ -286,7 +288,8 @@ else
     fi
          
     chroot "$ROOTFS" /bin/bash -c "apt-get update"
-    chroot "$ROOTFS" /bin/bash -c "apt-get -y install uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
+    chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
+    chroot "$ROOTFS" /bin/bash -c "apt-get install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
     
     # Note: The actual package installation would depend on what packages are available in the repo
     # For now, we document this in the README
