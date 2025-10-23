@@ -152,6 +152,10 @@ else
     # Generate YAML config following rpi-image-gen best practices
     # Reference: https://github.com/raspberrypi/rpi-image-gen/blob/main/layer/LAYER_BEST_PRACTICES
     cat > "$CONFIG_FILE" << EOF
+info:
+  name: ${IMAGE_NAME}
+  description: uConsole image for ${SUITE}
+
 mmdebstrap:
   mode: unshare
   suite: ${BASE_LAYER}
