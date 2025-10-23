@@ -189,10 +189,10 @@ EOF
     BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
     mkdir -p "$BUILD_DIR"
     
-    # Run rpi-image-gen with podman unshare for rootless mode
-    # This fixes the "please use unshare with rootless" error
-    echo "Running: podman unshare ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
-    podman unshare ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
+    # Run rpi-image-gen in rootless mode
+    # rpi-image-gen handles podman unshare internally when needed
+    echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
+    ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
         echo "WARNING: rpi-image-gen build failed"
         echo "NOTE: For manual rootfs creation and kernel installation, you'll need root privileges"
         echo "Falling back to manual rootfs creation (requires sudo)..."
