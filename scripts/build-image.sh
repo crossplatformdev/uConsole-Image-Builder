@@ -51,10 +51,10 @@ elif [[ "$SUITE" == "popos" ]]; then
     IMAGE_NAME="${IMAGE_NAME:-pop-os_22.04_arm64_raspi_4.img.xz}"
     IMAGE_LINK="${IMAGE_LINK:-https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz}"
     
-    wget $IMAGE_LINK
+    wget "$IMAGE_LINK"
     
     #Extract the image
-    unxz $IMAGE_NAME
+    unxz "$IMAGE_NAME"
     
     #Mount the image
     losetup -D
