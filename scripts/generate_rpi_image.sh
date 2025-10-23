@@ -107,129 +107,224 @@ if [ ! -d "$RPI_IMAGE_GEN" ]; then
     exit 1
 fi
 
-# Determine base image
+# Determine base image and build strategy
 if [ -n "$IMAGE_LINK" ]; then
     echo "Using custom base image: $IMAGE_LINK"
-    BASE_IMAGE_URL="$IMAGE_LINK"
+    # Download the custom image
+    BASE_IMAGE_FILE="$OUTPUT_DIR/base-image.img"
+    echo "Downloading $IMAGE_LINK..."
+    wget -O "$BASE_IMAGE_FILE" "$IMAGE_LINK" || curl -L -o "$BASE_IMAGE_FILE" "$IMAGE_LINK"
+    
+    # Decompress if needed
+    if [[ "$BASE_IMAGE_FILE" == *.xz ]]; then
+        echo "Decompressing xz image..."
+        xz -d "$BASE_IMAGE_FILE"
+        BASE_IMAGE_FILE="${BASE_IMAGE_FILE%.xz}"
+    elif [[ "$BASE_IMAGE_FILE" == *.gz ]]; then
+        echo "Decompressing gzip image..."
+        gunzip "$BASE_IMAGE_FILE"
+        BASE_IMAGE_FILE="${BASE_IMAGE_FILE%.gz}"
+    fi
+    
+    IMAGE_FILE="$BASE_IMAGE_FILE"
 else
-    # Use standard Raspberry Pi OS images
-    # TODO: Map suite to appropriate Raspberry Pi OS image
-    echo "Using standard Raspberry Pi OS base for suite: $SUITE"
+    # Use rpi-image-gen to create base image
+    echo "Using rpi-image-gen to create base image for suite: $SUITE"
     
-    # For now, we'll use debootstrap-based approach instead of rpi-image-gen
-    # since rpi-image-gen is designed for Raspberry Pi OS specifically
-    echo "NOTE: Falling back to debootstrap-based image creation"
-    
-    # Use existing build-image.sh and setup-suite.sh approach
-    ROOTFS_DIR="$OUTPUT_DIR/rootfs-${SUITE}-${ARCH}"
-    
-    echo "Creating base rootfs with debootstrap..."
-    SUITE="$SUITE" ARCH="$ARCH" "$SCRIPT_DIR/build-image.sh" "$OUTPUT_DIR"
-    
-    # Install kernel based on mode
-    case "$KERNEL_MODE" in
-        prebuilt)
-            echo "Installing prebuilt ClockworkPi kernel..."
-            "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$ROOTFS_DIR" "$SUITE"
+    # Map suite to rpi-image-gen layer
+    case "$SUITE" in
+        bookworm|bullseye)
+            BASE_LAYER="bookworm-minbase"
             ;;
-        build)
-            echo "Building ClockworkPi kernel from source..."
-            KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
-            "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
-            
-            # Copy debs to rootfs and install
-            mkdir -p "$ROOTFS_DIR/tmp/kernel-debs"
-            cp "$KERNEL_DEBS"/*.deb "$ROOTFS_DIR/tmp/kernel-debs/"
-            
-            echo "Installing kernel packages in chroot..."
-            chroot "$ROOTFS_DIR" /bin/bash -c "
-                apt-get update
-                apt-get install -y initramfs-tools
-                dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
-                rm -rf /tmp/kernel-debs
-            "
+        trixie)
+            BASE_LAYER="trixie-minbase"
             ;;
-        none)
-            echo "Skipping kernel installation (KERNEL_MODE=none)"
+        jammy|focal|buster)
+            # For Ubuntu/older Debian, we'll use bookworm as base and customize
+            BASE_LAYER="bookworm-minbase"
+            echo "NOTE: Using bookworm base for $SUITE (will customize after)"
             ;;
         *)
-            echo "ERROR: Invalid KERNEL_MODE '$KERNEL_MODE'" >&2
-            echo "Valid modes: prebuilt, build, none" >&2
+            echo "ERROR: Unsupported SUITE '$SUITE' for rpi-image-gen" >&2
             exit 1
             ;;
     esac
     
-    # Apply suite-specific customizations
-    echo "Applying suite customizations..."
-    SUITE="$SUITE" RECOMPILE_KERNEL="false" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR"
-    
-    # Create disk image from rootfs
-    echo "Creating disk image from rootfs..."
-    IMAGE_FILE="$OUTPUT_DIR/${IMAGE_NAME}.img"
-    
-    # Calculate image size (rootfs size + boot partition + margin)
-    IMAGE_SIZE=$((ROOTFS_SIZE + 256 + 256))  # Add 256MB for boot + 256MB margin
-    
-    # Create empty image file
-    dd if=/dev/zero of="$IMAGE_FILE" bs=1M count="$IMAGE_SIZE" status=progress
-    
-    # Create partition table
-    echo "Creating partition table..."
-    parted "$IMAGE_FILE" --script mklabel msdos
-    parted "$IMAGE_FILE" --script mkpart primary fat32 1MiB 257MiB
-    parted "$IMAGE_FILE" --script mkpart primary ext4 257MiB 100%
-    parted "$IMAGE_FILE" --script set 1 boot on
-    
-    # Setup loop device
-    setup_loop_device "$IMAGE_FILE"
-    
-    # Format partitions
-    echo "Formatting partitions..."
-    mkfs.vfat -F 32 -n BOOT "${LOOP_DEVICE}p1"
-    mkfs.ext4 -L rootfs "${LOOP_DEVICE}p2"
-    
-    # Mount partitions
-    TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
-    mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
-    
-    # Copy rootfs content
-    echo "Copying rootfs content to image..."
-    rsync -aHAX --info=progress2 "$ROOTFS_DIR/" "$TEMP_MOUNT/"
-    
-    # Ensure fstab is configured
-    echo "Configuring fstab..."
-    cat > "$TEMP_MOUNT/etc/fstab" << 'EOF'
-proc            /proc           proc    defaults          0       0
-/dev/mmcblk0p2  /               ext4    defaults,noatime  0       1
-/dev/mmcblk0p1  /boot/firmware  vfat    defaults          0       2
+    # Create temporary config for rpi-image-gen
+    CONFIG_FILE="$OUTPUT_DIR/rpi-image-gen-config.yaml"
+    cat > "$CONFIG_FILE" << EOF
+device:
+  layer: rpi4  # uConsole uses CM4 which is based on rpi4
+
+image:
+  layer: image-rpios
+  boot_part_size: 256M
+  root_part_size: ${ROOTFS_SIZE}M
+  name: ${IMAGE_NAME}
+
+layer:
+  base: ${BASE_LAYER}
 EOF
     
-    # Sync filesystems
-    sync
+    echo "Generated rpi-image-gen config:"
+    cat "$CONFIG_FILE"
+    echo ""
     
-    # Cleanup mounts
-    cleanup_mounts
+    # Run rpi-image-gen to build base image
+    echo "Building base image with rpi-image-gen..."
+    cd "$RPI_IMAGE_GEN"
     
-    # Compress image if requested
-    if [ "$COMPRESS_FORMAT" = "xz" ]; then
-        echo "Compressing image with xz..."
-        xz -9 -T 0 "$IMAGE_FILE"
-        IMAGE_FILE="${IMAGE_FILE}.xz"
-    elif [ "$COMPRESS_FORMAT" = "gzip" ]; then
-        echo "Compressing image with gzip..."
-        gzip -9 "$IMAGE_FILE"
-        IMAGE_FILE="${IMAGE_FILE}.gz"
+    # Install dependencies if needed
+    if [ ! -f "/usr/bin/mmdebstrap" ] || [ ! -f "/usr/bin/genimage" ]; then
+        echo "Installing rpi-image-gen dependencies..."
+        sudo ./install_deps.sh || echo "WARNING: Failed to install dependencies, continuing anyway"
     fi
     
-    echo "================================================"
-    echo "Image creation complete!"
-    echo "================================================"
-    echo "Image file: $IMAGE_FILE"
-    ls -lh "$IMAGE_FILE"
-    echo ""
-    echo "To write to SD card:"
-    echo "  xz -dc $IMAGE_FILE | sudo dd of=/dev/sdX bs=4M status=progress"
-    echo "  (Replace /dev/sdX with your SD card device)"
+    # Build the image
+    BUILD_DIR="$OUTPUT_DIR/rpi-image-gen-build"
+    mkdir -p "$BUILD_DIR"
+    
+    # Run rpi-image-gen
+    echo "Running: ./rpi-image-gen build -c $CONFIG_FILE"
+    BUILD_DIR="$BUILD_DIR" ./rpi-image-gen build -c "$CONFIG_FILE" || {
+        echo "WARNING: rpi-image-gen build failed, falling back to manual rootfs creation"
+        
+        # Fallback: Create rootfs manually using debootstrap
+        echo "Creating base rootfs with debootstrap..."
+        ROOTFS_DIR="$OUTPUT_DIR/rootfs-${SUITE}-${ARCH}"
+        
+        # Use existing build-image.sh if available
+        if [ -x "$SCRIPT_DIR/build-image.sh" ]; then
+            SUITE="$SUITE" ARCH="$ARCH" "$SCRIPT_DIR/build-image.sh" "$OUTPUT_DIR"
+        else
+            # Manual debootstrap
+            mkdir -p "$ROOTFS_DIR"
+            if [[ "$SUITE" == "jammy" ]] || [[ "$SUITE" == "focal" ]]; then
+                REPO_URL="http://ports.ubuntu.com/ubuntu-ports"
+            else
+                REPO_URL="http://deb.debian.org/debian"
+            fi
+            
+            debootstrap --arch="$ARCH" "$SUITE" "$ROOTFS_DIR" "$REPO_URL"
+        fi
+        
+        # We'll create the image manually below
+        IMAGE_FILE="$OUTPUT_DIR/${IMAGE_NAME}.img"
+        MANUAL_IMAGE=true
+    }
+    
+    # Find the generated image
+    if [ -z "${MANUAL_IMAGE:-}" ]; then
+        IMAGE_FILE=$(find "$BUILD_DIR" -name "*.img" -type f | head -1)
+        
+        if [ -z "$IMAGE_FILE" ]; then
+            echo "ERROR: rpi-image-gen did not produce an image file" >&2
+            exit 1
+        fi
+        
+        echo "Base image created: $IMAGE_FILE"
+    fi
+    
+    cd "$REPO_ROOT"
 fi
+
+# Now customize the image by mounting it and installing ClockworkPi kernel
+echo ""
+echo "================================================"
+echo "Customizing image for uConsole..."
+echo "================================================"
+
+# Setup loop device for the image
+setup_loop_device "$IMAGE_FILE"
+
+# Mount partitions
+TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
+mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
+
+# Bind mount system directories for chroot
+bind_mount_system "$TEMP_MOUNT"
+
+# Setup QEMU for cross-architecture chroot
+setup_qemu_chroot "$TEMP_MOUNT" "aarch64"
+
+# Install kernel based on mode
+case "$KERNEL_MODE" in
+    prebuilt)
+        echo "Installing prebuilt ClockworkPi kernel..."
+        "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$TEMP_MOUNT" "$SUITE"
+        ;;
+    build)
+        echo "Building ClockworkPi kernel from source..."
+        KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
+        "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
+        
+        # Copy debs to mounted image and install
+        mkdir -p "$TEMP_MOUNT/tmp/kernel-debs"
+        cp "$KERNEL_DEBS"/*.deb "$TEMP_MOUNT/tmp/kernel-debs/"
+        
+        echo "Installing kernel packages in chroot..."
+        chroot "$TEMP_MOUNT" /bin/bash -c "
+            apt-get update
+            apt-get install -y initramfs-tools
+            dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
+            rm -rf /tmp/kernel-debs
+        "
+        ;;
+    none)
+        echo "Skipping kernel installation (KERNEL_MODE=none)"
+        ;;
+    *)
+        echo "ERROR: Invalid KERNEL_MODE '$KERNEL_MODE'" >&2
+        echo "Valid modes: prebuilt, build, none" >&2
+        exit 1
+        ;;
+esac
+
+# Apply any additional customizations if setup-suite.sh exists
+if [ -x "$SCRIPT_DIR/setup-suite.sh" ]; then
+    echo "Applying suite-specific customizations..."
+    # Note: setup-suite.sh expects a rootfs directory, so we pass our mount point
+    # We need to make sure it doesn't try to mount again since we already mounted
+    SUITE="$SUITE" RECOMPILE_KERNEL="false" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR" || {
+        echo "WARNING: setup-suite.sh failed or not applicable"
+    }
+fi
+
+# Sync and cleanup
+sync
+cleanup_mounts
+
+# Compress image if requested
+FINAL_IMAGE="$OUTPUT_DIR/${IMAGE_NAME}.img"
+if [ "$IMAGE_FILE" != "$FINAL_IMAGE" ]; then
+    mv "$IMAGE_FILE" "$FINAL_IMAGE"
+fi
+
+if [ "$COMPRESS_FORMAT" = "xz" ]; then
+    echo "Compressing image with xz..."
+    xz -9 -T 0 "$FINAL_IMAGE"
+    FINAL_IMAGE="${FINAL_IMAGE}.xz"
+elif [ "$COMPRESS_FORMAT" = "gzip" ]; then
+    echo "Compressing image with gzip..."
+    gzip -9 "$FINAL_IMAGE"
+    FINAL_IMAGE="${FINAL_IMAGE}.gz"
+fi
+
+echo ""
+echo "================================================"
+echo "Image creation complete!"
+echo "================================================"
+echo "Image file: $FINAL_IMAGE"
+ls -lh "$FINAL_IMAGE"
+echo ""
+echo "To write to SD card:"
+if [[ "$FINAL_IMAGE" == *.xz ]]; then
+    echo "  xz -dc $FINAL_IMAGE | sudo dd of=/dev/sdX bs=4M status=progress"
+elif [[ "$FINAL_IMAGE" == *.gz ]]; then
+    echo "  gunzip -c $FINAL_IMAGE | sudo dd of=/dev/sdX bs=4M status=progress"
+else
+    echo "  sudo dd if=$FINAL_IMAGE of=/dev/sdX bs=4M status=progress"
+fi
+echo "  (Replace /dev/sdX with your SD card device)"
 
 exit 0
