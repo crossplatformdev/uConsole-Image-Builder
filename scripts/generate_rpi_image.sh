@@ -152,10 +152,6 @@ else
     # Generate YAML config following rpi-image-gen best practices
     # Reference: https://github.com/raspberrypi/rpi-image-gen/blob/main/layer/LAYER_BEST_PRACTICES
     cat > "$CONFIG_FILE" << EOF
-info:
-  name: ${IMAGE_NAME}
-  description: uConsole image for ${SUITE}
-
 mmdebstrap:
   mode: unshare
   suite: ${BASE_LAYER}
@@ -170,6 +166,9 @@ image:
   boot_part_size: 512M
   root_part_size: ${ROOTFS_SIZE}M
   name: ${IMAGE_NAME}
+
+layer:
+  base: bookworm-minbase
 EOF
     
     echo "Generated rpi-image-gen config:"
