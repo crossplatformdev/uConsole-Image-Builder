@@ -87,12 +87,6 @@ echo "Compress Format: $COMPRESS_FORMAT"
 [ -n "$IMAGE_LINK" ] && echo "Base Image Link: $IMAGE_LINK"
 echo "================================================"
 
-# Ensure we're running as root
-if [ "$EUID" -ne 0 ]; then
-    echo "ERROR: This script must be run as root (use sudo)" >&2
-    exit 1
-fi
-
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
@@ -172,44 +166,44 @@ EOF
     cat "$CONFIG_FILE"
     echo ""
     
-    # Check if we should use rpi-image-gen or debootstrap
-    # rpi-image-gen requires rootless mode (podman unshare) which doesn't work when running as root
-    # Since we need root for mounting/chroot operations later, use debootstrap instead
-    if [ "$EUID" -eq 0 ]; then
-        echo "Running as root - using debootstrap directly instead of rpi-image-gen"
-        echo "NOTE: rpi-image-gen requires rootless mode which is incompatible with root execution"
-        USE_RPI_IMAGE_GEN=false
-    else
-        USE_RPI_IMAGE_GEN=true
+    # Run rpi-image-gen to build base image
+    echo "Building base image with rpi-image-gen..."
+    cd "$RPI_IMAGE_GEN"
+    
+    # Check for podman (required for rootless mode)
+    if ! command -v podman &> /dev/null; then
+        echo "ERROR: podman is required for rootless image building" >&2
+        echo "Install with: sudo apt-get install -y podman" >&2
+        exit 1
     fi
     
-    if [ "$USE_RPI_IMAGE_GEN" = true ]; then
-        # Run rpi-image-gen to build base image
-        echo "Building base image with rpi-image-gen..."
-        cd "$RPI_IMAGE_GEN"
+    # Install dependencies if needed
+    if [ ! -f "/usr/bin/mmdebstrap" ] || [ ! -f "/usr/bin/genimage" ]; then
+        echo "Installing rpi-image-gen dependencies..."
+        ./install_deps.sh || echo "WARNING: Failed to install dependencies, continuing anyway"
+    fi
+    
+    # Build the image
+    # Use absolute path for build directory
+    mkdir -p "$OUTPUT_DIR"
+    BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
+    mkdir -p "$BUILD_DIR"
+    
+    # Run rpi-image-gen with podman unshare for rootless mode
+    # This fixes the "please use unshare with rootless" error
+    echo "Running: podman unshare ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
+    podman unshare ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
+        echo "WARNING: rpi-image-gen build failed"
+        echo "NOTE: For manual rootfs creation and kernel installation, you'll need root privileges"
+        echo "Falling back to manual rootfs creation (requires sudo)..."
         
-        # Install dependencies if needed
-        if [ ! -f "/usr/bin/mmdebstrap" ] || [ ! -f "/usr/bin/genimage" ]; then
-            echo "Installing rpi-image-gen dependencies..."
-            ./install_deps.sh || echo "WARNING: Failed to install dependencies, continuing anyway"
+        # Check if we have root for fallback
+        if [ "$EUID" -ne 0 ]; then
+            echo "ERROR: Fallback requires root privileges. Please run with sudo or fix rpi-image-gen errors." >&2
+            exit 1
         fi
         
-        # Build the image
-        # Use absolute path for build directory
-        mkdir -p "$OUTPUT_DIR"
-        BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
-        mkdir -p "$BUILD_DIR"
-        
-        # Run rpi-image-gen with absolute paths
-        echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
-        ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
-            echo "WARNING: rpi-image-gen build failed, falling back to debootstrap"
-            USE_RPI_IMAGE_GEN=false
-        }
-    fi
-    
-    if [ "$USE_RPI_IMAGE_GEN" = false ]; then
-        # Create rootfs manually using debootstrap
+        # Fallback: Create rootfs manually using debootstrap
         echo "Creating base rootfs with debootstrap..."
         ROOTFS_DIR="$OUTPUT_DIR/rootfs-${SUITE}-${ARCH}"
         
@@ -231,7 +225,7 @@ EOF
         # We'll create the image manually below
         IMAGE_FILE="$OUTPUT_DIR/${IMAGE_NAME}.img"
         MANUAL_IMAGE=true
-    fi
+    }
     
     # Find the generated image
     if [ -z "${MANUAL_IMAGE:-}" ]; then
@@ -248,14 +242,22 @@ EOF
     cd "$REPO_ROOT"
 fi
 
-# Now customize the image by mounting it and installing ClockworkPi kernel
-echo ""
-echo "================================================"
-echo "Customizing image for uConsole..."
-echo "================================================"
+# Check if we need to customize the image (only if using manual fallback or custom kernel)
+if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
+    echo ""
+    echo "================================================"
+    echo "Customizing image for uConsole..."
+    echo "================================================"
+    
+    # These operations require root privileges
+    if [ "$EUID" -ne 0 ]; then
+        echo "ERROR: Image customization requires root privileges" >&2
+        echo "Please run with sudo for kernel installation and image customization" >&2
+        exit 1
+    fi
 
-# Setup loop device for the image
-setup_loop_device "$IMAGE_FILE"
+    # Setup loop device for the image
+    setup_loop_device "$IMAGE_FILE"
 
 # Mount partitions
 TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
@@ -311,8 +313,9 @@ if [ -x "$SCRIPT_DIR/setup-suite.sh" ]; then
 fi
 
 # Sync and cleanup
-sync
-cleanup_mounts
+    sync
+    cleanup_mounts
+fi
 
 # Compress image if requested
 FINAL_IMAGE="$OUTPUT_DIR/${IMAGE_NAME}.img"
