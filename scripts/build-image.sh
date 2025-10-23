@@ -47,26 +47,42 @@ if [[ "$SUITE" == "jammy" ]]; then
     echo "Running debootstrap for $SUITE ($ARCH)..."
     debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
 elif [[ "$SUITE" == "popos" ]]; then
-    wget https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
-
+    # Use environment variables for image name and link
+    IMAGE_NAME="${IMAGE_NAME:-pop-os_22.04_arm64_raspi_4.img.xz}"
+    IMAGE_LINK="${IMAGE_LINK:-https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz}"
+    
+    wget $IMAGE_LINK
+    
     #Extract the image
-    unxz pop-os_22.04_arm64_raspi_4.img.xz
-
+    unxz $IMAGE_NAME
+    
     #Mount the image
     losetup -D
-    losetup /dev/loop123 -P pop-os_22.04_arm64_raspi_4.img
+    
+    # Derive IMAGE_NAME_WITHOUT_XZ by removing .xz extension
+    IMAGE_NAME_WITHOUT_XZ="${IMAGE_NAME%.xz}"
+    
+    # Find a free loop device and set it up with partitions
+    LOOP_DEVICE=$(losetup -f)
+    losetup "$LOOP_DEVICE" -P "$IMAGE_NAME_WITHOUT_XZ"
     
     if [ ! -d "$ROOTFS" ]; then
        mkdir -p "$ROOTFS"
     fi
     
-    mount /dev/loop123p2 "$ROOTFS"
+    mount "${LOOP_DEVICE}p2" "$ROOTFS"
     
     if [ ! -d "$ROOTFS/boot/firmware" ]; then
        mkdir -p "$ROOTFS/boot/firmware"
     fi
     
-    mount /dev/loop123p1 "$ROOTFS/boot/firmware"
+    mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
+    
+    
+    mount --bind /dev "$ROOTFS/dev"
+    mount --bind /dev/pts "$ROOTFS/dev/pts"
+    mount --bind /proc "$ROOTFS/proc"
+    mount --bind /sys "$ROOTFS/sys"
 else
     REPO_URL="http://deb.debian.org/debian"
     # Run debootstrap
@@ -74,20 +90,23 @@ else
     debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
 fi
 
-# Copy qemu-user-static for cross-architecture chroot
-echo "Setting up QEMU for cross-architecture support..."
-cp /usr/bin/qemu-aarch64-static "$ROOTFS/usr/bin/"
+# For non-image-based distributions, complete debootstrap setup
+if [[ "$SUITE" != "popos" ]]; then
+    # Copy qemu-user-static for cross-architecture chroot
+    echo "Setting up QEMU for cross-architecture support..."
+    cp /usr/bin/qemu-aarch64-static "$ROOTFS/usr/bin/"
 
-# Complete second stage of debootstrap in chroot
-echo "Running debootstrap second stage..."
-chroot "$ROOTFS" /debootstrap/debootstrap --second-stage
+    # Complete second stage of debootstrap in chroot
+    echo "Running debootstrap second stage..."
+    chroot "$ROOTFS" /debootstrap/debootstrap --second-stage
 
-# Bind mount system directories
-echo "Binding system directories..."
-mount --bind /proc "$ROOTFS/proc"
-mount --bind /sys "$ROOTFS/sys"
-mount --bind /dev "$ROOTFS/dev"
-mount --bind /dev/pts "$ROOTFS/dev/pts"
+    # Bind mount system directories
+    echo "Binding system directories..."
+    mount --bind /proc "$ROOTFS/proc"
+    mount --bind /sys "$ROOTFS/sys"
+    mount --bind /dev "$ROOTFS/dev"
+    mount --bind /dev/pts "$ROOTFS/dev/pts"
+fi
 
 # Backup and configure DNS resolution
 if [ -f "$ROOTFS/etc/resolv.conf" ]; then
@@ -95,42 +114,44 @@ if [ -f "$ROOTFS/etc/resolv.conf" ]; then
 fi
 cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
-# Configure apt sources
-echo "Configuring apt sources for $SUITE..."
-if [[ "$SUITE" == "jammy" ]]; then
-    cat > "$ROOTFS/etc/apt/sources.list" << EOF
+# Configure apt sources (skip for image-based distributions)
+if [[ "$SUITE" != "popos" ]]; then
+    echo "Configuring apt sources for $SUITE..."
+    if [[ "$SUITE" == "jammy" ]]; then
+        cat > "$ROOTFS/etc/apt/sources.list" << EOF
 deb http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
 EOF
-elif [[ "$SUITE" == "bookworm" ]]; then
-    cat > "$ROOTFS/etc/apt/sources.list" << EOF
+    elif [[ "$SUITE" == "bookworm" ]]; then
+        cat > "$ROOTFS/etc/apt/sources.list" << EOF
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 EOF
-else
-    cat > "$ROOTFS/etc/apt/sources.list" << EOF
+    else
+        cat > "$ROOTFS/etc/apt/sources.list" << EOF
 deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware
 deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
 EOF
-fi
+    fi
 
-# Install minimal packages in chroot
-echo "Installing minimal packages in chroot..."
-chroot "$ROOTFS" /bin/bash -c "apt-get update"
-chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    systemd \
-    systemd-sysv \
-    udev \
-    sudo \
-    locales \
-    wget \
-    ca-certificates \
-    aptitude \
-    tasksel \
-    gnupg" 
+    # Install minimal packages in chroot
+    echo "Installing minimal packages in chroot..."
+    chroot "$ROOTFS" /bin/bash -c "apt-get update"
+    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        systemd \
+        systemd-sysv \
+        udev \
+        sudo \
+        locales \
+        wget \
+        ca-certificates \
+        aptitude \
+        tasksel \
+        gnupg"
+fi 
 
 # Configure locale
 echo "Configuring locale..."
