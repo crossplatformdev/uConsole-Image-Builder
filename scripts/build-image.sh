@@ -61,7 +61,11 @@ elif [[ "$SUITE" == "popos" ]]; then
     fi
     
     mount /dev/loop123p2 "$ROOTFS"
-    mkdir "$ROOTFS/boot/firmware"
+    
+    if [ ! -d "$ROOTFS/boot/firmware" ]; then
+       mkdir -p "$ROOTFS/boot/firmware"
+    fi
+    
     mount /dev/loop123p1 "$ROOTFS/boot/firmware"
 else
     REPO_URL="http://deb.debian.org/debian"
