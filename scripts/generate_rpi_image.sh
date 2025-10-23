@@ -172,28 +172,44 @@ EOF
     cat "$CONFIG_FILE"
     echo ""
     
-    # Run rpi-image-gen to build base image
-    echo "Building base image with rpi-image-gen..."
-    cd "$RPI_IMAGE_GEN"
-    
-    # Install dependencies if needed
-    if [ ! -f "/usr/bin/mmdebstrap" ] || [ ! -f "/usr/bin/genimage" ]; then
-        echo "Installing rpi-image-gen dependencies..."
-        sudo ./install_deps.sh || echo "WARNING: Failed to install dependencies, continuing anyway"
+    # Check if we should use rpi-image-gen or debootstrap
+    # rpi-image-gen requires rootless mode (podman unshare) which doesn't work when running as root
+    # Since we need root for mounting/chroot operations later, use debootstrap instead
+    if [ "$EUID" -eq 0 ]; then
+        echo "Running as root - using debootstrap directly instead of rpi-image-gen"
+        echo "NOTE: rpi-image-gen requires rootless mode which is incompatible with root execution"
+        USE_RPI_IMAGE_GEN=false
+    else
+        USE_RPI_IMAGE_GEN=true
     fi
     
-    # Build the image
-    # Use absolute path for build directory
-    mkdir -p "$OUTPUT_DIR"
-    BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
-    mkdir -p "$BUILD_DIR"
-    
-    # Run rpi-image-gen with absolute paths
-    echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
-    ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
-        echo "WARNING: rpi-image-gen build failed, falling back to manual rootfs creation"
+    if [ "$USE_RPI_IMAGE_GEN" = true ]; then
+        # Run rpi-image-gen to build base image
+        echo "Building base image with rpi-image-gen..."
+        cd "$RPI_IMAGE_GEN"
         
-        # Fallback: Create rootfs manually using debootstrap
+        # Install dependencies if needed
+        if [ ! -f "/usr/bin/mmdebstrap" ] || [ ! -f "/usr/bin/genimage" ]; then
+            echo "Installing rpi-image-gen dependencies..."
+            ./install_deps.sh || echo "WARNING: Failed to install dependencies, continuing anyway"
+        fi
+        
+        # Build the image
+        # Use absolute path for build directory
+        mkdir -p "$OUTPUT_DIR"
+        BUILD_DIR="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-build"
+        mkdir -p "$BUILD_DIR"
+        
+        # Run rpi-image-gen with absolute paths
+        echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
+        ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
+            echo "WARNING: rpi-image-gen build failed, falling back to debootstrap"
+            USE_RPI_IMAGE_GEN=false
+        }
+    fi
+    
+    if [ "$USE_RPI_IMAGE_GEN" = false ]; then
+        # Create rootfs manually using debootstrap
         echo "Creating base rootfs with debootstrap..."
         ROOTFS_DIR="$OUTPUT_DIR/rootfs-${SUITE}-${ARCH}"
         
@@ -215,7 +231,7 @@ EOF
         # We'll create the image manually below
         IMAGE_FILE="$OUTPUT_DIR/${IMAGE_NAME}.img"
         MANUAL_IMAGE=true
-    }
+    fi
     
     # Find the generated image
     if [ -z "${MANUAL_IMAGE:-}" ]; then
