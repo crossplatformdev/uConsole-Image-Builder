@@ -156,7 +156,7 @@ else
     CONFIG_FILE="$(cd "$OUTPUT_DIR" && pwd)/rpi-image-gen-config.yaml"
     cat > "$CONFIG_FILE" << EOF
 device:
-  layer: rpi4  # uConsole uses CM4 which is compatible with Raspberry Pi 4
+  layer: rpi-cm4  # uConsole uses CM4 (Compute Module 4)
 
 image:
   layer: image-rpios
