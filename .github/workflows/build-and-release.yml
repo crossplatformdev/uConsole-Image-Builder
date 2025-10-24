@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
       - 'release-*'
+    branches:
+      - '**'      # todas las ramas
+
   workflow_dispatch:
     inputs:
       suite:
