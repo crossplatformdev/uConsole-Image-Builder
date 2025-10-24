@@ -2,149 +2,170 @@
 
 ## Overview
 
-This implementation provides a unified build system for creating Debian 13 (trixie), Debian 12 (bookworm), Ubuntu 22.04 (jammy), and Pop!_OS 22.04 uConsole rootfs images with optional kernel recompilation, using modular scripts and automated CI/CD.
-
-## Files Added
-
-### Scripts Directory
-
-1. **scripts/build-image.sh**
-   - Unified debootstrap-based build script
-   - Defaults: SUITE=trixie, ARCH=arm64
-   - Accepts OUTDIR as first positional argument
-   - Creates base rootfs with minimal packages
-   - Supports Debian trixie, Debian bookworm, and Ubuntu jammy
-
-2. **scripts/setup-suite.sh**
-   - Unified customization script for all distributions (jammy, trixie, bookworm, popos)
-   - Supports RECOMPILE_KERNEL toggle for kernel build vs prebuilt
-   - Creates uconsole user with sudo privileges
-   - Installs distribution-specific packages
-   - When RECOMPILE_KERNEL=true: clones and builds kernel from crossplatformdev/linux@rpi-6.12.y
-   - When RECOMPILE_KERNEL=false: configures prebuilt kernel repository
-
-3. **scripts/README.md**
-   - Comprehensive documentation for the unified scripts
-   - Usage examples for all distributions
-   - Requirements and notes
-
-### GitHub Actions Workflows
-
-1. **.github/workflows/build-distro.yaml**
-   - Unified workflow replacing individual distro workflows
-   - Supports workflow_dispatch with suite and recompile_kernel inputs
-   - Matrix build for all distributions (jammy, trixie, bookworm, popos) on scheduled/push events
-   - Sets up QEMU for cross-architecture support
-   - Runs build-image.sh and setup-suite.sh
-   - Creates tarball artifacts for each distribution
-   - Automatically creates dated tags with format `<distro>-YYYYMMDD`
-
-### Documentation
-
-1. **README.md** (updated)
-   - Documents unified build system
-   - Documents SUITE and RECOMPILE_KERNEL environment variables
-   - Quick start guide for all distributions
-   - Describes updated CI/CD capabilities
-
-2. **.gitignore** (updated)
-   - Excludes build artifacts (output/, build-output/, rootfs/)
-   - Excludes image files (*.img, *.img.xz, *.tar.gz)
-   - Excludes build dependencies and temporary files
-
-## Files Removed
-
-### Old Workflows
-- **.github/workflows/build-jammy.yml**
-- **.github/workflows/build-trixie.yml**
-- **.github/workflows/build-popos.yml**
-
-### Old Setup Scripts
-- **scripts/setup-ubuntu-chroot.sh**
-- **scripts/setup-trixie-chroot.sh**
-- **scripts/setup-popos-chroot.sh**
+This implementation provides a unified build system for creating bootable uConsole images with the ClockworkPi kernel, using the rpi-image-gen tool and automated CI/CD workflows.
 
 ## Key Features
 
-### Unified Build System
-- Single workflow handles all distributions
-- Single setup script with conditional logic
-- Consistent interface across all distributions
+### Simplified Workflow Architecture
 
-### Kernel Recompilation Toggle
-- **RECOMPILE_KERNEL=true**: Builds kernel from source
-  - Clones crossplatformdev/linux@rpi-6.12.y
-  - Uses `fakeroot make -j$(nproc) deb-pkg LOCALVERSION="-raspi"`
-  - Installs resulting kernel packages
-- **RECOMPILE_KERNEL=false**: Uses prebuilt packages
-  - Configures uconsole-ubuntu-apt repository
-  - For Pop!_OS: uses CM4/uConsole-specific image
+**Single Unified Workflow** (`.github/workflows/build-and-release.yml`):
+- Replaces 5 separate workflows with one comprehensive workflow
+- Builds complete bootable images for multiple distributions (jammy, bookworm, trixie)
+- Supports two kernel modes:
+  - **prebuilt**: Fast installation using ClockworkPi repository packages
+  - **build**: Custom kernel compilation from source with patches
+- Automatically creates GitHub releases with all artifacts
+- Manual dispatch for on-demand builds with configurable options
 
-### Cross-Platform Support
-- Uses QEMU for cross-architecture builds
-- Works on standard amd64 GitHub Actions runners
-- Supports arm64 target architecture
+### Image Generation
 
-### Automation
-- Fully automated CI/CD pipeline
-- Automatic tag creation with artifacts
-- Matrix builds for multiple distributions
+Uses rpi-image-gen (Raspberry Pi's official image generator) to create bootable images:
+- Generates complete .img.xz files ready for SD card flashing
+- Integrates with ClockworkPi kernel installation
+- Supports multiple Debian/Ubuntu distributions
+- Creates compressed images with SHA256 checksums
 
-### Flexibility
-- Environment variable configuration (SUITE, ARCH, RECOMPILE_KERNEL)
-- Customizable output directory
-- Manual workflow dispatch with selectable options
+### Kernel Options
+
+**Option 1: Prebuilt Kernel** (Recommended - Fast)
+- Uses packages from [clockworkpi/apt](https://github.com/clockworkpi/apt) repository
+- Installs: `uconsole-kernel-cm4-rpi`, `clockworkpi-audio`, `clockworkpi-cm-firmware`
+- Script: `scripts/install_clockworkpi_kernel.sh`
+
+**Option 2: Build from Source** (Customizable - Slow)
+- Builds kernel from [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
+- Optionally applies ak-rex patch from `patches/ak-rex.patch`
+- Creates .deb packages for distribution
+- Script: `scripts/build_clockworkpi_kernel.sh`
+- Build time: 2-4 hours on standard hardware
+
+## Files Overview
+
+### Core Scripts
+
+1. **scripts/generate_rpi_image.sh**
+   - Main wrapper for rpi-image-gen
+   - Creates bootable Raspberry Pi images for uConsole
+   - Supports multiple distributions (Debian/Ubuntu)
+   - Handles kernel installation (prebuilt or build from source)
+   - Generates compressed .img.xz files
+
+2. **scripts/build_clockworkpi_kernel.sh**
+   - Builds ClockworkPi kernel from source
+   - Clones Raspberry Pi kernel repository
+   - Applies patches (ak-rex.patch)
+   - Creates Debian .deb packages
+   - Outputs to `artifacts/kernel-debs/`
+
+3. **scripts/install_clockworkpi_kernel.sh**
+   - Installs prebuilt ClockworkPi kernel packages
+   - Configures ClockworkPi apt repository
+   - Installs uconsole-kernel-cm4-rpi and related packages
+   - Fast alternative to building from source
+
+4. **scripts/common_mounts.sh**
+   - Helper functions for loop device management
+   - Partition mounting/unmounting utilities
+   - Chroot environment setup
+   - Safe cleanup with trap handlers
+
+### GitHub Actions Workflow
+
+1. **.github/workflows/build-and-release.yml**
+   - Unified workflow for building and releasing uConsole images
+   - Three jobs:
+     - **build-kernel**: Builds kernel .deb packages from source (when kernel_mode=build)
+     - **build-images**: Creates bootable images for selected distributions
+     - **create-release**: Publishes GitHub releases with all artifacts
+   - Triggers: Git tags (v*, release-*) or manual dispatch
+   - Supports configurable options via workflow_dispatch:
+     - Distribution suite selection (all, jammy, bookworm, trixie, etc.)
+     - Kernel mode (prebuilt or build)
+     - Create release toggle
 
 ## Default Configuration
 
 - **Default Suite**: jammy (Ubuntu 22.04)
 - **Default Architecture**: arm64
 - **Default User**: uconsole (password: uconsole)
-- **Default Kernel Mode**: RECOMPILE_KERNEL=false (prebuilt)
+- **Default Kernel Mode**: prebuilt (fast)
 - **Sudo**: Passwordless sudo enabled for uconsole user
+- **Compression**: xz (maximum compression)
 
 ## Build Process
 
-### For Debian trixie with prebuilt kernel:
+### Using rpi-image-gen (Recommended)
+
+For complete bootable images:
+
 ```bash
+# Build with prebuilt kernel (fast)
+sudo SUITE=jammy KERNEL_MODE=prebuilt ./scripts/generate_rpi_image.sh
+
+# Build with custom kernel from source (slow)
+sudo SUITE=bookworm KERNEL_MODE=build ./scripts/generate_rpi_image.sh
+
+# Build all supported distributions
+sudo SUITE=all KERNEL_MODE=prebuilt ./scripts/generate_rpi_image.sh
+```
+
+### Legacy: Using build-image.sh and setup-suite.sh
+
+For rootfs-only builds (legacy method):
+
+```bash
+# Debian trixie with prebuilt kernel
 SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
 SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
-```
 
-### For Debian bookworm with prebuilt kernel:
-```bash
-SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
-```
-
-### For Ubuntu jammy with kernel recompilation:
-```bash
+# Ubuntu jammy with kernel recompilation
 SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
 SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 ```
 
-### For Pop!_OS:
-```bash
-SUITE=jammy ./scripts/build-image.sh output
-SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
-```
-
 ## CI/CD Workflow
 
-### Scheduled/Push Events:
-1. Four parallel build jobs run (jammy, trixie, bookworm, popos)
-2. Each job creates a rootfs tarball with RECOMPILE_KERNEL=false
-3. Artifacts are uploaded
-4. Dated tags are created for each distribution
+### Tag Push Events:
+1. Workflow automatically triggers on tags starting with `v*` or `release-*`
+2. Builds kernel .deb packages from source
+3. Creates bootable images for jammy, bookworm, and trixie
+4. Creates GitHub release with all artifacts attached
 
 ### Manual Workflow Dispatch:
-1. User selects distribution (jammy, trixie, bookworm, or popos)
-2. User toggles kernel recompilation (on/off)
-3. Single build job runs with selected options
-4. Artifact uploaded and tag created
+1. User selects distribution suite (all, jammy, bookworm, trixie, etc.)
+2. User selects kernel mode (prebuilt or build)
+3. User optionally enables "Create release"
+4. Workflow builds selected images
+5. If "Create release" enabled, publishes GitHub release
+
+## Workflow Simplification Details
+
+### Previous Structure (5 workflows):
+- `build-and-release.yml` - Built rootfs tarballs only
+- `build-distro.yaml` - Daily rootfs builds with tagging
+- `build-image.yml` - Reusable workflow (unused)
+- `image-build.yml` - On-demand image generation
+- `release.yml` - Release creation with artifacts
+
+### New Structure (1 workflow):
+- `build-and-release.yml` - Unified workflow that:
+  - Builds complete bootable images (not just rootfs)
+  - Builds kernel packages from source (when requested)
+  - Creates GitHub releases with all artifacts
+  - Supports flexible manual dispatch options
+  - Eliminates redundancy and overlap
+
+### Benefits:
+- Single source of truth for CI/CD
+- Consistent artifact naming and structure
+- Easier to maintain and understand
+- Faster execution with parallel builds
+- Clear separation of concerns (kernel build → image build → release)
 
 ## Notes
 
-- Kernel compilation (when enabled) adds 1-2 hours to build time
-- Pop!_OS uses jammy as debootstrap suite with custom branding
+- Kernel compilation adds 2-4 hours to build time on GitHub Actions runners (standard 2-core setup)
+- Prebuilt kernel mode is recommended for faster builds (completes in ~30-45 minutes)
 - Builds are cross-architecture (amd64 host, arm64 target)
+- Images are compressed with xz for optimal size
+- All artifacts include SHA256 checksums for verification
