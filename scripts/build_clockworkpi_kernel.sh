@@ -20,7 +20,7 @@ set -e
 # Configuration
 KERNEL_REPO="${KERNEL_REPO:-https://github.com/raspberrypi/linux.git}"
 KERNEL_BRANCH="${KERNEL_BRANCH:-rpi-6.12.y}"
-KERNEL_LOCALVERSION="${KERNEL_LOCALVERSION:--uconsole}"
+KERNEL_LOCALVERSION="${KERNEL_LOCALVERSION:--raspi}"
 APPLY_PATCH="${APPLY_PATCH:-true}"
 OUTPUT_DIR="${1:-artifacts/kernel-debs}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
