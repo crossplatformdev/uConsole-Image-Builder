@@ -14,6 +14,7 @@
 #   APPLY_PATCH - Whether to apply ak-rex patch (default: true)
 #   PATCH_FILE - Path to ak-rex patch file (default: patches/ak-rex.patch)
 #   USE_DOCKER - Use Docker for build (default: false)
+#   KDEB_CHANGELOG_DIST - Debian changelog distribution (default: stable)
 #
 
 set -e
@@ -31,6 +32,7 @@ KERNEL_REPO="${KERNEL_REPO:-https://github.com/raspberrypi/linux.git}"
 KERNEL_BRANCH="${KERNEL_BRANCH:-rpi-6.12.y}"
 KERNEL_LOCALVERSION="${KERNEL_LOCALVERSION:--raspi}"
 APPLY_PATCH="${APPLY_PATCH:-true}"
+KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}"
 OUTPUT_DIR="${1:-artifacts/kernel-debs}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -43,6 +45,7 @@ echo "Repository: $KERNEL_REPO"
 echo "Branch: $KERNEL_BRANCH"
 echo "Local Version: $KERNEL_LOCALVERSION"
 echo "Apply Patch: $APPLY_PATCH"
+echo "Changelog Distribution: $KDEB_CHANGELOG_DIST"
 echo "Output Directory: $OUTPUT_DIR"
 echo "================================================"
 
@@ -169,7 +172,8 @@ echo "Using $(nproc) parallel jobs"
 
 # Build using bindeb-pkg target (creates binary .deb packages only)
 # This is faster than deb-pkg which also creates source packages
-make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="-raspi"
+# Set KDEB_CHANGELOG_DIST to specify the distribution in debian/changelog
+make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="-raspi" KDEB_CHANGELOG_DIST="$KDEB_CHANGELOG_DIST"
 
 
 # Move .deb files to output directory

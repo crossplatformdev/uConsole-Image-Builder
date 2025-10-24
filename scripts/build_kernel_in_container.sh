@@ -11,6 +11,7 @@
 #   KERNEL_LOCALVERSION - Local version string
 #   APPLY_PATCH - Whether to apply ak-rex patch
 #   PATCH_FILE - Path to ak-rex patch file (relative to /build)
+#   KDEB_CHANGELOG_DIST - Debian changelog distribution
 #
 
 set -e
@@ -22,6 +23,7 @@ echo "Repository: ${KERNEL_REPO}"
 echo "Branch: ${KERNEL_BRANCH}"
 echo "Local Version: ${KERNEL_LOCALVERSION}"
 echo "Apply Patch: ${APPLY_PATCH}"
+echo "Changelog Distribution: ${KDEB_CHANGELOG_DIST:-stable}"
 echo "================================================"
 
 # Build directory inside container
@@ -73,7 +75,8 @@ echo "Building kernel packages (this will take a while)..."
 echo "Using $(nproc) parallel jobs"
 
 # Build using bindeb-pkg target (creates binary .deb packages only)
-make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="${KERNEL_LOCALVERSION}"
+# Set KDEB_CHANGELOG_DIST to specify the distribution in debian/changelog
+make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="${KERNEL_LOCALVERSION}" KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}"
 
 # Move .deb files to output directory
 echo "Collecting kernel packages..."
