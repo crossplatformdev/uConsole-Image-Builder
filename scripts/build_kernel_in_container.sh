@@ -34,11 +34,11 @@ echo "Current APT sources:"
 echo "$APT_SOURCES_CONTENT"
 
 # Append arm64 architecture to sources if not already present
-tee /etc/apt/sources.list << EOF
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main universe
-deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main universe
-deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe
-deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe
+cat << EOF >> /etc/apt/sources.list
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe
+deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
+deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
 EOF
 
 echo "Updated APT sources:"
@@ -50,8 +50,10 @@ dpkg --add-architecture arm64
 #Ensure the Docker image has necessary packages installed
 apt update
 
+apt search linux-image-unsigned
+
 # Install kernel build dependencies on docker container for architecture arm64
-apt build-dep -y linux linux-image-unsigned-6.8.0-63-generic linux-image-unsigned-6.8.0-63-lowlatency
+apt build-dep -y linux linux-raspi linux-raspi-6.8.0-1041
 
 # Install kernel build dependencies on docker container for architecture arm64   
 apt install -y \
