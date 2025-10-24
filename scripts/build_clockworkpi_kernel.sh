@@ -102,19 +102,11 @@ if [ "$APPLY_PATCH" = "true" ]; then
         if grep -q "^diff " "$PATCH_FILE" 2>/dev/null || grep -q "^--- " "$PATCH_FILE" 2>/dev/null; then
             echo "Applying ak-rex patch: $PATCH_FILE"
             
-            # Try git am first, fall back to patch
-            if git am < "$PATCH_FILE" 2>/dev/null; then
-                echo "Patch applied successfully with git am"
+            if patch -p1 < "$PATCH_FILE"; then
+                echo "Patch applied successfully with patch command"
             else
-                echo "git am failed, trying patch command..."
-                # Reset any partial git am state
-                git am --abort || true
-                if patch -p1 < "$PATCH_FILE"; then
-                    echo "Patch applied successfully with patch command"
-                else
-                    echo "ERROR: Failed to apply ak-rex patch" >&2
-                    exit 1
-                fi
+                echo "ERROR: Failed to apply ak-rex patch" >&2
+                exit 1
             fi
         else
             echo "WARNING: Patch file exists but appears to be documentation only"
@@ -144,7 +136,7 @@ echo "Using $(nproc) parallel jobs"
 
 # Build using bindeb-pkg target (creates binary .deb packages only)
 # This is faster than deb-pkg which also creates source packages
-make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="-raspi" deb-pkg
+make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="-raspi"
 
 
 # Move .deb files to output directory
