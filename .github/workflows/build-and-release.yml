@@ -38,11 +38,11 @@ jobs:
 
       - name: Build rootfs for ${{ matrix.suite }}
         run: |
-          sudo SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
+          SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
       
       - name: Apply ${{ matrix.suite }} customizations
         run: |
-          sudo SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=false ./scripts/setup-suite.sh build-output
+          SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=false ./scripts/setup-suite.sh build-output
       
       - name: Create tarball artifact
         run: |

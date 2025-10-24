@@ -107,26 +107,26 @@ This implementation provides a unified build system for creating Debian 13 (trix
 
 ### For Debian trixie with prebuilt kernel:
 ```bash
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 ### For Debian bookworm with prebuilt kernel:
 ```bash
-sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 ### For Ubuntu jammy with kernel recompilation:
 ```bash
-sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
-sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 ```
 
 ### For Pop!_OS:
 ```bash
-sudo SUITE=jammy ./scripts/build-image.sh output
-sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=jammy ./scripts/build-image.sh output
+SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 ## CI/CD Workflow
@@ -147,5 +147,4 @@ sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 
 - Kernel compilation (when enabled) adds 1-2 hours to build time
 - Pop!_OS uses jammy as debootstrap suite with custom branding
-- GitHub Actions runner requires sudo for debootstrap
 - Builds are cross-architecture (amd64 host, arm64 target)

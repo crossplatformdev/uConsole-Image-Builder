@@ -49,21 +49,21 @@ jobs:
       
       - name: Build base rootfs for ${{ inputs.distro }}
         run: |
-          sudo SUITE=${{ inputs.suite }} ARCH=arm64 ./scripts/build-image.sh build-output
+          SUITE=${{ inputs.suite }} ARCH=arm64 ./scripts/build-image.sh build-output
         env:
           DEBIAN_FRONTEND: noninteractive
       
       - name: Apply ${{ inputs.distro }} customizations
         run: |
-          sudo ${{ inputs.script-path }} build-output
+          ${{ inputs.script-path }} build-output
         env:
           DEBIAN_FRONTEND: noninteractive
       
       - name: Create tarball artifact
         run: |
           cd build-output
-          sudo tar -czf uconsole-${{ inputs.distro }}-arm64-rootfs.tar.gz rootfs-${{ inputs.suite }}-arm64
-          sudo chown $USER:$USER uconsole-${{ inputs.distro }}-arm64-rootfs.tar.gz
+          tar -czf uconsole-${{ inputs.distro }}-arm64-rootfs.tar.gz rootfs-${{ inputs.suite }}-arm64
+          chown $USER:$USER uconsole-${{ inputs.distro }}-arm64-rootfs.tar.gz
           ls -lh uconsole-${{ inputs.distro }}-arm64-rootfs.tar.gz
       
       - name: Upload build artifact

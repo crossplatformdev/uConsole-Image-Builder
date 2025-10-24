@@ -178,7 +178,7 @@ EOF
 
 echo "Base rootfs created successfully at: $ROOTFS"
 echo "To customize, run the unified setup script:"
-echo "  sudo SUITE=<suite> RECOMPILE_KERNEL=<true|false> scripts/setup-suite.sh $OUTDIR"
+echo "  SUITE=<suite> RECOMPILE_KERNEL=<true|false> scripts/setup-suite.sh $OUTDIR"
 echo "  Examples:"
 echo "    - For trixie:   SUITE=trixie RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"
 echo "    - For bookworm: SUITE=bookworm RECOMPILE_KERNEL=false scripts/setup-suite.sh $OUTDIR"

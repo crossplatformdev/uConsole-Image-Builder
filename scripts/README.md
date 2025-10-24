@@ -10,7 +10,7 @@ Main build script that creates a base rootfs using debootstrap.
 
 **Usage:**
 ```bash
-sudo SUITE=trixie ARCH=arm64 ./scripts/build-image.sh [output-directory]
+SUITE=trixie ARCH=arm64 ./scripts/build-image.sh [output-directory]
 ```
 
 **Environment Variables:**
@@ -35,10 +35,10 @@ Unified customization script for all supported distributions (jammy, trixie, boo
 **Usage:**
 ```bash
 # Using environment variables
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh [output-directory]
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh [output-directory]
 
 # Using positional arguments
-sudo ./scripts/setup-suite.sh [output-directory] [suite] [recompile_kernel]
+./scripts/setup-suite.sh [output-directory] [suite] [recompile_kernel]
 ```
 
 **Environment Variables / Arguments:**
@@ -63,53 +63,53 @@ sudo ./scripts/setup-suite.sh [output-directory] [suite] [recompile_kernel]
 ### Building Debian trixie image with prebuilt kernel:
 ```bash
 # Build base rootfs
-sudo SUITE=trixie ./scripts/build-image.sh my-build
+SUITE=trixie ./scripts/build-image.sh my-build
 
 # Apply trixie customizations with prebuilt kernel
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
-sudo tar -czf uconsole-trixie-arm64.tar.gz rootfs-trixie-arm64
+tar -czf uconsole-trixie-arm64.tar.gz rootfs-trixie-arm64
 ```
 
 ### Building Debian bookworm image with prebuilt kernel:
 ```bash
 # Build base rootfs
-sudo SUITE=bookworm ./scripts/build-image.sh my-build
+SUITE=bookworm ./scripts/build-image.sh my-build
 
 # Apply bookworm customizations with prebuilt kernel
-sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
+SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
-sudo tar -czf uconsole-bookworm-arm64.tar.gz rootfs-bookworm-arm64
+tar -czf uconsole-bookworm-arm64.tar.gz rootfs-bookworm-arm64
 ```
 
 ### Building Ubuntu jammy image with kernel recompilation:
 ```bash
 # Build base rootfs
-sudo SUITE=jammy ./scripts/build-image.sh my-build
+SUITE=jammy ./scripts/build-image.sh my-build
 
 # Apply jammy customizations and compile kernel
-sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh my-build
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
-sudo tar -czf uconsole-jammy-arm64.tar.gz rootfs-jammy-arm64
+tar -czf uconsole-jammy-arm64.tar.gz rootfs-jammy-arm64
 ```
 
 ### Building Pop!_OS image:
 ```bash
 # Build base rootfs (uses jammy as base)
-sudo SUITE=jammy ./scripts/build-image.sh my-build
+SUITE=jammy ./scripts/build-image.sh my-build
 
 # Apply Pop!_OS customizations
-sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
+SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh my-build
 
 # Create tarball
 cd my-build
-sudo tar -czf uconsole-popos-arm64.tar.gz rootfs-jammy-arm64
+tar -czf uconsole-popos-arm64.tar.gz rootfs-jammy-arm64
 ```
 
 ## Requirements

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build raspberrypi kernel rpi-6.12.y + ak-rex extra commits, produce .deb packages
-# Usage: sudo ./scripts/build-kernel-jammy.sh <build-output-dir>
+# Usage: ./scripts/build-kernel-jammy.sh <build-output-dir>
 OUTDIR="${1:-kernel-build-output}"
 BRANCH="rpi-6.12.y"
 RPI_REMOTE="https://github.com/raspberrypi/linux.git"

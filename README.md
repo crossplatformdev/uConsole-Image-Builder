@@ -19,38 +19,38 @@ The build process uses two environment variables:
 
 Build a Debian trixie rootfs with prebuilt kernel:
 ```bash
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 Build a Debian bookworm rootfs with prebuilt kernel:
 ```bash
-sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 Build an Ubuntu jammy rootfs and compile kernel from source:
 ```bash
-sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
-sudo SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 ```
 
 Build Pop!_OS with prebuilt kernel:
 ```bash
-sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 Build Pop!_OS with custom image:
 ```bash
-sudo SUITE=popos IMAGE_NAME=custom-popos.img.xz IMAGE_LINK=https://example.com/custom-popos.img.xz RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-sudo SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=popos IMAGE_NAME=custom-popos.img.xz IMAGE_LINK=https://example.com/custom-popos.img.xz RECOMPILE_KERNEL=false ./scripts/build-image.sh output
+SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
 ```
 
 Alternative invocation with positional arguments:
 ```bash
 # setup-suite.sh <output-dir> <suite> <recompile_kernel>
-sudo ./scripts/setup-suite.sh output trixie true
+./scripts/setup-suite.sh output trixie true
 ```
 
 See [scripts/README.md](scripts/README.md) for detailed documentation.
