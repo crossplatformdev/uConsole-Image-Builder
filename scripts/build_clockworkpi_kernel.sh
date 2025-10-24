@@ -107,16 +107,6 @@ if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     rsync -a "$REPO_ROOT/linux/" linux/
     
     cd linux
-    
-    # Initialize as a git repository (required for make deb-pkg)
-    # The kernel build system requires a git repository to create source packages
-    echo "Initializing git repository for kernel build..."
-    git init
-    git config user.email "build@uconsole-image-builder"
-    git config user.name "uConsole Image Builder"
-    git add .
-    git commit -m "Initial commit from linux submodule" --quiet
-    
     echo "Kernel source ready from submodule"
 else
     echo "ERROR: Linux submodule not found at $REPO_ROOT/linux"
