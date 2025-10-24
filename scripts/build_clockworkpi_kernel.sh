@@ -104,7 +104,7 @@ if [ "$APPLY_PATCH" = "true" ]; then
             
             ## Try using git apply first (is a .patch file)
             if patch -p1 < "$PATCH_FILE"; then
-                echo "Patch applied successfully with git apply"
+                echo "Patch applied successfully with patch command"
             else
                 echo "ERROR: Failed to apply ak-rex patch" >&2
                 exit 1
