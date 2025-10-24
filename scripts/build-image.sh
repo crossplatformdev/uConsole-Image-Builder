@@ -88,7 +88,7 @@ echo "Setting timezone..."
 sudo chroot "$ROOTFS" /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
 
 # Set hostname
-echo "uconsole" > "$ROOTFS/etc/hostname"
+echo "uconsole" | sudo tee "$ROOTFS/etc/hostname"
 
 # Configure resolv.conf
 sudo mv "$ROOTFS/etc/resolv.conf.bak" "$ROOTFS/etc/resolv.conf" || true
