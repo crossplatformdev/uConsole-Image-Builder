@@ -54,19 +54,6 @@ fi
 cp -r linux-source linux
 cd linux
 
-# Remove any .git file/directory from the submodule copy
-# (submodules have a .git file pointing to parent's .git/modules/linux)
-rm -rf .git
-
-# Initialize as a git repository (required for make deb-pkg)
-# The kernel build system requires a git repository to create source packages
-echo "Initializing git repository for kernel build..."
-git init
-git config user.email "build@uconsole-image-builder"
-git config user.name "uConsole Image Builder"
-git add .
-git commit -m "Initial commit from linux submodule" --quiet
-
 echo "Kernel source ready ($(git describe --always 2>/dev/null || echo 'no git info'))"
 
 # Apply ak-rex patch if enabled
@@ -113,11 +100,13 @@ apt-get install -y \
     dpkg-dev \
     debhelper \
     kernel-wedge \
-    crossbuild-essential-arm64 
+    crossbuild-essential-arm64 \
+    g++-aarch64-linux-gnu \
+    gcc-aarch64-linux-gnu
 
 # Configure kernel
 echo "Configuring kernel..."
-make ARCH=arm64 bcm2711_defconfig
+make bcm2711_defconfig ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="${KERNEL_LOCALVERSION}" KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}"
 
 # Build kernel .deb packages
 echo "Building kernel packages (this will take a while)..."
