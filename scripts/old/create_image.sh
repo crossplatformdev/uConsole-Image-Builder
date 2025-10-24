@@ -90,34 +90,34 @@ cp uconsole-cm4-gpio.deb rootfs/usr/local/src/ClockworkPi-linux
 
 #cp linux-upstream_1_.orig.tar.xz rootfs/usr/local/src
 
-chroot rootfs /bin/bash -c "apt purge -y --allow-change-held-packages linux-image* linux-headers*"
+sudo chroot rootfs /bin/bash -c "apt purge -y --allow-change-held-packages linux-image* linux-headers*"
 
 ##Append the following to /etc/apt/sources.list
 #echo "#Ubuntu noble main repository, needed for gcc-13" >> rootfs/etc/apt/sources.list
 #echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble main restricted" >> rootfs/etc/apt/sources.list
 
-chroot rootfs /bin/bash -c "sudo apt update && sudo apt install -y linux-tools-common"
+sudo chroot rootfs /bin/bash -c "sudo apt update && sudo apt install -y linux-tools-common"
 
-chroot rootfs /bin/bash -c "cd /usr/local/src/ClockworkPi-linux &&  dpkg -i *.deb"
-chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.12-v8-raspi linux-headers-6.9.12-v8-raspi linux-libc-dev"
+sudo chroot rootfs /bin/bash -c "cd /usr/local/src/ClockworkPi-linux &&  dpkg -i *.deb"
+sudo chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.12-v8-raspi linux-headers-6.9.12-v8-raspi linux-libc-dev"
 
 # Sound fix for Ubuntu / Armbian: replaced python3-lgpio install with ClockworkPi APT repo flow for Debian Trixie
-chroot rootfs /bin/bash -c "apt update || true"
-chroot rootfs /bin/bash -c "apt install -y gnupg wget ca-certificates || true"
-chroot rootfs /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg >/dev/null"
-chroot rootfs /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | tee /etc/apt/sources.list.d/clockworkpi.list"
-chroot rootfs /bin/bash -c "apt update"
-chroot rootfs /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-firmware || true"
+sudo chroot rootfs /bin/bash -c "apt update || true"
+sudo chroot rootfs /bin/bash -c "apt install -y gnupg wget ca-certificates || true"
+sudo chroot rootfs /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg >/dev/null"
+sudo chroot rootfs /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | tee /etc/apt/sources.list.d/clockworkpi.list"
+sudo chroot rootfs /bin/bash -c "apt update"
+sudo chroot rootfs /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-firmware || true"
 
-chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/sound-patch.py"
-chroot rootfs /bin/bash -c "systemctl daemon-reload"
-chroot rootfs /bin/bash -c "systemctl enable sound-patch.service"
-chroot rootfs /bin/bash -c "systemctl daemon-reload"
+sudo chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/sound-patch.py"
+sudo chroot rootfs /bin/bash -c "systemctl daemon-reload"
+sudo chroot rootfs /bin/bash -c "systemctl enable sound-patch.service"
+sudo chroot rootfs /bin/bash -c "systemctl daemon-reload"
 
-chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/uconsole-4g-cm4.py"
-chroot rootfs /bin/bash -c "systemctl daemon-reload"
-chroot rootfs /bin/bash -c "systemctl enable uconsole-4g-cm4.service"
-chroot rootfs /bin/bash -c "systemctl daemon-reload"
+sudo chroot rootfs /bin/bash -c "chmod +x /usr/local/bin/uconsole-4g-cm4.py"
+sudo chroot rootfs /bin/bash -c "systemctl daemon-reload"
+sudo chroot rootfs /bin/bash -c "systemctl enable uconsole-4g-cm4.service"
+sudo chroot rootfs /bin/bash -c "systemctl daemon-reload"
 
 ##Write this text in /boot/firmware/config.txt
 mv rootfs/boot/firmware/config.txt rootfs/boot/firmware/config.txt.bak

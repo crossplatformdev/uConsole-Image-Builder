@@ -80,12 +80,12 @@ sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
 # Configure locale
 echo "Configuring locale..."
-chroot "$ROOTFS" /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen"
-chroot "$ROOTFS" /bin/bash -c "locale-gen"
+sudo chroot "$ROOTFS" /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen"
+sudo chroot "$ROOTFS" /bin/bash -c "locale-gen"
 
 # Set timezone
 echo "Setting timezone..."
-chroot "$ROOTFS" /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
+sudo chroot "$ROOTFS" /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
 
 # Set hostname
 echo "uconsole" > "$ROOTFS/etc/hostname"

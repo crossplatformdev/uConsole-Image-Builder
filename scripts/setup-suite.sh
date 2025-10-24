@@ -69,12 +69,12 @@ fi
 
 # Create uconsole user
 echo "Creating uconsole user..."
-chroot "$ROOTFS" /bin/bash -c "useradd -m -s /bin/bash -G sudo,adm,dialout,video,audio uconsole || true"
-chroot "$ROOTFS" /bin/bash -c "echo 'uconsole:uconsole' | chpasswd"
+sudo chroot "$ROOTFS" /bin/bash -c "useradd -m -s /bin/bash -G sudo,adm,dialout,video,audio uconsole || true"
+sudo chroot "$ROOTFS" /bin/bash -c "echo 'uconsole:uconsole' | chpasswd"
 
 # Enable passwordless sudo for uconsole
-chroot "$ROOTFS" /bin/bash -c "echo 'uconsole ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/uconsole"
-chroot "$ROOTFS" /bin/bash -c "chmod 0440 /etc/sudoers.d/uconsole"
+sudo chroot "$ROOTFS" /bin/bash -c "echo 'uconsole ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/uconsole"
+sudo chroot "$ROOTFS" /bin/bash -c "chmod 0440 /etc/sudoers.d/uconsole"
 
 # Install runtime packages based on suite
 echo "Installing runtime packages for $SUITE..."
@@ -180,7 +180,7 @@ fi
 
 # Install additional utilities common to all
 echo "Installing additional utilities..."
-chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
     i2c-tools \
     console-setup \
     keyboard-configuration"
@@ -312,8 +312,8 @@ fi
 
 # Clean up apt cache
 echo "Cleaning up apt cache..."
-chroot "$ROOTFS" /bin/bash -c "apt-get clean"
-chroot "$ROOTFS" /bin/bash -c "rm -rf /var/lib/apt/lists/*"
+sudo chroot "$ROOTFS" /bin/bash -c "apt-get clean"
+sudo chroot "$ROOTFS" /bin/bash -c "rm -rf /var/lib/apt/lists/*"
 
 # Create README for kernel installation
 KERNEL_STATUS="prebuilt repository"

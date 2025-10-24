@@ -58,20 +58,20 @@ echo "Adding ClockworkPi apt repository..."
 # The ClockworkPi repository uses Debian bookworm packages
 REPO_SUITE="bookworm"
 
-chroot "$ROOTFS_DIR" /bin/bash -c "
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
     echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/debian stable main' | \
     tee /etc/apt/sources.list.d/clockworkpi.list
 "
 
 # Update apt cache
 echo "Updating apt cache..."
-chroot "$ROOTFS_DIR" /bin/bash -c "
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
     apt-get update
 "
 
 # Install kernel build dependencies first
 echo "Installing kernel dependencies..."
-chroot "$ROOTFS_DIR" /bin/bash -c "
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
     DEBIAN_FRONTEND=noninteractive apt-get install -y initramfs-tools
 "
 
@@ -96,7 +96,7 @@ fi
 
 # Create a kernel info file
 echo "Creating kernel installation record..."
-chroot "$ROOTFS_DIR" /bin/bash -c "
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
 cat > /root/KERNEL_INFO.txt << 'EOF'
 ========================================
 ClockworkPi uConsole Kernel Information
@@ -130,6 +130,6 @@ echo "================================================"
 
 # List installed kernel packages
 echo "Installed kernel packages:"
-chroot "$ROOTFS_DIR" /bin/bash -c "dpkg -l | grep -E '(uconsole|clockworkpi)'" || true
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "dpkg -l | grep -E '(uconsole|clockworkpi)'" || true
 
 exit 0
