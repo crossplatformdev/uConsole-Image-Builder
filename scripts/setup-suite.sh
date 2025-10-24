@@ -190,7 +190,6 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
         echo "Kernel source copied from submodule"
     else
         echo "ERROR: Linux submodule not found"
-        echo "Please initialize the submodule: git submodule update --init linux"
         exit 1
     fi
     
