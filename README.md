@@ -47,9 +47,13 @@ xz -dc output/images/uconsole-jammy-arm64.img.xz | sudo dd of=/dev/sdX bs=4M sta
 The build process uses the `SUITE` environment variable to select the distribution:
 - `SUITE`: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
 
-All rootfs builds use prebuilt kernels from the ClockworkPi repository. For custom kernel builds, use the Docker-based build script (see Option 3).
+**Note:** When using `RECOMPILE_KERNEL=true`, the linux submodule must be initialized:
+```bash
+git submodule update --init linux
+```
 
-Build a Debian trixie rootfs:
+Build a Debian trixie rootfs with prebuilt kernel:
+
 ```bash
 SUITE=trixie ./scripts/build-image.sh output
 SUITE=trixie ./scripts/setup-suite.sh output
@@ -63,8 +67,12 @@ SUITE=bookworm ./scripts/setup-suite.sh output
 
 Build an Ubuntu jammy rootfs:
 ```bash
-SUITE=jammy ./scripts/build-image.sh output
-SUITE=jammy ./scripts/setup-suite.sh output
+# Initialize linux submodule first
+git submodule update --init linux
+
+# Build with kernel compilation
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
+SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 ```
 
 Build Pop!_OS:
@@ -83,7 +91,12 @@ See [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ### Option 3: Build Kernel Packages Only
 
-Build ClockworkPi kernel .deb packages from source using Docker (provides reproducible, isolated builds):
+**Important:** Initialize the linux submodule first:
+```bash
+git submodule update --init linux
+```
+
+Build ClockworkPi kernel .deb packages from source:
 
 ```bash
 # Build kernel packages (outputs to artifacts/kernel-debs/)
@@ -97,11 +110,11 @@ Build ClockworkPi kernel .deb packages from source using Docker (provides reprod
 **See [docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md) for detailed Docker build documentation.**
 
 The kernel build process:
-1. Clones the Raspberry Pi kernel (default: `raspberrypi/linux@rpi-6.12.y`)
-2. Applies the ak-rex patch if available (`patches/ak-rex.patch`)
-3. Configures for Raspberry Pi CM4 (`bcm2711_defconfig`)
+1. Uses the Raspberry Pi kernel from the linux submodule (raspberrypi/linux@rpi-6.12.y)
+2. Applies the ak-rex patch if available (patches/ak-rex.patch)
+3. Configures for Raspberry Pi CM4 (bcm2711_defconfig)
 4. Builds Debian .deb packages (kernel image, headers, libc-dev)
-5. Outputs packages to `artifacts/kernel-debs/`
+5. Outputs packages to artifacts/kernel-debs/
 
 **Environment Variables for Kernel Build:**
 - `KERNEL_REPO`: Kernel repository URL (default: `https://github.com/raspberrypi/linux.git`)

@@ -29,17 +29,45 @@ echo "================================================"
 # Build directory inside container
 cd /build
 
-# Clone kernel source
-echo "Cloning kernel source..."
+# Ensure the Docker image has necessary packages installed
+apt-get update
+
+# Install kernel build dependencies on docker container
+apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
+
+# Use the mounted linux source
+echo "Using mounted linux source..."
+if [ ! -d "linux-source" ]; then
+    echo "ERROR: Linux source not found at /build/linux-source"
+    echo "This should have been mounted by the Docker host script"
+    exit 1
+fi
+
+# Create a working copy since the mount is read-only
+echo "Creating working copy of kernel source..."
 if [ -d "linux" ]; then
     echo "Removing existing linux directory..."
     rm -rf linux
 fi
 
-git clone --depth=1 --branch "${KERNEL_BRANCH}" "${KERNEL_REPO}" linux
+# Copy the linux source to a writable location
+cp -r linux-source linux
 cd linux
 
-echo "Kernel source cloned ($(git describe --always))"
+# Remove any .git file/directory from the submodule copy
+# (submodules have a .git file pointing to parent's .git/modules/linux)
+rm -rf .git
+
+# Initialize as a git repository (required for make deb-pkg)
+# The kernel build system requires a git repository to create source packages
+echo "Initializing git repository for kernel build..."
+git init
+git config user.email "build@uconsole-image-builder"
+git config user.name "uConsole Image Builder"
+git add .
+git commit -m "Initial commit from linux submodule" --quiet
+
+echo "Kernel source ready ($(git describe --always 2>/dev/null || echo 'no git info'))"
 
 # Apply ak-rex patch if enabled
 if [ "${APPLY_PATCH}" = "true" ]; then
