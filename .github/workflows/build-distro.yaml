@@ -98,13 +98,13 @@ jobs:
       
       - name: Build base rootfs for ${{ matrix.suite }}
         run: |
-          sudo env SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
+          SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
         env:
           DEBIAN_FRONTEND: noninteractive
       
       - name: Apply ${{ matrix.suite }} customizations
         run: |
-          sudo env SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=${{ env.RECOMPILE_KERNEL }} ./scripts/setup-suite.sh build-output
+          SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=${{ env.RECOMPILE_KERNEL }} ./scripts/setup-suite.sh build-output
         env:
           DEBIAN_FRONTEND: noninteractive
       
