@@ -105,14 +105,16 @@ if [ "$APPLY_PATCH" = "true" ]; then
             # Try git am first, fall back to patch
             if git am < "$PATCH_FILE" 2>/dev/null; then
                 echo "Patch applied successfully with git am"
-            elif patch -p1 < "$PATCH_FILE"; then
-                echo "Patch applied successfully with patch"
-                # Commit the changes
-                git add -A
-                git commit -m "Applied ak-rex patch for uConsole support" || true
             else
-                echo "ERROR: Failed to apply patch" >&2
-                exit 1
+                echo "git am failed, trying patch command..."
+                # Reset any partial git am state
+                git am --abort || true
+                if patch -p1 < "$PATCH_FILE"; then
+                    echo "Patch applied successfully with patch command"
+                else
+                    echo "ERROR: Failed to apply ak-rex patch" >&2
+                    exit 1
+                fi
             fi
         else
             echo "WARNING: Patch file exists but appears to be documentation only"
