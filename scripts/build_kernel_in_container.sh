@@ -88,6 +88,27 @@ if [ "${APPLY_PATCH}" = "true" ]; then
     fi
 fi
 
+# Ensure kernel build dependencies are installed
+echo "Verifying kernel build dependencies..."
+apt-get update > /dev/null 2>&1 || true
+apt-get install -y --no-install-recommends \
+    build-essential \
+    bc \
+    bison \
+    flex \
+    libssl-dev \
+    libncurses-dev \
+    libelf-dev \
+    kmod \
+    cpio \
+    rsync \
+    git \
+    fakeroot \
+    dpkg-dev \
+    debhelper \
+    kernel-wedge \
+    crossbuild-essential-arm64 > /dev/null 2>&1 || true
+
 # Configure kernel
 echo "Configuring kernel..."
 make ARCH=arm64 bcm2711_defconfig
