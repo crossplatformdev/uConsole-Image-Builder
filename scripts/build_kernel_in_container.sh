@@ -29,6 +29,12 @@ echo "================================================"
 # Build directory inside container
 cd /build
 
+# Ensure the Docker image has necessary packages installed
+apt-get update
+
+# Install kernel build dependencies on docker container
+apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64 -y
+
 # Use the mounted linux source
 echo "Using mounted linux source..."
 if [ ! -d "linux-source" ]; then
