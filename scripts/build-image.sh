@@ -74,29 +74,11 @@ sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
 sudo mount --bind /proc "$ROOTFS/proc"
 sudo mount --bind /sys "$ROOTFS/sys"
 
-# For non-image-based distributions, complete debootstrap setup
-if [[ "$SUITE" != "popos" ]]; then
-    # Copy qemu-user-static for cross-architecture chroot
-    echo "Setting up QEMU for cross-architecture support..."
-    cp /usr/bin/qemu-aarch64-static "$ROOTFS/usr/bin/"
-
-    # Complete second stage of debootstrap in chroot
-    echo "Running debootstrap second stage..."
-    chroot "$ROOTFS" /debootstrap/debootstrap --second-stage
-
-    # Bind mount system directories
-    echo "Binding system directories..."
-sudo mount --bind /proc "$ROOTFS/proc"
-sudo mount --bind /sys "$ROOTFS/sys"
-sudo mount --bind /dev "$ROOTFS/dev"
-sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
-fi
-
 # Backup and configure DNS resolution
 if [ -f "$ROOTFS/etc/resolv.conf" ]; then
     mv "$ROOTFS/etc/resolv.conf" "$ROOTFS/etc/resolv.conf.bak"
 fi
-cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
+sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
 # Configure apt sources (skip for image-based distributions)
 if [[ "$SUITE" != "popos" ]]; then
