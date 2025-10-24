@@ -6,6 +6,10 @@ set -e
 # Supports Debian 13 (trixie), Debian 12 (bookworm), and Ubuntu 22.04 (jammy)                            #
 ############################################################################################################
 
+# Get script directory and source common mount functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common_mounts.sh"
+
 # Default configuration
 SUITE="${SUITE:-trixie}"
 ARCH="${ARCH:-arm64}"
@@ -68,11 +72,8 @@ fi
 
 sudo mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
 
-
-sudo mount --bind /dev "$ROOTFS/dev"
-sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
-sudo mount --bind /proc "$ROOTFS/proc"
-sudo mount --bind /sys "$ROOTFS/sys"
+# Bind mount system directories for chroot
+bind_mount_system "$ROOTFS"
 
 # Backup and configure DNS resolution
 sudo mv "$ROOTFS/etc/resolv.conf" "$ROOTFS/etc/resolv.conf.bak" || true
