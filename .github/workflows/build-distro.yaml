@@ -56,12 +56,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
-      
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y debootstrap qemu-user-static binfmt-support
-      
+           
       - name: Install kernel build dependencies (if recompiling)
         if: env.RECOMPILE_KERNEL == 'true'
         run: |
@@ -78,29 +73,6 @@ jobs:
             bison \
             fakeroot \
             rsync
-      
-      - name: Determine debootstrap suite
-        id: suite_info
-        run: |
-          if [[ "${{ matrix.suite }}" == "popos" ]]; then
-            echo "debootstrap_suite=jammy" >> $GITHUB_OUTPUT
-            echo "tag_prefix=popos-" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.suite }}" == "jammy" ]]; then
-            echo "debootstrap_suite=jammy" >> $GITHUB_OUTPUT
-            echo "tag_prefix=jammy-" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.suite }}" == "bookworm" ]]; then
-            echo "debootstrap_suite=bookworm" >> $GITHUB_OUTPUT
-            echo "tag_prefix=bookworm-" >> $GITHUB_OUTPUT
-          else
-            echo "debootstrap_suite=trixie" >> $GITHUB_OUTPUT
-            echo "tag_prefix=trixie-" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Build base rootfs for ${{ matrix.suite }}
-        run: |
-          SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
-        env:
-          DEBIAN_FRONTEND: noninteractive
       
       - name: Apply ${{ matrix.suite }} customizations
         run: |

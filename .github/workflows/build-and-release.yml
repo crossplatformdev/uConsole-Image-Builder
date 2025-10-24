@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 1440
     strategy:
       matrix:
-        suite: [trixie, jammy, popos]
+        suite: [trixie, bookworm, jammy, popos]
     
     steps:
       - name: Checkout repository
@@ -25,23 +25,20 @@ jobs:
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
+
+      - name: Build rootfs for ${{ matrix.suite }}
+        run: |
+          SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
       
       - name: Apply ${{ matrix.suite }} customizations
         run: |
           SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=false ./scripts/setup-suite.sh build-output
       
-      - name: Create tarball artifact
-        run: |
-          cd build-output
-          sudo tar -czf uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz rootfs-${{ steps.suite_info.outputs.debootstrap_suite }}-arm64
-          sudo chown $USER:$USER uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
-          ls -lh uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
-      
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: uconsole-${{ matrix.suite }}-arm64-rootfs
-          path: build-output/uconsole-${{ matrix.suite }}-arm64-rootfs.tar.gz
+          path: build-output/uconsole-${{ matrix.suite }}-arm64-rootfs.tar.xz
           retention-days: 30
   
   release:
@@ -77,6 +74,7 @@ jobs:
             
             This release contains:
             - Debian 13 (trixie) arm64 rootfs
+            - Debian 12 (bookworm) arm64 rootf
             - Ubuntu 22.04 (jammy) arm64 rootfs
             - Pop!_OS 22.04 arm64 rootfs
             
