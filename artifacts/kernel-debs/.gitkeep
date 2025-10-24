@@ -1,0 +1,2 @@
+# This directory stores kernel .deb packages built from source
+# .deb files are excluded from git via .gitignore but the directory structure is preserved
