@@ -13,32 +13,22 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
-# Use kernel source from repository submodule if available
-USING_SUBMODULE=false
+# This script requires git operations for ak-rex cherry-picking,
+# so we always clone. However, we check if submodule exists to inform the user.
 if [ ! -d linux ]; then
   if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
-    echo "Using kernel source from repository submodule..."
-    
-    # For this script, we need git operations, so we'll clone into the build dir
-    # but use the submodule commit as a starting point
-    echo "Cloning kernel source (using submodule version as reference)..."
-    git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
-    USING_SUBMODULE=true
-    
-    echo "Kernel source prepared from submodule reference"
-  else
-    echo "WARNING: Linux submodule not found, falling back to git clone"
-    echo "To use the embedded linux folder, run: git submodule update --init linux"
-    git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
+    echo "Note: Linux submodule detected in repository"
+    echo "This script requires git operations, so cloning fresh copy..."
   fi
+  
+  echo "Cloning kernel source from $RPI_REMOTE..."
+  git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
 fi
 cd linux
 
-# Ensure we have the branch (only needed for non-fresh clones)
-if [ "$USING_SUBMODULE" = "false" ]; then
-  git fetch origin "$BRANCH" --depth=1
-  git checkout -f "$BRANCH"
-fi
+# Ensure we have the branch
+git fetch origin "$BRANCH" --depth=1
+git checkout -f "$BRANCH"
 
 # Add ak-rex remote and fetch the ak-rex branch
 git remote add ak-rex "$AKREX_REMOTE" 2>/dev/null || true
