@@ -74,13 +74,13 @@ setup_kpartx() {
 # Usage: mount_partitions <loop_device> <mount_dir> [boot_partition_number] [root_partition_number]
 # Defaults: boot=1, root=2
 #
-sudo mount_partitions() {
+mount_partitions() {
     local loop_dev="$1"
     local mount_dir="$2"
     local boot_part="${3:-1}"
     local root_part="${4:-2}"
     
-sudo mount_DIR="$mount_dir"
+    MOUNT_DIR="$mount_dir"
     
     # Create mount directory
     mkdir -p "$MOUNT_DIR"
@@ -88,7 +88,7 @@ sudo mount_DIR="$mount_dir"
     # Mount root partition
     echo "Mounting root partition (${loop_dev}p${root_part})..."
     if [ -e "${loop_dev}p${root_part}" ]; then
-sudo mount "${loop_dev}p${root_part}" "$MOUNT_DIR"
+        sudo mount "${loop_dev}p${root_part}" "$MOUNT_DIR"
         ROOT_MOUNTED=true
         echo "Root partition mounted at $MOUNT_DIR"
     else
@@ -102,7 +102,7 @@ sudo mount "${loop_dev}p${root_part}" "$MOUNT_DIR"
     # Mount boot partition
     echo "Mounting boot partition (${loop_dev}p${boot_part})..."
     if [ -e "${loop_dev}p${boot_part}" ]; then
-sudo mount "${loop_dev}p${boot_part}" "$MOUNT_DIR/boot/firmware"
+        sudo mount "${loop_dev}p${boot_part}" "$MOUNT_DIR/boot/firmware"
         BOOT_MOUNTED=true
         echo "Boot partition mounted at $MOUNT_DIR/boot/firmware"
     else
@@ -121,11 +121,11 @@ bind_mount_system() {
     
     echo "Bind mounting system directories..."
     
-sudo mount --bind /dev "$mount_dir/dev"
-sudo mount --bind /dev/pts "$mount_dir/dev/pts"
-sudo mount --bind /proc "$mount_dir/proc"
-sudo mount --bind /sys "$mount_dir/sys"
-sudo mount --bind /run "$mount_dir/run" || true  # May not exist on all systems
+    sudo mount --bind /dev "$mount_dir/dev"
+    sudo mount --bind /dev/pts "$mount_dir/dev/pts"
+    sudo mount --bind /proc "$mount_dir/proc"
+    sudo mount --bind /sys "$mount_dir/sys"
+    sudo mount --bind /run "$mount_dir/run" || true  # May not exist on all systems
     
     BINDS_MOUNTED=true
     
@@ -168,25 +168,25 @@ cleanup_mounts() {
     # Unmount bind mounts
     if [ "$BINDS_MOUNTED" = true ] && [ -n "$MOUNT_DIR" ]; then
         echo "Unmounting bind mounts..."
-sudo umount "$MOUNT_DIR/run" 2>/dev/null || true
-sudo umount "$MOUNT_DIR/sys" 2>/dev/null || true
-sudo umount "$MOUNT_DIR/proc" 2>/dev/null || true
-sudo umount "$MOUNT_DIR/dev/pts" 2>/dev/null || true
-sudo umount "$MOUNT_DIR/dev" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/run" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/sys" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/proc" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/dev/pts" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/dev" 2>/dev/null || true
         BINDS_MOUNTED=false
     fi
     
     # Unmount boot partition
     if [ "$BOOT_MOUNTED" = true ] && [ -n "$MOUNT_DIR" ]; then
         echo "Unmounting boot partition..."
-sudo umount "$MOUNT_DIR/boot/firmware" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR/boot/firmware" 2>/dev/null || true
         BOOT_MOUNTED=false
     fi
     
     # Unmount root partition
     if [ "$ROOT_MOUNTED" = true ] && [ -n "$MOUNT_DIR" ]; then
         echo "Unmounting root partition..."
-sudo umount "$MOUNT_DIR" 2>/dev/null || true
+        sudo umount "$MOUNT_DIR" 2>/dev/null || true
         ROOT_MOUNTED=false
     fi
     
