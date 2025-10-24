@@ -102,8 +102,9 @@ if [ "$APPLY_PATCH" = "true" ]; then
         if grep -q "^diff " "$PATCH_FILE" 2>/dev/null || grep -q "^--- " "$PATCH_FILE" 2>/dev/null; then
             echo "Applying ak-rex patch: $PATCH_FILE"
             
-            if patch -p1 < "$PATCH_FILE"; then
-                echo "Patch applied successfully with patch command"
+            ## Try using git apply first (is a .patch file)
+            if git apply "$PATCH_FILE"; then
+                echo "Patch applied successfully with git apply"
             else
                 echo "ERROR: Failed to apply ak-rex patch" >&2
                 exit 1
