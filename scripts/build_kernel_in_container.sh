@@ -96,7 +96,7 @@ fi
 
 # Ensure kernel build dependencies are installed
 echo "Verifying kernel build dependencies..."
-apt-get update > /dev/null 2>&1 || true
+apt-get update || true
 apt-get install -y --no-install-recommends \
     build-essential \
     bc \
@@ -113,7 +113,7 @@ apt-get install -y --no-install-recommends \
     dpkg-dev \
     debhelper \
     kernel-wedge \
-    crossbuild-essential-arm64 > /dev/null 2>&1 || true
+    crossbuild-essential-arm64
 
 # Configure kernel
 echo "Configuring kernel..."
