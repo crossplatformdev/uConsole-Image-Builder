@@ -15,9 +15,13 @@ cd "$OUTDIR"
 
 # Use kernel source from repository submodule if available
 if [ ! -d linux ]; then
-  if [ -d "$REPO_ROOT/linux" ] && [ -d "$REPO_ROOT/linux/.git" ]; then
+  if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     echo "Using kernel source from repository submodule..."
-    cp -a "$REPO_ROOT/linux" linux
+    
+    # Use rsync to copy source excluding .git to avoid submodule path issues
+    rsync -a --exclude='.git' "$REPO_ROOT/linux/" linux/
+    
+    echo "Kernel source copied from submodule"
   else
     echo "WARNING: Linux submodule not found, falling back to git clone"
     echo "To use the embedded linux folder, run: git submodule update --init linux"

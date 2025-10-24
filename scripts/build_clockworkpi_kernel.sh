@@ -85,19 +85,21 @@ fi
 echo "Using kernel source from repository..."
 
 # Check if the linux submodule exists in the repository root
-if [ -d "$REPO_ROOT/linux" ] && [ -d "$REPO_ROOT/linux/.git" ]; then
+if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     echo "Found linux submodule in repository"
     
     # Create a working copy in the build directory to avoid modifying the submodule
     echo "Creating working copy of kernel source..."
-    cp -a "$REPO_ROOT/linux" linux
+    
+    # Use rsync to copy the source excluding .git to avoid submodule path issues
+    # Then initialize as a fresh git repo if we need git operations
+    rsync -a --exclude='.git' "$REPO_ROOT/linux/" linux/
+    
+    # If we need git operations, we can work with the source as-is
+    # or initialize a new repo. For build purposes, we don't need git history.
     cd linux
     
-    # Ensure we're on the correct branch
-    git fetch origin "$KERNEL_BRANCH" --depth=1 2>/dev/null || true
-    git checkout -f "$KERNEL_BRANCH" 2>/dev/null || true
-    
-    echo "Kernel source ready ($(git describe --always))"
+    echo "Kernel source ready from submodule"
 else
     echo "WARNING: Linux submodule not found at $REPO_ROOT/linux"
     echo "Falling back to cloning from $KERNEL_REPO"

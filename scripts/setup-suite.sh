@@ -180,15 +180,14 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
     echo "Preparing kernel source..."
     
     # Check if we have the linux submodule in the repository
-    if [ -d "$SCRIPT_DIR/../linux" ] && [ -d "$SCRIPT_DIR/../linux/.git" ]; then
+    if [ -d "$SCRIPT_DIR/../linux" ] && [ -e "$SCRIPT_DIR/../linux/.git" ]; then
         echo "Using kernel source from repository submodule..."
-        # Copy the linux submodule into the chroot
-        cp -a "$SCRIPT_DIR/../linux" "$ROOTFS/tmp/kernel-source"
         
-        # Make sure we're on the right branch
-        chroot "$ROOTFS" /bin/bash -c "cd /tmp/kernel-source && \
-            git fetch origin rpi-6.12.y --depth=1 2>/dev/null || true && \
-            git checkout -f rpi-6.12.y 2>/dev/null || true"
+        # Use rsync to copy the linux submodule into the chroot, excluding .git
+        # to avoid submodule path issues
+        rsync -a --exclude='.git' "$SCRIPT_DIR/../linux/" "$ROOTFS/tmp/kernel-source/"
+        
+        echo "Kernel source copied from submodule"
     else
         echo "WARNING: Linux submodule not found, falling back to git clone"
         echo "To use the embedded linux folder, run: git submodule update --init linux"

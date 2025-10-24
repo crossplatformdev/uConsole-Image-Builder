@@ -394,6 +394,39 @@ This project integrates [rpi-image-gen](https://github.com/raspberrypi/rpi-image
 
 The wrapper script `scripts/generate_rpi_image.sh` provides a simplified interface to rpi-image-gen with ClockworkPi kernel integration.
 
+## Linux Kernel Source Integration
+
+This project embeds the Linux kernel source as a git submodule, eliminating the need to clone it repeatedly during builds.
+
+- **Repository**: [raspberrypi/linux](https://github.com/raspberrypi/linux)
+- **Branch**: rpi-6.12.y
+- **Location**: `/linux/` (submodule)
+- **Type**: Shallow submodule (single branch, minimal history)
+
+**Benefits:**
+- **Faster builds**: No need to clone kernel source for each build
+- **Consistent source**: All builds use the same kernel version
+- **Offline builds**: Build without network access once submodules are initialized
+- **Reduced bandwidth**: Shallow clone reduces download size
+
+**Usage:**
+The build scripts automatically detect and use the embedded linux submodule when available. If the submodule is not initialized, scripts fall back to cloning from GitHub.
+
+To initialize the linux submodule:
+```bash
+# Initialize just the linux submodule
+git submodule update --init linux
+
+# Or initialize all submodules (recommended)
+git submodule update --init --recursive
+```
+
+**Note:** The linux submodule is configured as a shallow clone to minimize repository size. If you need full git history, you can convert it to a full clone:
+```bash
+cd linux
+git fetch --unshallow
+```
+
 ### ClockworkPi Kernel Integration
 
 Two modes are supported for kernel installation:
@@ -454,6 +487,7 @@ To use the patch:
 
 ```
 uConsole-Image-Builder/
+├── linux/                       # Submodule: Linux kernel source (rpi-6.12.y)
 ├── rpi-image-gen/              # Submodule: Raspberry Pi image generator
 ├── scripts/
 │   ├── generate_rpi_image.sh   # Main image generation wrapper

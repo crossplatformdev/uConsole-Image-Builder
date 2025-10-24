@@ -4,6 +4,28 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ## [Unreleased]
 
+### Added - Linux Kernel Submodule
+
+- **Linux Kernel Source Embedded**: Added the Linux kernel repository as a git submodule
+  - Repository: https://github.com/raspberrypi/linux (branch: rpi-6.12.y)
+  - Location: `/linux/` (submodule)
+  - Configured as shallow submodule to minimize repository size
+  - Scripts automatically detect and use the embedded kernel source when available
+  - Falls back to git clone if submodule is not initialized
+  
+- **Updated Build Scripts**: Modified kernel build scripts to use embedded linux submodule
+  - `scripts/build_clockworkpi_kernel.sh`: Now checks for and uses linux submodule
+  - `scripts/setup-suite.sh`: Copies kernel source from submodule for chroot builds
+  - `scripts/build-kernel-jammy.sh`: Uses embedded kernel source when available
+  - All scripts use rsync to copy kernel source, avoiding git submodule path issues
+  - Graceful fallback to git clone if submodule is not initialized
+
+**Benefits:**
+- Faster builds: No repeated kernel source cloning
+- Consistent source: All builds use the same kernel version
+- Offline builds: Build without network access once submodules are initialized
+- Reduced bandwidth: Shallow clone configuration reduces download size
+
 ### Changed - Workflow Simplification
 
 - **Unified Build and Release Workflow**: Simplified from 5 separate workflows to 1 comprehensive workflow
@@ -112,11 +134,13 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ### Changed
 
-- Enhanced .gitignore to:
-  - Exclude specific kernel .deb files while allowing directory tracking
-  - Exclude rpi-image-gen build outputs
-  - Exclude temporary mount directories
-  - Add compression format variations (.img.gz)
+- **Updated .gitignore**:
+  - Removed `linux/` exclusion to allow linux kernel submodule tracking
+  - Continues to exclude `linux-raspi/` and `ClockworkPi-linux/` (alternative kernel sources)
+  - Excludes specific kernel .deb files while allowing directory tracking
+  - Excludes rpi-image-gen build outputs
+  - Excludes temporary mount directories
+  - Includes compression format variations (.img.gz)
 
 ### Environment Variables
 
