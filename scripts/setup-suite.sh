@@ -91,7 +91,7 @@ COMMON_PACKAGES="network-manager wpasupplicant wireless-tools bluez bluez-tools 
 
 if [[ "$SUITE" == "trixie" ]] || [[ "$SUITE" == "bookworm" ]]; then
     # Debian trixie/bookworm packages (Debian-specific firmware)
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
         $COMMON_PACKAGES \
         firmware-linux \
         firmware-linux-nonfree \
@@ -105,14 +105,14 @@ else
     
     if [[ "$SUITE" == "popos" ]] || [[ "$SUITE" == "jammy" ]]; then
         # Pop!_OS and Jammy specific packages
-        chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
             $UBUNTU_PACKAGES \
             python3-lgpio \
             gnome-terminal \
             dbus"
     else
         # Other Ubuntu variants (fallback)
-        chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
             $UBUNTU_PACKAGES"
     fi
 fi
