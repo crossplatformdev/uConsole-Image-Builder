@@ -33,7 +33,7 @@ cd /build
 apt-get update
 
 # Install kernel build dependencies on docker container
-apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64 -y
+apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
 
 # Use the mounted linux source
 echo "Using mounted linux source..."
