@@ -104,6 +104,8 @@ USE_DOCKER=true ./scripts/build_kernel_docker.sh
 USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
 ```
 
+**See [docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md) for detailed Docker build documentation.**
+
 The kernel build process:
 1. Clones the Raspberry Pi kernel (default: `raspberrypi/linux@rpi-6.12.y`)
 2. Applies the ak-rex patch if available (`patches/ak-rex.patch`)
