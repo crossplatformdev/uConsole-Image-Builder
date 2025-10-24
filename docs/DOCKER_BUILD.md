@@ -166,9 +166,14 @@ ls -lh /tmp/test-kernel-native/*.deb
 The CI workflow automatically uses Docker for kernel builds:
 
 ```yaml
-- name: Build ClockworkPi kernel using Docker
-  run: |
-    USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
+# Excerpt from .github/workflows/build-and-release.yml
+steps:
+  - name: Set up Docker Buildx
+    uses: docker/setup-buildx-action@v3
+  
+  - name: Build ClockworkPi kernel using Docker
+    run: |
+      USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
 ```
 
 Benefits for CI:
@@ -234,12 +239,28 @@ Build a custom Docker image with additional tools:
 
 ```dockerfile
 # Dockerfile.custom
-FROM uconsole-kernel-builder
+FROM ubuntu:22.04
 
+# Install standard kernel build tools
 RUN apt-get update && apt-get install -y \
-    your-custom-tools
+    build-essential bc bison flex libssl-dev \
+    libncurses-dev libelf-dev kmod cpio rsync git \
+    fakeroot dpkg-dev debhelper kernel-wedge wget \
+    crossbuild-essential-arm64 ca-certificates
 
-# Use custom image
+# Add your custom tools
+RUN apt-get install -y your-custom-tools
+
+WORKDIR /build
+```
+
+Build and use the custom image:
+
+```bash
+# Build custom Docker image
+docker build -t uconsole-kernel-builder-custom -f Dockerfile.custom .
+
+# Use custom image for kernel build
 DOCKER_IMAGE=uconsole-kernel-builder-custom \
 USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
