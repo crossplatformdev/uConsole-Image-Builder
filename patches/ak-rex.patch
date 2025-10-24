@@ -1,54 +1,12 @@
-From 213a9a615a262982bbee9d336497d78f5dd817a7 Mon Sep 17 00:00:00 2001
-From: Rex <rex@linux.com>
-Date: Wed, 18 Jun 2025 00:44:58 -0400
-Subject: [PATCH 1/4] Reupload after merge
-
----
- arch/arm/boot/dts/overlays/Makefile           |   7 +
- .../clockworkpi-custom-battery-overlay.dts    |  19 +
- .../clockworkpi-devterm-cm3-overlay.dts       | 410 +++++++++
- .../clockworkpi-devterm-cm5-overlay.dts       | 144 +++
- .../overlays/clockworkpi-devterm-overlay.dts  | 245 +++++
- .../clockworkpi-uconsole-cm3-overlay.dts      | 410 +++++++++
- .../clockworkpi-uconsole-cm5-overlay.dts      | 187 ++++
- .../overlays/clockworkpi-uconsole-overlay.dts | 246 +++++
- arch/arm64/configs/bcm2711_defconfig          |  17 +
- arch/arm64/configs/bcm2712_defconfig          |  15 +
- drivers/gpu/drm/panel/Kconfig                 |  44 +
- drivers/gpu/drm/panel/Makefile                |   4 +
- drivers/gpu/drm/panel/panel-cwd686-cm3.c      | 287 ++++++
- drivers/gpu/drm/panel/panel-cwd686.c          | 296 +++++++
- drivers/gpu/drm/panel/panel-cwu50-cm3.c       | 598 +++++++++++++
- drivers/gpu/drm/panel/panel-cwu50.c           | 838 ++++++++++++++++++
- drivers/power/supply/axp20x_ac_power.c        |   3 +
- drivers/power/supply/axp20x_battery.c         | 383 +++++---
- drivers/video/backlight/Kconfig               |   6 +
- drivers/video/backlight/Makefile              |   1 +
- drivers/video/backlight/ocp8178_bl.c          | 275 ++++++
- 21 files changed, 4291 insertions(+), 144 deletions(-)
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-custom-battery-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm3-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
- create mode 100644 arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
- create mode 100644 drivers/gpu/drm/panel/panel-cwd686-cm3.c
- create mode 100644 drivers/gpu/drm/panel/panel-cwd686.c
- create mode 100644 drivers/gpu/drm/panel/panel-cwu50-cm3.c
- create mode 100644 drivers/gpu/drm/panel/panel-cwu50.c
- create mode 100644 drivers/video/backlight/ocp8178_bl.c
-
 diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
-index f06c5e9aec54ad..4676dec1a9a2c6 100644
+index 77f3ecb1e2e7b7..175f7325fde361 100644
 --- a/arch/arm/boot/dts/overlays/Makefile
 +++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -42,6 +42,13 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
+@@ -42,6 +42,12 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
  	chipcap2.dtbo \
  	chipdip-dac.dtbo \
  	cirrus-wm5102.dtbo \
 +	clockworkpi-custom-battery.dtbo \
-+	clockworkpi-devterm-cm3.dtbo \
 +	clockworkpi-devterm-cm5.dtbo \
 +	clockworkpi-devterm.dtbo \
 +	clockworkpi-uconsole-cm3.dtbo \
@@ -82,423 +40,6 @@ index 00000000000000..a5b0f3bb4a1847
 +		charge_full_design_uah = <&frag0>, "charge-full-design-microamp-hours:0";
 +	};
 +};
-diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
-new file mode 100644
-index 00000000000000..b537e24662d5c9
---- /dev/null
-+++ b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
-@@ -0,0 +1,410 @@
-+/dts-v1/;
-+/plugin/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/* uConsole All In One */
-+
-+/ {
-+	compatible = "brcm,bcm2835";
-+
-+	fragment@80 {
-+		target-path = "/chosen";
-+		__overlay__ {
-+			/* The bluetooth module need uart0/serial0, so must ensure console doesn't take up the serial port.
-+			 * Somehow newer kernel uses serial as the default console, which must be avoided.
-+			   Set console=tty1 ensures everything go to the DSI screen(or maybe HDMI). */
-+			bootargs = "snd_bcm2835.enable_headphones=1 console=tty1";
-+			/* 8250 auxiliary UART instead of pl011, which is used by Bluetooth */
-+			stdout-path = "serial1:115200n8";
-+		};
-+	};
-+
-+	fragment@90 {
-+        target-path = "/";
-+		__overlay__ {
-+			wifi_pwrseq: wifi-pwrseq {
-+				compatible = "mmc-pwrseq-simple";
-+				pinctrl-names = "default";
-+				pinctrl-0 = <&wifi_rst_pin>;
-+				reset-gpios = <&gpio 3 1>; /* GPIO3, GPIO_ACTIVE_LOW */
-+				post-power-on-delay-ms = <200>;
-+			};
-+
-+			audio_amplifier: audio-amplifier {
-+				compatible = "simple-amplifier-switch";
-+				sw-gpios = <&gpio 10 1>; /* GPIO10, GPIO_ACTIVE_LOW */
-+				outputs-gpios = <&gpio 11 0>; /* GPIO11, GPIO_ACTIVE_HIGH */
-+				// vdd-supply = <&uc_reg_5v0>;
-+			};
-+
-+			ocp8178_backlight: backlight@0 {
-+				compatible = "ocp8178-backlight";
-+				backlight-control-gpios = <&gpio 9 0>; /* GPIO9 ACTIVE HIGH */
-+				default-brightness = <5>;
-+				// vdd-supply = <&uc_reg_5v0>;
-+			};
-+
-+			battery: battery@0 {
-+				compatible = "simple-battery";
-+				constant-charge-current-max-microamp = <2100000>;
-+				voltage-min-design-microvolt = <3300000>;
-+				voltage-max-design-microvolt = <4200000>;
-+			};
-+
-+			/* TPS61178, the supply for 5V bus, including USB, backlight
-+			 */
-+			// uc_reg_5v0: uc-reg-5v0 {
-+			// 	compatible = "fixed-regulator";
-+			// 	regulator-name = "sys-5v0";
-+			// 	regulator-boot-on;
-+			// 	regulator-always-on; /* cannot be turned off anyway */
-+			// 	vin-supply = <&usb_power_supply>;
-+			// };
-+		};
-+	};
-+
-+	// 91 to 94 are for the on board wireless module
-+
-+	fragment@91 {
-+		/* BT */
-+		target = <&uart0>;
-+		__overlay__ {
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&uart0_pins &bt_pins>;
-+			status = "okay";
-+
-+			bt: bluetooth {
-+				compatible = "brcm,bcm4345c5";
-+				interrupt-parent = <&gpio>;
-+				interrupts = <6 4>; /* GPIO6, IRQ_TYPE_LEVEL_HIGH */
-+				interrupt-names = "host-wake";
-+				device-wakeup-gpios = <&gpio 7 0>; /* GPIO7, GPIO_ACTIVE_HIGH */
-+				brcm,requires-autobaud-mode;
-+				shutdown-gpios = <&gpio 5 0>; /* GPIO5, GPIO_ACTIVE_HIGH */
-+				/* max-speed: datasheet shows max speed is 4000000,
-+				* however, approperate speed must be set to ensure overall wireless performance.
-+				*/
-+				max-speed = <1500000>;
-+				vbat-supply = <&reg_dldo1>;
-+				vddio-supply = <&reg_aldo3>;
-+			};
-+		};
-+	};
-+
-+	fragment@92 {
-+		/* WLAN */
-+		/* The general purpose SDHCI interface(SD1) */
-+		target = <&mmc>;
-+		__overlay__ {
-+			pinctrl-0 = <&sdio_gpio22>;
-+			pinctrl-names = "default";
-+			mmc-pwrseq = <&wifi_pwrseq>;
-+			// non-removable; /* don't use this, so the chip can be reliably initialized */
-+			bus-width = <4>;
-+			status = "okay";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			vmmc-supply = <&reg_dldo1>;
-+			vqmmc-supply = <&reg_aldo3>;
-+
-+			brcmf: wifi@1 {
-+				reg = <1>;
-+				compatible = "brcm,bcm43456-fmac", "brcm,bcm4329-fmac";
-+				/* The interrupt will not registered on CM3, so skip below */
-+				// interrupt-parent = <&gpio>;
-+				// interrupts = <4 8>; /* GPIO4, IRQ_TYPE_LEVEL_LOW */
-+				// interrupt-names = "host-wake";
-+			};
-+		};
-+	};
-+
-+	fragment@93 {
-+		/* disable the mmc interface without polling */
-+		target = <&mmcnr>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
-+
-+	fragment@94 {
-+		target = <&gpio>;
-+		__overlay__ {
-+			sdio_gpio22: sdio_gpio22 {
-+				brcm,pins = <22 23 24 25 26 27>;
-+				brcm,function = <7>; /* ALT3 = SD1 */
-+				brcm,pull = <0 0 0 0 0 0>; /* NP(0)*6, oe NP, PU(2)*5 */
-+			};
-+
-+			/* UART0 with CTS/RTS on GPIO14-17 */
-+			uart0_pins: uart0_pins {
-+				brcm,pins = <14 15 16 17>;
-+				brcm,function = <4 4 7 7>;
-+				brcm,pull = <0 2 0 2>;
-+			};
-+
-+			/* bt reset and interrupts */
-+			bt_pins: bt_pins {
-+				brcm,pins = <5 6 7>;
-+				brcm,function = <1 0 1>;
-+				brcm,pull = <0 2 0>;
-+			};
-+
-+			wifi_rst_pin: wifi_rst_pin {
-+				brcm,pins = <3>;
-+				brcm,function = <1>;
-+				brcm,pull = <2>;
-+			};
-+		};
-+	};
-+
-+	// 96-99 handles i2c bus selection
-+
-+	fragment@96 {
-+		target-path = "/";
-+		__overlay__ {
-+			i2c_uconsole_sw: i2c@100 {
-+				reg = <100>;
-+				compatible = "i2c-gpio";
-+				gpios = <&gpio 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* sda */
-+						 &gpio 1 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* scl */
-+					>;
-+				i2c-gpio,delay-us = <2>;        /* ~100 kHz */
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+	};
-+
-+	fragment@97 {
-+		target = <&i2c0>;
-+		i2c_uconsole_hw0: __dormant__ {
-+			status = "okay";
-+		};
-+	};
-+
-+	fragment@98 {
-+		target = <&i2c0if>;
-+		__dormant__ {
-+			status = "okay";
-+		};
-+	};
-+
-+	fragment@99 {
-+		target = <&i2c0mux>;
-+		__dormant__ {
-+			status = "okay";
-+		};
-+	};
-+
-+	// Here's the one for PMU
-+	// since we use i2c selection, pmu fragment's target should be editable
-+	frag_pmu: fragment@101 {
-+		/* PMU */
-+		target = <&i2c_uconsole_sw>;
-+		__overlay__ {
-+			axp22x: pmic@34 {
-+				interrupt-controller;
-+				#interrupt-cells = <1>;
-+				compatible = "x-powers,axp228", "x-powers,axp223", "x-powers,axp221";
-+				reg = <0x34>; /* i2c address */
-+				interrupt-parent = <&gpio>;
-+				interrupts = <2 8>;  /* IRQ_TYPE_LEVEL_LOW */
-+				irq-gpios = <&gpio 2 0>;
-+
-+				/* TODO: figure out the initial output states */
-+				regulators {
-+
-+					x-powers,dcdc-freq = <3000>;
-+
-+					reg_dcdc1: dcdc1 {
-+						regulator-name = "sys-3v3";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_dcdc3: dcdc3 {
-+						regulator-name = "sys-1v8";
-+						regulator-always-on;
-+						regulator-min-microvolt = <1800000>;
-+						regulator-max-microvolt = <1800000>;
-+					};
-+
-+					/* TODO: switch this on demand? */
-+					reg_aldo1: aldo1 {
-+						regulator-name = "aud-3v3";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_aldo2: aldo2 {
-+						regulator-name = "disp-3v3";
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					/* This pull up is required to make BT stable.
-+					* This pull up must set to 3.3v when voltage jumpers are not changed,
-+					* or the chip will not show up.
-+					* It may originate from CM3 IO refs input voltages.
-+					*/
-+					reg_aldo3: aldo3 {
-+						regulator-name = "vdd-wifi";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					/* DLDO1 and ELDO1-3 are connected in parallel. */
-+					/* So I think they should be left on */
-+					reg_dldo1: dldo1 {
-+						regulator-name = "vbat-wifi-a";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					/* DLDO2-DLDO4 are connected in parallel.
-+					* They seem not necessary, BUT they are connected to the TPS2553's enable pin!
-+					* Disable them will shutdown the USB 5V line.
-+					*/
-+					reg_dldo2: dldo2 {
-+						regulator-name = "vcc-3v3-ext-a";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_dldo3: dldo3 {
-+						regulator-name = "vcc-3v3-ext-b";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_dldo4: dldo4 {
-+						regulator-name = "vcc-3v3-ext-c";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_eldo1: eldo1 {
-+						regulator-name = "vbat-wifi-b";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_eldo2: eldo2 {
-+						regulator-name = "vbat-wifi-c";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+
-+					reg_eldo3: eldo3 {
-+						regulator-name = "vbat-wifi-d";
-+						regulator-always-on;
-+						regulator-min-microvolt = <3300000>;
-+						regulator-max-microvolt = <3300000>;
-+					};
-+				};
-+
-+				battery_power_supply: battery-power-supply {
-+					compatible = "x-powers,axp221-battery-power-supply";
-+					monitored-battery = <&battery>;
-+				};
-+
-+				ac_power_supply: ac_power_supply {
-+					compatible = "x-powers,axp221-ac-power-supply";
-+				};
-+
-+				axp_adc: adc {
-+					compatible = "x-powers,axp221-adc";
-+					#io-channel-cells = <1>;
-+				};
-+
-+				axp_gpio: gpio {
-+					compatible = "x-powers,axp221-gpio";
-+					gpio-controller;
-+					#gpio-cells = <2>;
-+					status = "disabled";
-+
-+					gpio0_out: gpio0-out-pin {
-+						pins = "GPIO0";
-+						function = "gpio_out";
-+					};
-+				};
-+
-+				/* IPSOUT, feed to on-board buck to get 5V output */
-+				/* TODO: figure out how to configure it properly */
-+				usb_power_supply: usb-power {
-+					compatible = "x-powers,axp221-usb-power-supply";
-+				};
-+			};
-+		};
-+	};
-+
-+	__overrides__ {
-+		cm4 = <0>, "-91-92-93-94", // disable BT, WiFi on uConsole main board, and other fixes for CM3
-+				<&reg_dldo1>, "regulator-always-on!", // disable ldos for wireless module
-+				<&reg_eldo1>, "regulator-always-on!",
-+				<&reg_eldo2>, "regulator-always-on!",
-+				<&reg_eldo3>, "regulator-always-on!";
-+		hwi2c = <0>, "-96+97+98+99", // disable SW i2c, enable HW i2c0
-+				<&frag_pmu>, "target:0=",<&i2c_uconsole_hw0>; // move PMU from sw i2c(3) to hw i2c0
-+	};
-+};
-+
-+&leds {
-+	/delete-node/ led-act;
-+
-+	/* This is the green LED under the power button,
-+	 * However this is not usable without a hardware modification(move R117 to R116)
-+	 */
-+	// act_led: led-act {
-+	//	linux,default-trigger = "default-on";
-+	// 	gpios = <&axp_gpio 0 1>; /* gpio0 on pmu, low active */
-+	// 	// function = "activity";
-+	// };
-+
-+	/* This is the orange charging LED under the power button.
-+	 * Requires a patch to the pinctrl-axp209 driver, because
-+	 * charge led is not a gpio thus not supported.
-+	 */
-+	// chg_led: led-chg {
-+	// 	linux,default-trigger = "axp20x-battery-charging-blink-full-solid";
-+	// 	gpios = <&axp_gpio 99 1>; /* CHGLED on pmu, low active */
-+	// };
-+};
-+
-+&dsi1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	port {
-+		dsi_out_port: endpoint {
-+			remote-endpoint = <&panel_dsi_port>;
-+		};
-+	};
-+
-+	panel_cwd686_cm3: panel@0 {
-+		compatible = "cw,cwd686-cm3";
-+		reg = <0>;
-+		reset-gpio = <&gpio 8 1>; /* GPIO8 ACTIVE LOW */
-+		backlight = <&ocp8178_backlight>;
-+		rotation = <90>;
-+		iovcc-supply = <&reg_dcdc3>;
-+		vci-supply = <&reg_aldo2>;
-+
-+		port {
-+			panel_dsi_port: endpoint {
-+				remote-endpoint = <&dsi_out_port>;
-+			};
-+		};
-+	};
-+};
-\ No newline at end of file
 diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts
 new file mode 100644
 index 00000000000000..9baa0f82173305
@@ -652,10 +193,10 @@ index 00000000000000..9baa0f82173305
 \ No newline at end of file
 diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
 new file mode 100644
-index 00000000000000..4d187c53e501f1
+index 00000000000000..ab0b81c30c0cb2
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,231 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -741,22 +282,8 @@ index 00000000000000..4d187c53e501f1
 +			bootargs = "8250.nr_uarts=1";
 +		};
 +	};
-+	
++
 +	fragment@5 {
-+		target = <&pcie0>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
-+
-+	fragment@6 {
-+		target = <&genet>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
-+
-+	fragment@7 {
 +		target = <&i2c0if>;
 +		__overlay__ {
 +			#address-cells = <1>;
@@ -828,21 +355,21 @@ index 00000000000000..4d187c53e501f1
 +		};
 +	};
 +
-+	fragment@8 {
++	fragment@6 {
 +		target = <&i2c0if>;
 +		__overlay__ {
 +			compatible = "brcm,bcm2708-i2c";
 +		};
 +	};
 +
-+	fragment@9 {
++	fragment@7 {
 +		target-path = "/aliases";
 +		__overlay__ {
 +			i2c0 = "/soc/i2c@7e205000";
 +		};
 +	};
 +
-+	fragment@10 {
++	fragment@8 {
 +		target-path = "/";
 +		__overlay__  {
 +			battery: battery@0 {
@@ -859,7 +386,7 @@ index 00000000000000..4d187c53e501f1
 +		};
 +	};
 +
-+	fragment@11 {
++	fragment@9 {
 +		target=<&dsi1>;
 +		__overlay__ {
 +			#address-cells = <1>;
@@ -888,7 +415,7 @@ index 00000000000000..4d187c53e501f1
 +		};
 +	};
 +
-+	fragment@12 {
++	fragment@10 {
 +		target-path = "/";
 +		__overlay__  {
 +			ocp8178_backlight: backlight@0 {
@@ -1320,10 +847,10 @@ index 00000000000000..5dda9466e1bbf4
 \ No newline at end of file
 diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
 new file mode 100644
-index 00000000000000..d6a1dac36f91ed
+index 00000000000000..60badef9ef8fe5
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,181 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -1504,19 +1031,13 @@ index 00000000000000..d6a1dac36f91ed
 +			};
 +		};
 +	};
-+	fragment@5 {
-+		target-path = "ethernet0";
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
 +};
 diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
 new file mode 100644
-index 00000000000000..26f32c9ce0afb0
+index 00000000000000..4a1e9789abdda2
 --- /dev/null
 +++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
-@@ -0,0 +1,246 @@
+@@ -0,0 +1,232 @@
 +/dts-v1/;
 +/plugin/;
 +
@@ -1602,22 +1123,8 @@ index 00000000000000..26f32c9ce0afb0
 +			bootargs = "8250.nr_uarts=1";
 +		};
 +	};
-+	
++
 +	fragment@5 {
-+		target = <&pcie0>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
-+
-+	fragment@6 {
-+		target = <&genet>;
-+		__overlay__ {
-+			status = "disabled";
-+		};
-+	};
-+
-+	fragment@7 {
 +		target = <&i2c0if>;
 +		__overlay__ {
 +			#address-cells = <1>;
@@ -1689,21 +1196,21 @@ index 00000000000000..26f32c9ce0afb0
 +		};
 +	};
 +
-+	fragment@8 {
++	fragment@6 {
 +		target = <&i2c0if>;
 +		__overlay__ {
 +			compatible = "brcm,bcm2708-i2c";
 +		};
 +	};
 +
-+	fragment@9 {
++	fragment@7 {
 +		target-path = "/aliases";
 +		__overlay__ {
 +			i2c0 = "/soc/i2c@7e205000";
 +		};
 +	};
 +
-+	fragment@10 {
++	fragment@8 {
 +		target-path = "/";
 +		__overlay__  {
 +			battery: battery@0 {
@@ -1720,7 +1227,7 @@ index 00000000000000..26f32c9ce0afb0
 +		};
 +	};
 +
-+	fragment@11 {
++	fragment@9 {
 +		target=<&dsi1>;
 +		__overlay__ {
 +			#address-cells = <1>;
@@ -1750,7 +1257,7 @@ index 00000000000000..26f32c9ce0afb0
 +		};
 +	};
 +
-+	fragment@12 {
++	fragment@10 {
 +		target-path = "/";
 +		__overlay__  {
 +			ocp8178_backlight: backlight@0 {
@@ -1764,10 +1271,10 @@ index 00000000000000..26f32c9ce0afb0
 +};
 +
 diff --git a/arch/arm64/configs/bcm2711_defconfig b/arch/arm64/configs/bcm2711_defconfig
-index b3d2002fc4f557..ccec5544da5326 100644
+index 90a5006be1e795..c36651529a6e9f 100644
 --- a/arch/arm64/configs/bcm2711_defconfig
 +++ b/arch/arm64/configs/bcm2711_defconfig
-@@ -1759,5 +1759,22 @@ CONFIG_STACK_TRACER=y
+@@ -1771,5 +1771,21 @@ CONFIG_STACK_TRACER=y
  CONFIG_SCHED_TRACER=y
  CONFIG_FTRACE_SYSCALLS=y
  CONFIG_BLK_DEV_IO_TRACE=y
@@ -1780,7 +1287,6 @@ index b3d2002fc4f557..ccec5544da5326 100644
 +CONFIG_MFD_AXP20X_I2C=y
 +CONFIG_REGULATOR_AXP20X=y
 +CONFIG_DRM_PANEL_CWD686=m
-+CONFIG_DRM_PANEL_CWD686_CM3=m
 +CONFIG_DRM_PANEL_CWU50=m
 +CONFIG_DRM_PANEL_CWU50_CM3=m
 +CONFIG_BACKLIGHT_OCP8178=m
@@ -1791,10 +1297,10 @@ index b3d2002fc4f557..ccec5544da5326 100644
  # CONFIG_UPROBE_EVENTS is not set
  # CONFIG_STRICT_DEVMEM is not set
 diff --git a/arch/arm64/configs/bcm2712_defconfig b/arch/arm64/configs/bcm2712_defconfig
-index 29d9b1008d654a..26cb9752c08e5f 100644
+index 56292357c08892..b9e396d4617ec1 100644
 --- a/arch/arm64/configs/bcm2712_defconfig
 +++ b/arch/arm64/configs/bcm2712_defconfig
-@@ -1761,5 +1761,20 @@ CONFIG_STACK_TRACER=y
+@@ -1773,5 +1773,20 @@ CONFIG_STACK_TRACER=y
  CONFIG_SCHED_TRACER=y
  CONFIG_FTRACE_SYSCALLS=y
  CONFIG_BLK_DEV_IO_TRACE=y
@@ -1816,10 +1322,10 @@ index 29d9b1008d654a..26cb9752c08e5f 100644
  # CONFIG_UPROBE_EVENTS is not set
  # CONFIG_STRICT_DEVMEM is not set
 diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 928b9f1bf7d52f..e4adfdec371a22 100644
+index 928b9f1bf7d52f..1a750ba2af1eac 100644
 --- a/drivers/gpu/drm/panel/Kconfig
 +++ b/drivers/gpu/drm/panel/Kconfig
-@@ -96,6 +96,50 @@ config DRM_PANEL_BOE_TV101WUM_LL2
+@@ -96,6 +96,39 @@ config DRM_PANEL_BOE_TV101WUM_LL2
  	  Say Y here if you want to support for BOE TV101WUM-LL2
  	  WUXGA PANEL DSI Video Mode panel
  
@@ -1833,17 +1339,6 @@ index 928b9f1bf7d52f..e4adfdec371a22 100644
 +	  The panel has a 480x1280 resolution and uses 24 bit RGB per pixel.
 +	  To compile this driver as a module, choose M here: the module
 +	  will be called panel-cwd686.
-+
-+config DRM_PANEL_CWD686_CM3
-+	tristate "CWD686_CM3 panel"
-+ 	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	help
-+	  Say Y here if you want to enable support for CWD686_CM3 panel.
-+	  The panel has a 480x1280 resolution and uses 24 bit RGB per pixel.
-+	  To compile this driver as a module, choose M here: the module
-+	  will be called panel-cwd686-cm3.
 +
 +config DRM_PANEL_CWU50
 +	tristate "CWU50 panel"
@@ -1871,310 +1366,16 @@ index 928b9f1bf7d52f..e4adfdec371a22 100644
  	tristate "EBBG FT8719 panel driver"
  	depends on OF
 diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index c13a08111d0c26..f5ab2cab2d9c31 100644
+index c13a08111d0c26..7b89f14c57850a 100644
 --- a/drivers/gpu/drm/panel/Makefile
 +++ b/drivers/gpu/drm/panel/Makefile
-@@ -104,3 +104,7 @@ obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN) += panel-waveshare-dsi.o
+@@ -104,3 +104,6 @@ obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN) += panel-waveshare-dsi.o
  obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN_V2) += panel-waveshare-dsi-v2.o
  obj-$(CONFIG_DRM_PANEL_WIDECHIPS_WS2401) += panel-widechips-ws2401.o
  obj-$(CONFIG_DRM_PANEL_XINPENG_XPP055C272) += panel-xinpeng-xpp055c272.o
 +obj-$(CONFIG_DRM_PANEL_CWD686) += panel-cwd686.o
-+obj-$(CONFIG_DRM_PANEL_CWD686) += panel-cwd686-cm3.o
 +obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50.o
 +obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50-cm3.o
-diff --git a/drivers/gpu/drm/panel/panel-cwd686-cm3.c b/drivers/gpu/drm/panel/panel-cwd686-cm3.c
-new file mode 100644
-index 00000000000000..fe83b34d0e3a6a
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-cwd686-cm3.c
-@@ -0,0 +1,287 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <drm/drm_modes.h>
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_panel.h>
-+#include <linux/backlight.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/delay.h>
-+#include <linux/of_device.h>
-+#include <linux/module.h>
-+#include <video/mipi_display.h>
-+
-+struct cwd686 {
-+	struct device *dev;
-+	struct drm_panel panel;
-+	struct gpio_desc *reset_gpio;
-+	struct regulator *supply;
-+	struct backlight_device *backlight;
-+	bool prepared;
-+	bool enabled;
-+};
-+
-+static const struct drm_display_mode default_mode = {
-+	.clock = 54465,
-+	.hdisplay = 480,
-+	.hsync_start = 480 + 150,
-+	.hsync_end = 480 + 150 + 24,
-+	.htotal = 480 + 150 + 24 + 40,
-+	.vdisplay = 1280,
-+	.vsync_start = 1280 + 12,
-+	.vsync_end = 1280 + 12+ 6,
-+	.vtotal = 1280 + 12 + 6 + 10,
-+	.flags = 0,
-+};
-+
-+static inline struct cwd686 *panel_to_cwd686(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct cwd686, panel);
-+}
-+
-+#define dcs_write_seq(seq...)                              \
-+({                                                              \
-+	static const u8 d[] = { seq };                          \
-+	mipi_dsi_dcs_write_buffer(dsi, d, ARRAY_SIZE(d));	 \
-+})
-+
-+static void cwd686_init_sequence(struct cwd686 *ctx)
-+{
-+	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-+
-+	dcs_write_seq(0xF0,0x5A,0x5A);
-+	dcs_write_seq(0xF1,0xA5,0xA5);
-+	dcs_write_seq(0xB6,0x0D,0x0D);
-+	dcs_write_seq(0xB4,0x0A,0x08,0x12,0x10,0x0E,0x0C,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x04,0x06);
-+	dcs_write_seq(0xB3,0x0B,0x09,0x13,0x11,0x0F,0x0D,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x05,0x07);
-+	dcs_write_seq(0xB0,0x54,0x32,0x23,0x45,0x44,0x44,0x44,0x44,0x90,0x01,0x90,0x01);
-+	dcs_write_seq(0xB1,0x32,0x84,0x02,0x83,0x30,0x01,0x6B,0x01);
-+	dcs_write_seq(0xB2,0x73);
-+	dcs_write_seq(0xBD,0x4E,0x0E,0x50,0x50,0x26,0x1D,0x00,0x14,0x42,0x03);
-+	dcs_write_seq(0xB7,0x01,0x01,0x09,0x11,0x0D,0x55,0x19,0x19,0x21,0x1D,0x00,0x00,0x00,0x00,0x02,0xFF,0x3C);
-+	dcs_write_seq(0xB8,0x23,0x01,0x30,0x34,0x63);
-+	dcs_write_seq(0xB9,0xA0,0x22,0x00,0x44);
-+	dcs_write_seq(0xBA,0x12,0x63);
-+	dcs_write_seq(0xC1,0x0C,0x16,0x04,0x0C,0x10,0x04);
-+	dcs_write_seq(0xC2,0x11,0x41);
-+	dcs_write_seq(0xC3,0x22,0x31,0x04);
-+	dcs_write_seq(0xC7,0x05,0x23,0x6B,0x49,0x00);
-+	dcs_write_seq(0xC5,0x00);
-+	dcs_write_seq(0xD0,0x37,0xFF,0xFF);
-+	dcs_write_seq(0xD2,0x63,0x0B,0x08,0x88);
-+	dcs_write_seq(0xD3,0x01,0x00,0x00,0x01,0x01,0x37,0x25,0x38,0x31,0x06,0x07);
-+	dcs_write_seq(0xC8,0x7C,0x6A,0x5D,0x53,0x53,0x45,0x4B,0x35,0x4D,0x4A,0x49,0x66,0x53,0x57,0x4A,0x48,0x3B,0x2A,0x06,0x7C,0x6A,0x5D,0x53,0x53,0x45,0x4B,0x35,0x4D,0x4A,0x49,0x66,0x53,0x57,0x4A,0x48,0x3B,0x2A,0x06);//GAMMA2.2
-+	dcs_write_seq(0xC6,0x00,0x00,0xFF,0x00,0x00,0xFF,0x00,0x00);
-+	dcs_write_seq(0xF4,0x08,0x77);
-+	dcs_write_seq(0x36,0x14);
-+	dcs_write_seq(0x35,0x00);
-+	dcs_write_seq(0xF1,0x5A,0x5A);
-+	dcs_write_seq(0xF0,0xA5,0xA5);
-+}
-+
-+static int cwd686_disable(struct drm_panel *panel)
-+{
-+	struct cwd686 *ctx = panel_to_cwd686(panel);
-+
-+	if (!ctx->enabled)
-+		return 0;
-+
-+	backlight_disable(ctx->backlight);
-+
-+	ctx->enabled = false;
-+
-+	return 0;
-+}
-+
-+static int cwd686_unprepare(struct drm_panel *panel)
-+{
-+	struct cwd686 *ctx = panel_to_cwd686(panel);
-+	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-+	int ret;
-+
-+#if 0
-+	if (!ctx->prepared)
-+		return 0;
-+
-+	ret = mipi_dsi_dcs_set_display_off(dsi);
-+	if (ret)
-+		DRM_WARN("failed to set display off: %d\n", ret);
-+
-+	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
-+	if (ret)
-+		DRM_WARN("failed to enter sleep mode: %d\n", ret);
-+
-+	msleep(120);
-+
-+	if (ctx->reset_gpio) {
-+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+		msleep(20);
-+	}
-+
-+	regulator_disable(ctx->supply);
-+
-+	ctx->prepared = false;
-+#endif
-+
-+	return 0;
-+}
-+
-+static int cwd686_prepare(struct drm_panel *panel)
-+{
-+	struct cwd686 *ctx = panel_to_cwd686(panel);
-+	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
-+	int ret;
-+
-+	if (ctx->prepared)
-+		return 0;
-+
-+	ret = regulator_enable(ctx->supply);
-+	if (ret < 0) {
-+		return ret;
-+	}
-+
-+	if (ctx->reset_gpio) {
-+		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+		msleep(10);
-+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+		msleep(100);
-+	}
-+
-+	cwd686_init_sequence(ctx);
-+
-+	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
-+	if (ret)
-+		return ret;
-+
-+	msleep(120);
-+
-+	ret = mipi_dsi_dcs_set_display_on(dsi);
-+	if (ret)
-+		return ret;
-+
-+	msleep(20);
-+
-+	ctx->prepared = true;
-+
-+	return 0;
-+}
-+
-+static int cwd686_enable(struct drm_panel *panel)
-+{
-+	struct cwd686 *ctx = panel_to_cwd686(panel);
-+
-+	if (ctx->enabled)
-+		return 0;
-+
-+	backlight_enable(ctx->backlight);
-+
-+	ctx->enabled = true;
-+
-+	return 0;
-+}
-+
-+static int cwd686_get_modes(struct drm_panel *panel, struct drm_connector *connector)
-+{
-+	struct drm_display_mode *mode;
-+
-+	mode = drm_mode_duplicate(connector->dev, &default_mode);
-+	if (!mode) {
-+		dev_err(panel->dev, "bad mode or failed to add mode\n");
-+		return -EINVAL;
-+	}
-+
-+	drm_mode_set_name(mode);
-+	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
-+
-+	connector->display_info.width_mm = mode->width_mm;
-+	connector->display_info.height_mm = mode->height_mm;
-+
-+	drm_mode_probed_add(connector, mode);
-+
-+	return 1; /* Number of modes */
-+}
-+
-+static const struct drm_panel_funcs cwd686_drm_funcs = {
-+	.disable = cwd686_disable,
-+	.unprepare = cwd686_unprepare,
-+	.prepare = cwd686_prepare,
-+	.enable = cwd686_enable,
-+	.get_modes = cwd686_get_modes,
-+};
-+
-+static int cwd686_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	struct cwd686 *ctx;
-+	int ret;
-+
-+	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
-+	if (!ctx)
-+		return -ENOMEM;
-+
-+	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
-+	if (IS_ERR(ctx->reset_gpio)) {
-+		ret = PTR_ERR(ctx->reset_gpio);
-+		dev_err(dev, "cannot get reset GPIO: %d\n", ret);
-+		return ret;
-+	}
-+
-+	ctx->supply = devm_regulator_get(dev, "display-vcc");
-+	if (IS_ERR(ctx->supply)) {
-+		ret = PTR_ERR(ctx->supply);
-+		dev_err(dev, "cannot get regulator: %d\n", ret);
-+		return ret;
-+	}
-+
-+	ctx->backlight = devm_of_find_backlight(dev);
-+	if (IS_ERR(ctx->backlight))
-+		return PTR_ERR(ctx->backlight);
-+
-+	mipi_dsi_set_drvdata(dsi, ctx);
-+
-+	ctx->dev = dev;
-+
-+	dsi->lanes = 4;
-+	dsi->format = MIPI_DSI_FMT_RGB888;
-+	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE | MIPI_DSI_MODE_LPM;
-+
-+	drm_panel_init(&ctx->panel, dev, &cwd686_drm_funcs, DRM_MODE_CONNECTOR_DSI);
-+
-+	drm_panel_add(&ctx->panel);
-+
-+	ret = mipi_dsi_attach(dsi);
-+	if (ret < 0) {
-+		dev_err(dev, "mipi_dsi_attach() failed: %d\n", ret);
-+		drm_panel_remove(&ctx->panel);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static void cwd686_remove(struct mipi_dsi_device *dsi)
-+{
-+	struct cwd686 *ctx = mipi_dsi_get_drvdata(dsi);
-+
-+	mipi_dsi_detach(dsi);
-+	drm_panel_remove(&ctx->panel);
-+}
-+
-+static const struct of_device_id cwd686_of_match[] = {
-+	{ .compatible = "cw,cwd686-cm3" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, cwd686_of_match);
-+
-+static struct mipi_dsi_driver cwd686_driver = {
-+	.probe = cwd686_probe,
-+	.remove = cwd686_remove,
-+	.driver = {
-+		.name = "panel-cwd686-cm3",
-+		.of_match_table = cwd686_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(cwd686_driver);
-+
-+MODULE_DESCRIPTION("DRM Driver for cwd686-cm3 MIPI DSI panel");
-+MODULE_LICENSE("GPL v2");
 diff --git a/drivers/gpu/drm/panel/panel-cwd686.c b/drivers/gpu/drm/panel/panel-cwd686.c
 new file mode 100644
 index 00000000000000..e429e8ddf96935
@@ -4900,1039 +4101,3 @@ index 00000000000000..a9fb9682adbfb0
 +
 +MODULE_DESCRIPTION("OCP8178 Driver");
 +MODULE_LICENSE("GPL");
-
-From 4a21da96c413c4c2f69e3afeeac6dd5120ab3a79 Mon Sep 17 00:00:00 2001
-From: Rex <rex@linux.com>
-Date: Mon, 23 Jun 2025 16:58:49 -0400
-Subject: [PATCH 2/4] Update: to fix USB storage
-
----
- drivers/usb/dwc2/hcd.c | 34 ++++++++++++++++++++--------------
- 1 file changed, 20 insertions(+), 14 deletions(-)
-
-diff --git a/drivers/usb/dwc2/hcd.c b/drivers/usb/dwc2/hcd.c
-index 53948205cd73e5..04cebb7b3ceddf 100644
---- a/drivers/usb/dwc2/hcd.c
-+++ b/drivers/usb/dwc2/hcd.c
-@@ -2447,7 +2447,7 @@ static void dwc2_free_dma_aligned_buffer(struct urb *urb)
- 
- 	/* Restore urb->transfer_buffer from the end of the allocated area */
- 	memcpy(&stored_xfer_buffer,
--	       PTR_ALIGN(urb->transfer_buffer + urb->transfer_buffer_length,
-+	       PTR_ALIGN(urb->transfer_buffer + urb->transfer_buffer_length + DWC2_USB_DMA_ALIGN,
- 			 dma_get_cache_alignment()),
- 	       sizeof(urb->transfer_buffer));
- 
-@@ -2469,31 +2469,37 @@ static int dwc2_alloc_dma_aligned_buffer(struct urb *urb, gfp_t mem_flags)
- {
- 	void *kmalloc_ptr;
- 	size_t kmalloc_size;
--	bool small_ctrl;
- 
- 	if (urb->num_sgs || urb->sg || urb->transfer_buffer_length == 0)
- 		return 0;
- 
- 	/*
--	 * Hardware bug: small IN packets with length < 4 cause a
--	 * 4-byte write to memory. This is only an issue for drivers that
--	 * insist on packing a device's various properties into a struct
--	 * and filling them one at a time with Control transfers (uvcvideo).
--	 * Force the use of align_buf so that the subsequent memcpy puts
--	 * the right number of bytes in the URB's buffer.
-+	 * Hardware bug: the core will only do DMA writes of full words
-+	 * in length, and DMA buffers must start at a word boundary.
-+	 * TODO: is this limited to BCM2835 and friends, or other core variants?
- 	 */
--	small_ctrl = (urb->setup_packet &&
--		     le16_to_cpu(((struct usb_ctrlrequest *)(urb->setup_packet))->wLength) < 4);
--
--	if (!small_ctrl && !((uintptr_t)urb->transfer_buffer & (DWC2_USB_DMA_ALIGN - 1)))
-+	if (!(usb_urb_dir_in(urb) && (urb->transfer_buffer_length & (DWC2_USB_DMA_ALIGN - 1))) &&
-+	    !((uintptr_t)urb->transfer_buffer & (DWC2_USB_DMA_ALIGN - 1)))
- 		return 0;
- 
-+	/*
-+	 * If the URB already has a DMA mapping, this alignment mechanism won't
-+	 * work - the replacement buffer won't be used by the core, as the HCD layer
-+	 * skips mapping. Mappings have the granularity of a page, so it's unlikely that the
-+	 * DMA length bug will cause data trampling. In any case, warn if there's a driver
-+	 * submitting unaligned mapped buffers.
-+	 */
-+	if (urb->transfer_flags & URB_NO_TRANSFER_DMA_MAP) {
-+		if (urb->transfer_dma & (DWC2_USB_DMA_ALIGN - 1))
-+			WARN_ONCE(1, "Unaligned DMA-mapped buffer");
-+		return 0;
-+	}
- 	/*
- 	 * Allocate a buffer with enough padding for original transfer_buffer
- 	 * pointer. This allocation is guaranteed to be aligned properly for
- 	 * DMA
- 	 */
--	kmalloc_size = urb->transfer_buffer_length +
-+	kmalloc_size = urb->transfer_buffer_length + DWC2_USB_DMA_ALIGN +
- 		(dma_get_cache_alignment() - 1) +
- 		sizeof(urb->transfer_buffer);
- 
-@@ -2505,7 +2511,7 @@ static int dwc2_alloc_dma_aligned_buffer(struct urb *urb, gfp_t mem_flags)
- 	 * Position value of original urb->transfer_buffer pointer to the end
- 	 * of allocation for later referencing
- 	 */
--	memcpy(PTR_ALIGN(kmalloc_ptr + urb->transfer_buffer_length,
-+	memcpy(PTR_ALIGN(kmalloc_ptr + urb->transfer_buffer_length + DWC2_USB_DMA_ALIGN,
- 			 dma_get_cache_alignment()),
- 	       &urb->transfer_buffer, sizeof(urb->transfer_buffer));
- 
-
-From 78afa141dd8dd7a3c8db2c224ffb05da671a0c10 Mon Sep 17 00:00:00 2001
-From: Rex <rex@linux.com>
-Date: Mon, 8 Sep 2025 08:22:00 -0400
-Subject: [PATCH 3/4] Enabled PCIE & Ethernet in device tree overlays
-
-Enabled PCIE & Ethernet in the device tree overlays for the new adapter boards that support it.
----
- .../overlays/clockworkpi-devterm-overlay.dts  | 26 +++++--------------
- .../clockworkpi-uconsole-cm5-overlay.dts      |  6 -----
- .../overlays/clockworkpi-uconsole-overlay.dts | 26 +++++--------------
- 3 files changed, 12 insertions(+), 46 deletions(-)
-
-diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
-index 4d187c53e501f1..ab0b81c30c0cb2 100644
---- a/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
-+++ b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
-@@ -83,22 +83,8 @@
- 			bootargs = "8250.nr_uarts=1";
- 		};
- 	};
--	
--	fragment@5 {
--		target = <&pcie0>;
--		__overlay__ {
--			status = "disabled";
--		};
--	};
--
--	fragment@6 {
--		target = <&genet>;
--		__overlay__ {
--			status = "disabled";
--		};
--	};
- 
--	fragment@7 {
-+	fragment@5 {
- 		target = <&i2c0if>;
- 		__overlay__ {
- 			#address-cells = <1>;
-@@ -170,21 +156,21 @@
- 		};
- 	};
- 
--	fragment@8 {
-+	fragment@6 {
- 		target = <&i2c0if>;
- 		__overlay__ {
- 			compatible = "brcm,bcm2708-i2c";
- 		};
- 	};
- 
--	fragment@9 {
-+	fragment@7 {
- 		target-path = "/aliases";
- 		__overlay__ {
- 			i2c0 = "/soc/i2c@7e205000";
- 		};
- 	};
- 
--	fragment@10 {
-+	fragment@8 {
- 		target-path = "/";
- 		__overlay__  {
- 			battery: battery@0 {
-@@ -201,7 +187,7 @@
- 		};
- 	};
- 
--	fragment@11 {
-+	fragment@9 {
- 		target=<&dsi1>;
- 		__overlay__ {
- 			#address-cells = <1>;
-@@ -230,7 +216,7 @@
- 		};
- 	};
- 
--	fragment@12 {
-+	fragment@10 {
- 		target-path = "/";
- 		__overlay__  {
- 			ocp8178_backlight: backlight@0 {
-diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
-index d6a1dac36f91ed..60badef9ef8fe5 100644
---- a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
-+++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
-@@ -178,10 +178,4 @@
- 			};
- 		};
- 	};
--	fragment@5 {
--		target-path = "ethernet0";
--		__overlay__ {
--			status = "disabled";
--		};
--	};
- };
-diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
-index 26f32c9ce0afb0..4a1e9789abdda2 100644
---- a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
-+++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
-@@ -83,22 +83,8 @@
- 			bootargs = "8250.nr_uarts=1";
- 		};
- 	};
--	
--	fragment@5 {
--		target = <&pcie0>;
--		__overlay__ {
--			status = "disabled";
--		};
--	};
--
--	fragment@6 {
--		target = <&genet>;
--		__overlay__ {
--			status = "disabled";
--		};
--	};
- 
--	fragment@7 {
-+	fragment@5 {
- 		target = <&i2c0if>;
- 		__overlay__ {
- 			#address-cells = <1>;
-@@ -170,21 +156,21 @@
- 		};
- 	};
- 
--	fragment@8 {
-+	fragment@6 {
- 		target = <&i2c0if>;
- 		__overlay__ {
- 			compatible = "brcm,bcm2708-i2c";
- 		};
- 	};
- 
--	fragment@9 {
-+	fragment@7 {
- 		target-path = "/aliases";
- 		__overlay__ {
- 			i2c0 = "/soc/i2c@7e205000";
- 		};
- 	};
- 
--	fragment@10 {
-+	fragment@8 {
- 		target-path = "/";
- 		__overlay__  {
- 			battery: battery@0 {
-@@ -201,7 +187,7 @@
- 		};
- 	};
- 
--	fragment@11 {
-+	fragment@9 {
- 		target=<&dsi1>;
- 		__overlay__ {
- 			#address-cells = <1>;
-@@ -231,7 +217,7 @@
- 		};
- 	};
- 
--	fragment@12 {
-+	fragment@10 {
- 		target-path = "/";
- 		__overlay__  {
- 			ocp8178_backlight: backlight@0 {
-
-From 4bcc5d4e35ea89d62ee88119a40563d3d8fe5e7a Mon Sep 17 00:00:00 2001
-From: rex <rex@linux.com>
-Date: Wed, 8 Oct 2025 00:56:35 -0400
-Subject: [PATCH 4/4] Removed: DevTerm CM3 non-working panel driver
-
----
- arch/arm/boot/dts/overlays/Makefile           |   1 -
- .../clockworkpi-devterm-cm3-overlay.dts       | 410 ------------------
- arch/arm64/configs/bcm2711_defconfig          |   1 -
- drivers/gpu/drm/panel/Kconfig                 |  11 -
- drivers/gpu/drm/panel/Makefile                |   1 -
- drivers/gpu/drm/panel/panel-cwd686-cm3.c      | 287 ------------
- 6 files changed, 711 deletions(-)
- delete mode 100644 arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
- delete mode 100644 drivers/gpu/drm/panel/panel-cwd686-cm3.c
-
-diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
-index d4b9fc75416eb0..175f7325fde361 100644
---- a/arch/arm/boot/dts/overlays/Makefile
-+++ b/arch/arm/boot/dts/overlays/Makefile
-@@ -43,7 +43,6 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
- 	chipdip-dac.dtbo \
- 	cirrus-wm5102.dtbo \
- 	clockworkpi-custom-battery.dtbo \
--	clockworkpi-devterm-cm3.dtbo \
- 	clockworkpi-devterm-cm5.dtbo \
- 	clockworkpi-devterm.dtbo \
- 	clockworkpi-uconsole-cm3.dtbo \
-diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
-deleted file mode 100644
-index b537e24662d5c9..00000000000000
---- a/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm3-overlay.dts
-+++ /dev/null
-@@ -1,410 +0,0 @@
--/dts-v1/;
--/plugin/;
--
--#include <dt-bindings/gpio/gpio.h>
--
--/* uConsole All In One */
--
--/ {
--	compatible = "brcm,bcm2835";
--
--	fragment@80 {
--		target-path = "/chosen";
--		__overlay__ {
--			/* The bluetooth module need uart0/serial0, so must ensure console doesn't take up the serial port.
--			 * Somehow newer kernel uses serial as the default console, which must be avoided.
--			   Set console=tty1 ensures everything go to the DSI screen(or maybe HDMI). */
--			bootargs = "snd_bcm2835.enable_headphones=1 console=tty1";
--			/* 8250 auxiliary UART instead of pl011, which is used by Bluetooth */
--			stdout-path = "serial1:115200n8";
--		};
--	};
--
--	fragment@90 {
--        target-path = "/";
--		__overlay__ {
--			wifi_pwrseq: wifi-pwrseq {
--				compatible = "mmc-pwrseq-simple";
--				pinctrl-names = "default";
--				pinctrl-0 = <&wifi_rst_pin>;
--				reset-gpios = <&gpio 3 1>; /* GPIO3, GPIO_ACTIVE_LOW */
--				post-power-on-delay-ms = <200>;
--			};
--
--			audio_amplifier: audio-amplifier {
--				compatible = "simple-amplifier-switch";
--				sw-gpios = <&gpio 10 1>; /* GPIO10, GPIO_ACTIVE_LOW */
--				outputs-gpios = <&gpio 11 0>; /* GPIO11, GPIO_ACTIVE_HIGH */
--				// vdd-supply = <&uc_reg_5v0>;
--			};
--
--			ocp8178_backlight: backlight@0 {
--				compatible = "ocp8178-backlight";
--				backlight-control-gpios = <&gpio 9 0>; /* GPIO9 ACTIVE HIGH */
--				default-brightness = <5>;
--				// vdd-supply = <&uc_reg_5v0>;
--			};
--
--			battery: battery@0 {
--				compatible = "simple-battery";
--				constant-charge-current-max-microamp = <2100000>;
--				voltage-min-design-microvolt = <3300000>;
--				voltage-max-design-microvolt = <4200000>;
--			};
--
--			/* TPS61178, the supply for 5V bus, including USB, backlight
--			 */
--			// uc_reg_5v0: uc-reg-5v0 {
--			// 	compatible = "fixed-regulator";
--			// 	regulator-name = "sys-5v0";
--			// 	regulator-boot-on;
--			// 	regulator-always-on; /* cannot be turned off anyway */
--			// 	vin-supply = <&usb_power_supply>;
--			// };
--		};
--	};
--
--	// 91 to 94 are for the on board wireless module
--
--	fragment@91 {
--		/* BT */
--		target = <&uart0>;
--		__overlay__ {
--			pinctrl-names = "default";
--			pinctrl-0 = <&uart0_pins &bt_pins>;
--			status = "okay";
--
--			bt: bluetooth {
--				compatible = "brcm,bcm4345c5";
--				interrupt-parent = <&gpio>;
--				interrupts = <6 4>; /* GPIO6, IRQ_TYPE_LEVEL_HIGH */
--				interrupt-names = "host-wake";
--				device-wakeup-gpios = <&gpio 7 0>; /* GPIO7, GPIO_ACTIVE_HIGH */
--				brcm,requires-autobaud-mode;
--				shutdown-gpios = <&gpio 5 0>; /* GPIO5, GPIO_ACTIVE_HIGH */
--				/* max-speed: datasheet shows max speed is 4000000,
--				* however, approperate speed must be set to ensure overall wireless performance.
--				*/
--				max-speed = <1500000>;
--				vbat-supply = <&reg_dldo1>;
--				vddio-supply = <&reg_aldo3>;
--			};
--		};
--	};
--
--	fragment@92 {
--		/* WLAN */
--		/* The general purpose SDHCI interface(SD1) */
--		target = <&mmc>;
--		__overlay__ {
--			pinctrl-0 = <&sdio_gpio22>;
--			pinctrl-names = "default";
--			mmc-pwrseq = <&wifi_pwrseq>;
--			// non-removable; /* don't use this, so the chip can be reliably initialized */
--			bus-width = <4>;
--			status = "okay";
--			#address-cells = <1>;
--			#size-cells = <0>;
--			vmmc-supply = <&reg_dldo1>;
--			vqmmc-supply = <&reg_aldo3>;
--
--			brcmf: wifi@1 {
--				reg = <1>;
--				compatible = "brcm,bcm43456-fmac", "brcm,bcm4329-fmac";
--				/* The interrupt will not registered on CM3, so skip below */
--				// interrupt-parent = <&gpio>;
--				// interrupts = <4 8>; /* GPIO4, IRQ_TYPE_LEVEL_LOW */
--				// interrupt-names = "host-wake";
--			};
--		};
--	};
--
--	fragment@93 {
--		/* disable the mmc interface without polling */
--		target = <&mmcnr>;
--		__overlay__ {
--			status = "disabled";
--		};
--	};
--
--	fragment@94 {
--		target = <&gpio>;
--		__overlay__ {
--			sdio_gpio22: sdio_gpio22 {
--				brcm,pins = <22 23 24 25 26 27>;
--				brcm,function = <7>; /* ALT3 = SD1 */
--				brcm,pull = <0 0 0 0 0 0>; /* NP(0)*6, oe NP, PU(2)*5 */
--			};
--
--			/* UART0 with CTS/RTS on GPIO14-17 */
--			uart0_pins: uart0_pins {
--				brcm,pins = <14 15 16 17>;
--				brcm,function = <4 4 7 7>;
--				brcm,pull = <0 2 0 2>;
--			};
--
--			/* bt reset and interrupts */
--			bt_pins: bt_pins {
--				brcm,pins = <5 6 7>;
--				brcm,function = <1 0 1>;
--				brcm,pull = <0 2 0>;
--			};
--
--			wifi_rst_pin: wifi_rst_pin {
--				brcm,pins = <3>;
--				brcm,function = <1>;
--				brcm,pull = <2>;
--			};
--		};
--	};
--
--	// 96-99 handles i2c bus selection
--
--	fragment@96 {
--		target-path = "/";
--		__overlay__ {
--			i2c_uconsole_sw: i2c@100 {
--				reg = <100>;
--				compatible = "i2c-gpio";
--				gpios = <&gpio 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* sda */
--						 &gpio 1 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* scl */
--					>;
--				i2c-gpio,delay-us = <2>;        /* ~100 kHz */
--				#address-cells = <1>;
--				#size-cells = <0>;
--			};
--		};
--	};
--
--	fragment@97 {
--		target = <&i2c0>;
--		i2c_uconsole_hw0: __dormant__ {
--			status = "okay";
--		};
--	};
--
--	fragment@98 {
--		target = <&i2c0if>;
--		__dormant__ {
--			status = "okay";
--		};
--	};
--
--	fragment@99 {
--		target = <&i2c0mux>;
--		__dormant__ {
--			status = "okay";
--		};
--	};
--
--	// Here's the one for PMU
--	// since we use i2c selection, pmu fragment's target should be editable
--	frag_pmu: fragment@101 {
--		/* PMU */
--		target = <&i2c_uconsole_sw>;
--		__overlay__ {
--			axp22x: pmic@34 {
--				interrupt-controller;
--				#interrupt-cells = <1>;
--				compatible = "x-powers,axp228", "x-powers,axp223", "x-powers,axp221";
--				reg = <0x34>; /* i2c address */
--				interrupt-parent = <&gpio>;
--				interrupts = <2 8>;  /* IRQ_TYPE_LEVEL_LOW */
--				irq-gpios = <&gpio 2 0>;
--
--				/* TODO: figure out the initial output states */
--				regulators {
--
--					x-powers,dcdc-freq = <3000>;
--
--					reg_dcdc1: dcdc1 {
--						regulator-name = "sys-3v3";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_dcdc3: dcdc3 {
--						regulator-name = "sys-1v8";
--						regulator-always-on;
--						regulator-min-microvolt = <1800000>;
--						regulator-max-microvolt = <1800000>;
--					};
--
--					/* TODO: switch this on demand? */
--					reg_aldo1: aldo1 {
--						regulator-name = "aud-3v3";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_aldo2: aldo2 {
--						regulator-name = "disp-3v3";
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					/* This pull up is required to make BT stable.
--					* This pull up must set to 3.3v when voltage jumpers are not changed,
--					* or the chip will not show up.
--					* It may originate from CM3 IO refs input voltages.
--					*/
--					reg_aldo3: aldo3 {
--						regulator-name = "vdd-wifi";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					/* DLDO1 and ELDO1-3 are connected in parallel. */
--					/* So I think they should be left on */
--					reg_dldo1: dldo1 {
--						regulator-name = "vbat-wifi-a";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					/* DLDO2-DLDO4 are connected in parallel.
--					* They seem not necessary, BUT they are connected to the TPS2553's enable pin!
--					* Disable them will shutdown the USB 5V line.
--					*/
--					reg_dldo2: dldo2 {
--						regulator-name = "vcc-3v3-ext-a";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_dldo3: dldo3 {
--						regulator-name = "vcc-3v3-ext-b";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_dldo4: dldo4 {
--						regulator-name = "vcc-3v3-ext-c";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_eldo1: eldo1 {
--						regulator-name = "vbat-wifi-b";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_eldo2: eldo2 {
--						regulator-name = "vbat-wifi-c";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--
--					reg_eldo3: eldo3 {
--						regulator-name = "vbat-wifi-d";
--						regulator-always-on;
--						regulator-min-microvolt = <3300000>;
--						regulator-max-microvolt = <3300000>;
--					};
--				};
--
--				battery_power_supply: battery-power-supply {
--					compatible = "x-powers,axp221-battery-power-supply";
--					monitored-battery = <&battery>;
--				};
--
--				ac_power_supply: ac_power_supply {
--					compatible = "x-powers,axp221-ac-power-supply";
--				};
--
--				axp_adc: adc {
--					compatible = "x-powers,axp221-adc";
--					#io-channel-cells = <1>;
--				};
--
--				axp_gpio: gpio {
--					compatible = "x-powers,axp221-gpio";
--					gpio-controller;
--					#gpio-cells = <2>;
--					status = "disabled";
--
--					gpio0_out: gpio0-out-pin {
--						pins = "GPIO0";
--						function = "gpio_out";
--					};
--				};
--
--				/* IPSOUT, feed to on-board buck to get 5V output */
--				/* TODO: figure out how to configure it properly */
--				usb_power_supply: usb-power {
--					compatible = "x-powers,axp221-usb-power-supply";
--				};
--			};
--		};
--	};
--
--	__overrides__ {
--		cm4 = <0>, "-91-92-93-94", // disable BT, WiFi on uConsole main board, and other fixes for CM3
--				<&reg_dldo1>, "regulator-always-on!", // disable ldos for wireless module
--				<&reg_eldo1>, "regulator-always-on!",
--				<&reg_eldo2>, "regulator-always-on!",
--				<&reg_eldo3>, "regulator-always-on!";
--		hwi2c = <0>, "-96+97+98+99", // disable SW i2c, enable HW i2c0
--				<&frag_pmu>, "target:0=",<&i2c_uconsole_hw0>; // move PMU from sw i2c(3) to hw i2c0
--	};
--};
--
--&leds {
--	/delete-node/ led-act;
--
--	/* This is the green LED under the power button,
--	 * However this is not usable without a hardware modification(move R117 to R116)
--	 */
--	// act_led: led-act {
--	//	linux,default-trigger = "default-on";
--	// 	gpios = <&axp_gpio 0 1>; /* gpio0 on pmu, low active */
--	// 	// function = "activity";
--	// };
--
--	/* This is the orange charging LED under the power button.
--	 * Requires a patch to the pinctrl-axp209 driver, because
--	 * charge led is not a gpio thus not supported.
--	 */
--	// chg_led: led-chg {
--	// 	linux,default-trigger = "axp20x-battery-charging-blink-full-solid";
--	// 	gpios = <&axp_gpio 99 1>; /* CHGLED on pmu, low active */
--	// };
--};
--
--&dsi1 {
--	#address-cells = <1>;
--	#size-cells = <0>;
--	status = "okay";
--
--	port {
--		dsi_out_port: endpoint {
--			remote-endpoint = <&panel_dsi_port>;
--		};
--	};
--
--	panel_cwd686_cm3: panel@0 {
--		compatible = "cw,cwd686-cm3";
--		reg = <0>;
--		reset-gpio = <&gpio 8 1>; /* GPIO8 ACTIVE LOW */
--		backlight = <&ocp8178_backlight>;
--		rotation = <90>;
--		iovcc-supply = <&reg_dcdc3>;
--		vci-supply = <&reg_aldo2>;
--
--		port {
--			panel_dsi_port: endpoint {
--				remote-endpoint = <&dsi_out_port>;
--			};
--		};
--	};
--};
-\ No newline at end of file
-diff --git a/arch/arm64/configs/bcm2711_defconfig b/arch/arm64/configs/bcm2711_defconfig
-index d151c75c0c33f4..3e9adbfb0d15a7 100644
---- a/arch/arm64/configs/bcm2711_defconfig
-+++ b/arch/arm64/configs/bcm2711_defconfig
-@@ -1779,7 +1779,6 @@ CONFIG_MFD_AXP20X=y
- CONFIG_MFD_AXP20X_I2C=y
- CONFIG_REGULATOR_AXP20X=y
- CONFIG_DRM_PANEL_CWD686=m
--CONFIG_DRM_PANEL_CWD686_CM3=m
- CONFIG_DRM_PANEL_CWU50=m
- CONFIG_DRM_PANEL_CWU50_CM3=m
- CONFIG_BACKLIGHT_OCP8178=m
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index e4adfdec371a22..1a750ba2af1eac 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -107,17 +107,6 @@ config DRM_PANEL_CWD686
- 	  To compile this driver as a module, choose M here: the module
- 	  will be called panel-cwd686.
- 
--config DRM_PANEL_CWD686_CM3
--	tristate "CWD686_CM3 panel"
-- 	depends on OF
--	depends on DRM_MIPI_DSI
--	depends on BACKLIGHT_CLASS_DEVICE
--	help
--	  Say Y here if you want to enable support for CWD686_CM3 panel.
--	  The panel has a 480x1280 resolution and uses 24 bit RGB per pixel.
--	  To compile this driver as a module, choose M here: the module
--	  will be called panel-cwd686-cm3.
--
- config DRM_PANEL_CWU50
- 	tristate "CWU50 panel"
-  	depends on OF
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index f5ab2cab2d9c31..7b89f14c57850a 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -105,6 +105,5 @@ obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN_V2) += panel-waveshare-dsi-v2.o
- obj-$(CONFIG_DRM_PANEL_WIDECHIPS_WS2401) += panel-widechips-ws2401.o
- obj-$(CONFIG_DRM_PANEL_XINPENG_XPP055C272) += panel-xinpeng-xpp055c272.o
- obj-$(CONFIG_DRM_PANEL_CWD686) += panel-cwd686.o
--obj-$(CONFIG_DRM_PANEL_CWD686) += panel-cwd686-cm3.o
- obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50.o
- obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50-cm3.o
-diff --git a/drivers/gpu/drm/panel/panel-cwd686-cm3.c b/drivers/gpu/drm/panel/panel-cwd686-cm3.c
-deleted file mode 100644
-index fe83b34d0e3a6a..00000000000000
---- a/drivers/gpu/drm/panel/panel-cwd686-cm3.c
-+++ /dev/null
-@@ -1,287 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0
--
--#include <drm/drm_modes.h>
--#include <drm/drm_mipi_dsi.h>
--#include <drm/drm_panel.h>
--#include <linux/backlight.h>
--#include <linux/gpio/consumer.h>
--#include <linux/regulator/consumer.h>
--#include <linux/delay.h>
--#include <linux/of_device.h>
--#include <linux/module.h>
--#include <video/mipi_display.h>
--
--struct cwd686 {
--	struct device *dev;
--	struct drm_panel panel;
--	struct gpio_desc *reset_gpio;
--	struct regulator *supply;
--	struct backlight_device *backlight;
--	bool prepared;
--	bool enabled;
--};
--
--static const struct drm_display_mode default_mode = {
--	.clock = 54465,
--	.hdisplay = 480,
--	.hsync_start = 480 + 150,
--	.hsync_end = 480 + 150 + 24,
--	.htotal = 480 + 150 + 24 + 40,
--	.vdisplay = 1280,
--	.vsync_start = 1280 + 12,
--	.vsync_end = 1280 + 12+ 6,
--	.vtotal = 1280 + 12 + 6 + 10,
--	.flags = 0,
--};
--
--static inline struct cwd686 *panel_to_cwd686(struct drm_panel *panel)
--{
--	return container_of(panel, struct cwd686, panel);
--}
--
--#define dcs_write_seq(seq...)                              \
--({                                                              \
--	static const u8 d[] = { seq };                          \
--	mipi_dsi_dcs_write_buffer(dsi, d, ARRAY_SIZE(d));	 \
--})
--
--static void cwd686_init_sequence(struct cwd686 *ctx)
--{
--	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
--
--	dcs_write_seq(0xF0,0x5A,0x5A);
--	dcs_write_seq(0xF1,0xA5,0xA5);
--	dcs_write_seq(0xB6,0x0D,0x0D);
--	dcs_write_seq(0xB4,0x0A,0x08,0x12,0x10,0x0E,0x0C,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x04,0x06);
--	dcs_write_seq(0xB3,0x0B,0x09,0x13,0x11,0x0F,0x0D,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x05,0x07);
--	dcs_write_seq(0xB0,0x54,0x32,0x23,0x45,0x44,0x44,0x44,0x44,0x90,0x01,0x90,0x01);
--	dcs_write_seq(0xB1,0x32,0x84,0x02,0x83,0x30,0x01,0x6B,0x01);
--	dcs_write_seq(0xB2,0x73);
--	dcs_write_seq(0xBD,0x4E,0x0E,0x50,0x50,0x26,0x1D,0x00,0x14,0x42,0x03);
--	dcs_write_seq(0xB7,0x01,0x01,0x09,0x11,0x0D,0x55,0x19,0x19,0x21,0x1D,0x00,0x00,0x00,0x00,0x02,0xFF,0x3C);
--	dcs_write_seq(0xB8,0x23,0x01,0x30,0x34,0x63);
--	dcs_write_seq(0xB9,0xA0,0x22,0x00,0x44);
--	dcs_write_seq(0xBA,0x12,0x63);
--	dcs_write_seq(0xC1,0x0C,0x16,0x04,0x0C,0x10,0x04);
--	dcs_write_seq(0xC2,0x11,0x41);
--	dcs_write_seq(0xC3,0x22,0x31,0x04);
--	dcs_write_seq(0xC7,0x05,0x23,0x6B,0x49,0x00);
--	dcs_write_seq(0xC5,0x00);
--	dcs_write_seq(0xD0,0x37,0xFF,0xFF);
--	dcs_write_seq(0xD2,0x63,0x0B,0x08,0x88);
--	dcs_write_seq(0xD3,0x01,0x00,0x00,0x01,0x01,0x37,0x25,0x38,0x31,0x06,0x07);
--	dcs_write_seq(0xC8,0x7C,0x6A,0x5D,0x53,0x53,0x45,0x4B,0x35,0x4D,0x4A,0x49,0x66,0x53,0x57,0x4A,0x48,0x3B,0x2A,0x06,0x7C,0x6A,0x5D,0x53,0x53,0x45,0x4B,0x35,0x4D,0x4A,0x49,0x66,0x53,0x57,0x4A,0x48,0x3B,0x2A,0x06);//GAMMA2.2
--	dcs_write_seq(0xC6,0x00,0x00,0xFF,0x00,0x00,0xFF,0x00,0x00);
--	dcs_write_seq(0xF4,0x08,0x77);
--	dcs_write_seq(0x36,0x14);
--	dcs_write_seq(0x35,0x00);
--	dcs_write_seq(0xF1,0x5A,0x5A);
--	dcs_write_seq(0xF0,0xA5,0xA5);
--}
--
--static int cwd686_disable(struct drm_panel *panel)
--{
--	struct cwd686 *ctx = panel_to_cwd686(panel);
--
--	if (!ctx->enabled)
--		return 0;
--
--	backlight_disable(ctx->backlight);
--
--	ctx->enabled = false;
--
--	return 0;
--}
--
--static int cwd686_unprepare(struct drm_panel *panel)
--{
--	struct cwd686 *ctx = panel_to_cwd686(panel);
--	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
--	int ret;
--
--#if 0
--	if (!ctx->prepared)
--		return 0;
--
--	ret = mipi_dsi_dcs_set_display_off(dsi);
--	if (ret)
--		DRM_WARN("failed to set display off: %d\n", ret);
--
--	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
--	if (ret)
--		DRM_WARN("failed to enter sleep mode: %d\n", ret);
--
--	msleep(120);
--
--	if (ctx->reset_gpio) {
--		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
--		msleep(20);
--	}
--
--	regulator_disable(ctx->supply);
--
--	ctx->prepared = false;
--#endif
--
--	return 0;
--}
--
--static int cwd686_prepare(struct drm_panel *panel)
--{
--	struct cwd686 *ctx = panel_to_cwd686(panel);
--	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
--	int ret;
--
--	if (ctx->prepared)
--		return 0;
--
--	ret = regulator_enable(ctx->supply);
--	if (ret < 0) {
--		return ret;
--	}
--
--	if (ctx->reset_gpio) {
--		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
--		msleep(10);
--		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
--		msleep(100);
--	}
--
--	cwd686_init_sequence(ctx);
--
--	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
--	if (ret)
--		return ret;
--
--	msleep(120);
--
--	ret = mipi_dsi_dcs_set_display_on(dsi);
--	if (ret)
--		return ret;
--
--	msleep(20);
--
--	ctx->prepared = true;
--
--	return 0;
--}
--
--static int cwd686_enable(struct drm_panel *panel)
--{
--	struct cwd686 *ctx = panel_to_cwd686(panel);
--
--	if (ctx->enabled)
--		return 0;
--
--	backlight_enable(ctx->backlight);
--
--	ctx->enabled = true;
--
--	return 0;
--}
--
--static int cwd686_get_modes(struct drm_panel *panel, struct drm_connector *connector)
--{
--	struct drm_display_mode *mode;
--
--	mode = drm_mode_duplicate(connector->dev, &default_mode);
--	if (!mode) {
--		dev_err(panel->dev, "bad mode or failed to add mode\n");
--		return -EINVAL;
--	}
--
--	drm_mode_set_name(mode);
--	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
--
--	connector->display_info.width_mm = mode->width_mm;
--	connector->display_info.height_mm = mode->height_mm;
--
--	drm_mode_probed_add(connector, mode);
--
--	return 1; /* Number of modes */
--}
--
--static const struct drm_panel_funcs cwd686_drm_funcs = {
--	.disable = cwd686_disable,
--	.unprepare = cwd686_unprepare,
--	.prepare = cwd686_prepare,
--	.enable = cwd686_enable,
--	.get_modes = cwd686_get_modes,
--};
--
--static int cwd686_probe(struct mipi_dsi_device *dsi)
--{
--	struct device *dev = &dsi->dev;
--	struct cwd686 *ctx;
--	int ret;
--
--	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
--	if (!ctx)
--		return -ENOMEM;
--
--	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
--	if (IS_ERR(ctx->reset_gpio)) {
--		ret = PTR_ERR(ctx->reset_gpio);
--		dev_err(dev, "cannot get reset GPIO: %d\n", ret);
--		return ret;
--	}
--
--	ctx->supply = devm_regulator_get(dev, "display-vcc");
--	if (IS_ERR(ctx->supply)) {
--		ret = PTR_ERR(ctx->supply);
--		dev_err(dev, "cannot get regulator: %d\n", ret);
--		return ret;
--	}
--
--	ctx->backlight = devm_of_find_backlight(dev);
--	if (IS_ERR(ctx->backlight))
--		return PTR_ERR(ctx->backlight);
--
--	mipi_dsi_set_drvdata(dsi, ctx);
--
--	ctx->dev = dev;
--
--	dsi->lanes = 4;
--	dsi->format = MIPI_DSI_FMT_RGB888;
--	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE | MIPI_DSI_MODE_LPM;
--
--	drm_panel_init(&ctx->panel, dev, &cwd686_drm_funcs, DRM_MODE_CONNECTOR_DSI);
--
--	drm_panel_add(&ctx->panel);
--
--	ret = mipi_dsi_attach(dsi);
--	if (ret < 0) {
--		dev_err(dev, "mipi_dsi_attach() failed: %d\n", ret);
--		drm_panel_remove(&ctx->panel);
--		return ret;
--	}
--
--	return 0;
--}
--
--static void cwd686_remove(struct mipi_dsi_device *dsi)
--{
--	struct cwd686 *ctx = mipi_dsi_get_drvdata(dsi);
--
--	mipi_dsi_detach(dsi);
--	drm_panel_remove(&ctx->panel);
--}
--
--static const struct of_device_id cwd686_of_match[] = {
--	{ .compatible = "cw,cwd686-cm3" },
--	{ }
--};
--MODULE_DEVICE_TABLE(of, cwd686_of_match);
--
--static struct mipi_dsi_driver cwd686_driver = {
--	.probe = cwd686_probe,
--	.remove = cwd686_remove,
--	.driver = {
--		.name = "panel-cwd686-cm3",
--		.of_match_table = cwd686_of_match,
--	},
--};
--module_mipi_dsi_driver(cwd686_driver);
--
--MODULE_DESCRIPTION("DRM Driver for cwd686-cm3 MIPI DSI panel");
--MODULE_LICENSE("GPL v2");
