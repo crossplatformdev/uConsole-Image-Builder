@@ -75,6 +75,22 @@ apt install -y \
     g++-aarch64-linux-gnu \
     gcc-aarch64-linux-gnu
 
+apt install -y \
+    build-essential:arm64 \
+    bc:arm64 \
+    bison:arm64 \
+    flex:arm64 \
+    libssl-dev:arm64 \
+    libncurses-dev:arm64 \
+    libelf-dev:arm64 \
+    kmod:arm64 \
+    cpio:arm64 \
+    rsync:arm64 \
+    git:arm64 \
+    fakeroot:arm64 \
+    dpkg-dev:arm64 \
+    debhelper:arm64 \
+
 # Use the mounted linux source
 echo "Using mounted linux source..."
 if [ ! -d "linux-source" ]; then
