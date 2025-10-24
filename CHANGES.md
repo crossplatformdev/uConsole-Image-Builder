@@ -4,6 +4,24 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ## [Unreleased]
 
+### Fixed - Code Quality Improvements
+
+- **Fixed Syntax Errors**:
+  - Fixed function naming in `scripts/common_mounts.sh` (removed "sudo" prefix from function names)
+  - Fixed unclosed heredoc in `scripts/generate_rpi_image.sh` (EOF must start at column 1)
+  - All scripts now pass bash syntax validation
+
+- **Eliminated Duplicate Code**:
+  - Created `scripts/common_clockworkpi.sh` with reusable functions:
+    - `add_clockworkpi_repo()` - Configures ClockworkPi apt repository
+    - `install_clockworkpi_kernel_packages()` - Installs ClockworkPi kernel packages
+  - Refactored `scripts/install_clockworkpi_kernel.sh` to use common functions (reduced from 95 to 48 lines)
+  - Refactored `scripts/setup-suite.sh` to use common functions:
+    - Removed duplicate ClockworkPi repository setup code (30+ lines eliminated)
+    - Consolidated duplicate package lists (90+ lines reduced to 20 lines)
+    - Extracted common packages into variables for easier maintenance
+  - Overall: Reduced codebase by ~30 lines while improving maintainability
+
 ### Changed - Workflow Simplification
 
 - **Unified Build and Release Workflow**: Simplified from 5 separate workflows to 1 comprehensive workflow
