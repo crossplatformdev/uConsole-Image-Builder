@@ -75,9 +75,7 @@ sudo mount --bind /proc "$ROOTFS/proc"
 sudo mount --bind /sys "$ROOTFS/sys"
 
 # Backup and configure DNS resolution
-if [ -f "$ROOTFS/etc/resolv.conf" ]; then
-    mv "$ROOTFS/etc/resolv.conf" "$ROOTFS/etc/resolv.conf.bak"
-fi
+sudo mv "$ROOTFS/etc/resolv.conf" "$ROOTFS/etc/resolv.conf.bak" || true
 sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
 # Configure apt sources (skip for image-based distributions)
@@ -130,6 +128,9 @@ chroot "$ROOTFS" /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
 
 # Set hostname
 echo "uconsole" > "$ROOTFS/etc/hostname"
+
+# Configure resolv.conf
+sudo mv "$ROOTFS/etc/resolv.conf.bak" "$ROOTFS/etc/resolv.conf" || true
 
 # Configure basic network
 cat > "$ROOTFS/etc/hosts" << EOF
