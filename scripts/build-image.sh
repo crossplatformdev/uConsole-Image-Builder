@@ -94,7 +94,7 @@ echo "uconsole" | sudo tee "$ROOTFS/etc/hostname"
 sudo mv "$ROOTFS/etc/resolv.conf.bak" "$ROOTFS/etc/resolv.conf" || true
 
 # Configure basic network
-cat > "$ROOTFS/etc/hosts" << EOF
+sudo tee "$ROOTFS/etc/hosts" << EOF
 127.0.0.1       localhost
 127.0.1.1       uconsole
 
