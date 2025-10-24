@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 1440
     strategy:
       matrix:
-        suite: [trixie, jammy, popos]
+        suite: [trixie, bookworm, jammy, popos]
     
     steps:
       - name: Checkout repository
