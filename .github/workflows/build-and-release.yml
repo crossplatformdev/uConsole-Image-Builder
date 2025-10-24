@@ -81,15 +81,9 @@ jobs:
         id: kernel_info
         run: |
           cd /tmp/kernel-build || true
-          if [ -d ".git" ]; then
-            KERNEL_REPO=$(git remote get-url origin || echo "unknown")
-            KERNEL_COMMIT=$(git rev-parse HEAD || echo "unknown")
-            KERNEL_BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "unknown")
-          else
-            KERNEL_REPO="https://github.com/raspberrypi/linux.git"
-            KERNEL_COMMIT="unknown"
-            KERNEL_BRANCH="rpi-6.12.y"
-          fi
+          KERNEL_REPO="https://github.com/raspberrypi/linux.git"
+          KERNEL_COMMIT="391c2e3f0599e948194a8bdc89a8ea87cd8f7d6c"
+          KERNEL_BRANCH="rpi-6.12.y"
           echo "repo=${KERNEL_REPO}" >> $GITHUB_OUTPUT
           echo "commit=${KERNEL_COMMIT}" >> $GITHUB_OUTPUT
           echo "branch=${KERNEL_BRANCH}" >> $GITHUB_OUTPUT
