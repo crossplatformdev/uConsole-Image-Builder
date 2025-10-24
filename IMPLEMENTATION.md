@@ -164,8 +164,8 @@ SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 
 ## Notes
 
-- Kernel compilation adds 2-4 hours to build time
-- Prebuilt kernel mode is recommended for faster builds
+- Kernel compilation adds 2-4 hours to build time on GitHub Actions runners (standard 2-core setup)
+- Prebuilt kernel mode is recommended for faster builds (completes in ~30-45 minutes)
 - Builds are cross-architecture (amd64 host, arm64 target)
 - Images are compressed with xz for optimal size
 - All artifacts include SHA256 checksums for verification
