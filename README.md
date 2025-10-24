@@ -44,9 +44,8 @@ xz -dc output/images/uconsole-jammy-arm64.img.xz | sudo dd of=/dev/sdX bs=4M sta
 
 ### Option 2: Using the unified build scripts (rootfs only):
 
-The build process uses two environment variables:
+The build process uses the `SUITE` environment variable to select the distribution:
 - `SUITE`: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
-- `RECOMPILE_KERNEL`: Whether to build kernel from source (`true`/`false`, default: `false`)
 
 **Note:** When using `RECOMPILE_KERNEL=true`, the linux submodule must be initialized:
 ```bash
@@ -54,18 +53,19 @@ git submodule update --init linux
 ```
 
 Build a Debian trixie rootfs with prebuilt kernel:
+
 ```bash
-SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=trixie ./scripts/build-image.sh output
+SUITE=trixie ./scripts/setup-suite.sh output
 ```
 
-Build a Debian bookworm rootfs with prebuilt kernel:
+Build a Debian bookworm rootfs:
 ```bash
-SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=bookworm RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=bookworm ./scripts/build-image.sh output
+SUITE=bookworm ./scripts/setup-suite.sh output
 ```
 
-Build an Ubuntu jammy rootfs and compile kernel from source:
+Build an Ubuntu jammy rootfs:
 ```bash
 # Initialize linux submodule first
 git submodule update --init linux
@@ -75,22 +75,16 @@ SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
 SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
 ```
 
-Build Pop!_OS with prebuilt kernel:
+Build Pop!_OS:
 ```bash
-SUITE=popos RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
-```
-
-Build Pop!_OS with custom image:
-```bash
-SUITE=popos IMAGE_NAME=custom-popos.img.xz IMAGE_LINK=https://example.com/custom-popos.img.xz RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=popos RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=popos ./scripts/build-image.sh output
+SUITE=popos ./scripts/setup-suite.sh output
 ```
 
 Alternative invocation with positional arguments:
 ```bash
-# setup-suite.sh <output-dir> <suite> <recompile_kernel>
-./scripts/setup-suite.sh output trixie true
+# setup-suite.sh <output-dir> <suite>
+./scripts/setup-suite.sh output trixie
 ```
 
 See [scripts/README.md](scripts/README.md) for detailed documentation.
@@ -106,18 +100,13 @@ Build ClockworkPi kernel .deb packages from source:
 
 ```bash
 # Build kernel packages (outputs to artifacts/kernel-debs/)
-sudo ./scripts/build_clockworkpi_kernel.sh
+./scripts/build_clockworkpi_kernel.sh
 
 # Or specify custom output directory
-sudo ./scripts/build_clockworkpi_kernel.sh /path/to/output
-
-# Use Docker for reproducible builds (recommended)
-USE_DOCKER=true ./scripts/build_kernel_docker.sh
-
-# Or use Docker mode via the main script
-USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
+./scripts/build_clockworkpi_kernel.sh /path/to/output
 ```
 
+**All kernel builds now use Docker for reproducibility and consistency.**
 **See [docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md) for detailed Docker build documentation.**
 
 The kernel build process:
@@ -133,10 +122,9 @@ The kernel build process:
 - `KERNEL_LOCALVERSION`: Version suffix (default: `-raspi`)
 - `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
 - `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
-- `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)
 - `KDEB_CHANGELOG_DIST`: Debian changelog distribution (default: `stable`)
 
-**Docker Build Benefits:**
+**Docker Build Benefits (Now Default):**
 - **Reproducible**: Same build environment every time
 - **Isolated**: No need to install build dependencies on host
 - **Clean**: No leftover build artifacts on host system
@@ -323,9 +311,8 @@ The build system supports these key environment variables:
 
 **Rootfs Building (build-image.sh, setup-suite.sh):**
 - **SUITE**: Distribution to build (`jammy`, `trixie`, `bookworm`, or `popos`)
-- **RECOMPILE_KERNEL**: Kernel build mode
-  - `true`: Clone and build kernel from `crossplatformdev/linux@rpi-6.12.y`
-  - `false`: Use prebuilt kernel from ClockworkPi apt repository
+- Always uses prebuilt kernel from ClockworkPi apt repository
+- For custom kernels, build separately with `./scripts/build_clockworkpi_kernel.sh` and install manually
 
 **Image Generation (generate_rpi_image.sh):**
 - **IMAGE_NAME**: Custom image name (default: `uconsole-{suite}-{arch}`)
@@ -337,12 +324,13 @@ The build system supports these key environment variables:
 - **KERNEL_MODE**: Kernel mode (`prebuilt`|`build`|`none`)
 - **COMPRESS_FORMAT**: Compression (`xz`|`gzip`|`none`)
 
-**Kernel Building (build_clockworkpi_kernel.sh):**
+**Kernel Building (build_clockworkpi_kernel.sh - Docker-based):**
 - **KERNEL_REPO**: Repository URL (default: `https://github.com/raspberrypi/linux.git`)
 - **KERNEL_BRANCH**: Branch (default: `rpi-6.12.y`)
-- **KERNEL_LOCALVERSION**: Version suffix (default: `-uconsole`)
+- **KERNEL_LOCALVERSION**: Version suffix (default: `-raspi`)
 - **APPLY_PATCH**: Apply ak-rex patch (default: `true`)
 - **PATCH_FILE**: Patch file path (default: `patches/ak-rex.patch`)
+- **KDEB_CHANGELOG_DIST**: Debian changelog distribution (default: `stable`)
 
 ### Build Artifacts
 

@@ -272,7 +272,7 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
         echo "Applying suite-specific customizations..."
         # Note: setup-suite.sh expects a rootfs directory, so we pass our mount point
         # We need to make sure it doesn't try to mount again since we already mounted
-        SUITE="$SUITE" RECOMPILE_KERNEL="false" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR" || {
+        SUITE="$SUITE" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR" || {
             echo "WARNING: setup-suite.sh failed or not applicable"
         }
     fi

@@ -4,22 +4,35 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ## [Unreleased]
 
+### Changed - Docker-Only Kernel Builds
+
+- **Removed Old Kernel Build Methods**: Simplified kernel building to use only Docker
+  - Removed `scripts/build-kernel-jammy.sh` (old jammy-specific build)
+  - Removed `scripts/build-image-with-kernel.sh` (old orchestration script)
+  - Removed chroot-based kernel compilation from `scripts/setup-suite.sh`
+  - `scripts/build_clockworkpi_kernel.sh` now always uses Docker
+  - `scripts/setup-suite.sh` now always uses prebuilt kernels from ClockworkPi repository
+  
+- **Updated Documentation**: All documentation updated to reflect Docker-only approach
+  - README.md: Removed RECOMPILE_KERNEL references
+  - scripts/README.md: Simplified examples
+  - DOCKER_BUILD.md: Updated to reflect Docker as the only method
+  - IMPLEMENTATION.md: Updated build process documentation
+
+**Benefits:**
+- **Consistency**: All kernel builds produce identical results
+- **Reproducibility**: Docker eliminates environment-related build issues
+- **Simplicity**: One clear method for kernel compilation
+- **Maintenance**: Less code to maintain and test
+
 ### Added - Linux Kernel Submodule
 
 - **Linux Kernel Source Embedded**: Added the Linux kernel repository as a git submodule
   - Repository: https://github.com/raspberrypi/linux (branch: rpi-6.12.y)
   - Location: `/linux/` (submodule)
   - Configured as shallow submodule to minimize repository size
-  - Scripts automatically detect and use the embedded kernel source when available
-  - Falls back to git clone if submodule is not initialized
+  - Docker builds clone fresh kernel source for isolation
   
-- **Updated Build Scripts**: Modified kernel build scripts to use embedded linux submodule
-  - `scripts/build_clockworkpi_kernel.sh`: Now checks for and uses linux submodule
-  - `scripts/setup-suite.sh`: Copies kernel source from submodule for chroot builds
-  - `scripts/build-kernel-jammy.sh`: Uses embedded kernel source when available
-  - All scripts use rsync to copy kernel source, avoiding git submodule path issues
-  - Graceful fallback to git clone if submodule is not initialized
-
 **Benefits:**
 - Faster builds: No repeated kernel source cloning
 - Consistent source: All builds use the same kernel version
