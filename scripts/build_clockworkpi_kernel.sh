@@ -148,7 +148,8 @@ LOCALVERSION="$KERNEL_LOCALVERSION" \
     CROSS_COMPILE=aarch64-linux-gnu- \
     LOCALVERSION="-raspi" \               
     CONFIG_LOCALVERSION="-raspi" \
-    bindeb-pkg
+    deb-pkg
+
 
 # Move .deb files to output directory
 echo "Collecting kernel packages..."
