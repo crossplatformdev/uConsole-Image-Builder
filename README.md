@@ -97,12 +97,12 @@ See [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ### Option 3: Build Kernel Packages Only
 
-Build ClockworkPi kernel .deb packages from source:
-
 **Important:** Initialize the linux submodule first:
 ```bash
 git submodule update --init linux
 ```
+
+Build ClockworkPi kernel .deb packages from source:
 
 ```bash
 # Build kernel packages (outputs to artifacts/kernel-debs/)
@@ -121,16 +121,11 @@ USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
 **See [docs/DOCKER_BUILD.md](docs/DOCKER_BUILD.md) for detailed Docker build documentation.**
 
 The kernel build process:
-1. Uses the Raspberry Pi kernel from the linux submodule (`raspberrypi/linux@rpi-6.12.y`)
-2. Applies the ak-rex patch if available (`patches/ak-rex.patch`)
-3. Configures for Raspberry Pi CM4 (`bcm2711_defconfig`)
+1. Uses the Raspberry Pi kernel from the linux submodule (raspberrypi/linux@rpi-6.12.y)
+2. Applies the ak-rex patch if available (patches/ak-rex.patch)
+3. Configures for Raspberry Pi CM4 (bcm2711_defconfig)
 4. Builds Debian .deb packages (kernel image, headers, libc-dev)
-5. Outputs packages to `artifacts/kernel-debs/`
-
-**Important:** The linux submodule must be initialized before building:
-```bash
-git submodule update --init linux
-```
+5. Outputs packages to artifacts/kernel-debs/
 
 **Environment Variables for Kernel Build:**
 - `KERNEL_REPO`: Kernel repository URL (default: `https://github.com/raspberrypi/linux.git`)
