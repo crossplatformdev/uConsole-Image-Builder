@@ -57,7 +57,7 @@ jobs:
       
       - name: Build ClockworkPi kernel using Docker
         run: |
-          sudo ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
+          sudo ./scripts/build_kernel_docker.sh artifacts/kernel-debs
       
       - name: Get kernel source info
         id: kernel_info
