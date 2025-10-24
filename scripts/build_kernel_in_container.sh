@@ -115,8 +115,6 @@ apt-get install -y \
     kernel-wedge \
     crossbuild-essential-arm64 
 
-dpkg-builddeps -i -r -y
-
 # Configure kernel
 echo "Configuring kernel..."
 make ARCH=arm64 bcm2711_defconfig
