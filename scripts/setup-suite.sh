@@ -84,103 +84,37 @@ sudo chroot "$ROOTFS" /bin/bash -c "chmod 0440 /etc/sudoers.d/uconsole"
 # Install runtime packages based on suite
 echo "Installing runtime packages for $SUITE..."
 
+# Common packages for all suites
+COMMON_PACKAGES="network-manager wpasupplicant wireless-tools bluez bluez-tools \
+                 python3 python3-pip build-essential git vim nano htop curl \
+                 net-tools alsa-utils pulseaudio"
+
 if [[ "$SUITE" == "trixie" ]] || [[ "$SUITE" == "bookworm" ]]; then
-    # Debian trixie/bookworm packages
+    # Debian trixie/bookworm packages (Debian-specific firmware)
     chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
+        $COMMON_PACKAGES \
         firmware-linux \
         firmware-linux-nonfree \
         firmware-misc-nonfree \
         firmware-realtek \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
         ssh \
-        curl \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
         linux-image-arm64"
-elif [[ "$SUITE" == "popos" ]]; then
-    # Pop!_OS specific packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        python3-lgpio \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
-        gnome-terminal \
-        dbus"
-elif [[ "$SUITE" == "jammy" ]]; then
-    # Jammy specific packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        python3-lgpio \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
-        gnome-terminal \
-        dbus"        
 else
-    # Ubuntu jammy packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio"
+    # Ubuntu/Pop!_OS packages (Ubuntu-specific packages)
+    UBUNTU_PACKAGES="$COMMON_PACKAGES linux-firmware openssh-server wget"
+    
+    if [[ "$SUITE" == "popos" ]] || [[ "$SUITE" == "jammy" ]]; then
+        # Pop!_OS and Jammy specific packages
+        chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            $UBUNTU_PACKAGES \
+            python3-lgpio \
+            gnome-terminal \
+            dbus"
+    else
+        # Other Ubuntu variants (fallback)
+        chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            $UBUNTU_PACKAGES"
+    fi
 fi
 
 # Install additional utilities common to all
