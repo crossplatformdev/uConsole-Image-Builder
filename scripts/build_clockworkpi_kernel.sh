@@ -110,14 +110,12 @@ if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     
     # Initialize as a git repository (required for make deb-pkg)
     # The kernel build system requires a git repository to create source packages
-    if [ ! -d .git ]; then
-        echo "Initializing git repository for kernel build..."
-        git init
-        git config user.email "build@uconsole-image-builder"
-        git config user.name "uConsole Image Builder"
-        git add .
-        git commit -m "Initial commit from linux submodule" --quiet
-    fi
+    echo "Initializing git repository for kernel build..."
+    git init
+    git config user.email "build@uconsole-image-builder"
+    git config user.name "uConsole Image Builder"
+    git add .
+    git commit -m "Initial commit from linux submodule" --quiet
     
     echo "Kernel source ready from submodule"
 else

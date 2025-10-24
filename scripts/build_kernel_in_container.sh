@@ -48,16 +48,18 @@ fi
 cp -r linux-source linux
 cd linux
 
+# Remove any .git file/directory from the submodule copy
+# (submodules have a .git file pointing to parent's .git/modules/linux)
+rm -rf .git
+
 # Initialize as a git repository (required for make deb-pkg)
 # The kernel build system requires a git repository to create source packages
-if [ ! -d .git ]; then
-    echo "Initializing git repository for kernel build..."
-    git init
-    git config user.email "build@uconsole-image-builder"
-    git config user.name "uConsole Image Builder"
-    git add .
-    git commit -m "Initial commit from linux submodule" --quiet
-fi
+echo "Initializing git repository for kernel build..."
+git init
+git config user.email "build@uconsole-image-builder"
+git config user.name "uConsole Image Builder"
+git add .
+git commit -m "Initial commit from linux submodule" --quiet
 
 echo "Kernel source ready ($(git describe --always 2>/dev/null || echo 'no git info'))"
 
