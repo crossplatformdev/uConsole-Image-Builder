@@ -35,8 +35,10 @@ echo "$APT_SOURCES_CONTENT"
 
 # Append arm64 architecture to sources if not already present
 tee /etc/apt/sources.list << EOF
-deb [arch=amd64] https://archive.ubuntu.com/ubuntu $(lsb_release -cs) main universe 
-deb [arch=arm64] https://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs) main universe
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main universe
+deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main universe
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe
+deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe
 EOF
 
 echo "Updated APT sources:"
@@ -45,13 +47,13 @@ cat /etc/apt/sources.list
 # Add arm64 architecture for cross-compilation
 dpkg --add-architecture arm64
 
-# Ensure the Docker image has necessary packages installed
-apt-get update
+#Ensure the Docker image has necessary packages installed
+apt update
 
 # Install kernel build dependencies on docker container for architecture arm64
-apt-get install -y \
-    software-properties-common
-    
+apt build-dep -y linux linux-image-unsigned-6.8.0-63-generic linux-image-unsigned-6.8.0-63-lowlatency
+
+# Install kernel build dependencies on docker container for architecture arm64   
 apt install -y \
     build-essential \
     bc \
@@ -69,6 +71,7 @@ apt install -y \
     debhelper \
     kernel-wedge \
     crossbuild-essential-arm64 \
+    crossbuild-essential-amd64 \
     g++-aarch64-linux-gnu \
     gcc-aarch64-linux-gnu
 
@@ -130,29 +133,6 @@ if [ "${APPLY_PATCH}" = "true" ]; then
         echo "Continuing without patch."
     fi
 fi
-
-# Ensure kernel build dependencies are installed
-echo "Verifying kernel build dependencies..."
-apt-get update 
-apt-get install -y \
-    build-essential \
-    bc \
-    bison \
-    flex \
-    libssl-dev \
-    libncurses-dev \
-    libelf-dev \
-    kmod \
-    cpio \
-    rsync \
-    git \
-    fakeroot \
-    dpkg-dev \
-    debhelper \
-    kernel-wedge \
-    crossbuild-essential-arm64 \
-    g++-aarch64-linux-gnu \
-    gcc-aarch64-linux-gnu
 
 # Configure kernel
 echo "Configuring kernel..."
