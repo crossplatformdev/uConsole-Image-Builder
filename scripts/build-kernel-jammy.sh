@@ -7,12 +7,21 @@ OUTDIR="${1:-kernel-build-output}"
 BRANCH="rpi-6.12.y"
 RPI_REMOTE="https://github.com/raspberrypi/linux.git"
 AKREX_REMOTE="https://github.com/ak-rex/ClockworkPi-linux.git"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
-# Clone upstream raspberrypi tree (if not already)
+# This script requires git operations for ak-rex cherry-picking,
+# so we always clone. However, we check if submodule exists to inform the user.
 if [ ! -d linux ]; then
+  if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
+    echo "Note: Linux submodule detected in repository"
+    echo "This script requires git operations, so cloning fresh copy..."
+  fi
+  
+  echo "Cloning kernel source from $RPI_REMOTE..."
   git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
 fi
 cd linux

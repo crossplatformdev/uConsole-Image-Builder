@@ -1,3 +1,8 @@
 [submodule "rpi-image-gen"]
 	path = rpi-image-gen
 	url = https://github.com/raspberrypi/rpi-image-gen.git
+[submodule "linux"]
+	path = linux
+	url = https://github.com/raspberrypi/linux.git
+	branch = rpi-6.12.y
+	shallow = true

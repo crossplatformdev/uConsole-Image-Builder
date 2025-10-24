@@ -25,6 +25,20 @@ Uses rpi-image-gen (Raspberry Pi's official image generator) to create bootable 
 - Supports multiple Debian/Ubuntu distributions
 - Creates compressed images with SHA256 checksums
 
+### Linux Kernel Source
+
+The Linux kernel source is embedded as a git submodule for faster, more consistent builds:
+- **Repository**: [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
+- **Location**: `/linux/` (submodule)
+- **Type**: Shallow submodule (minimal history)
+- **Benefits**: 
+  - No repeated cloning during builds
+  - Consistent kernel version across all builds
+  - Offline builds once initialized
+  - Reduced bandwidth usage
+
+Build scripts automatically detect and use the embedded kernel source when available, with graceful fallback to git clone if the submodule is not initialized.
+
 ### Kernel Options
 
 **Option 1: Prebuilt Kernel** (Recommended - Fast)
@@ -33,7 +47,7 @@ Uses rpi-image-gen (Raspberry Pi's official image generator) to create bootable 
 - Script: `scripts/install_clockworkpi_kernel.sh`
 
 **Option 2: Build from Source** (Customizable - Slow)
-- Builds kernel from [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
+- Uses embedded linux submodule or clones from [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
 - Optionally applies ak-rex patch from `patches/ak-rex.patch`
 - Creates .deb packages for distribution
 - Script: `scripts/build_clockworkpi_kernel.sh`
