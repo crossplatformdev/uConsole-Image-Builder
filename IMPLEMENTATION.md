@@ -47,10 +47,11 @@ Build scripts automatically detect and use the embedded kernel source when avail
 - Script: `scripts/install_clockworkpi_kernel.sh`
 
 **Option 2: Build from Source** (Customizable - Slow)
-- Uses embedded linux submodule or clones from [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
+- Uses Docker for reproducible builds
+- Clones from [raspberrypi/linux](https://github.com/raspberrypi/linux) @ rpi-6.12.y
 - Optionally applies ak-rex patch from `patches/ak-rex.patch`
 - Creates .deb packages for distribution
-- Script: `scripts/build_clockworkpi_kernel.sh`
+- Script: `scripts/build_clockworkpi_kernel.sh` (Docker-based)
 - Build time: 2-4 hours on standard hardware
 
 ## Files Overview
@@ -65,8 +66,8 @@ Build scripts automatically detect and use the embedded kernel source when avail
    - Generates compressed .img.xz files
 
 2. **scripts/build_clockworkpi_kernel.sh**
-   - Builds ClockworkPi kernel from source
-   - Clones Raspberry Pi kernel repository
+   - Builds ClockworkPi kernel using Docker (reproducible builds)
+   - Delegates to build_kernel_docker.sh
    - Applies patches (ak-rex.patch)
    - Creates Debian .deb packages
    - Outputs to `artifacts/kernel-debs/`
@@ -125,16 +126,21 @@ sudo SUITE=all KERNEL_MODE=prebuilt ./scripts/generate_rpi_image.sh
 
 ### Legacy: Using build-image.sh and setup-suite.sh
 
-For rootfs-only builds (legacy method):
+For rootfs-only builds (always uses prebuilt kernel):
 
 ```bash
 # Debian trixie with prebuilt kernel
-SUITE=trixie RECOMPILE_KERNEL=false ./scripts/build-image.sh output
-SUITE=trixie RECOMPILE_KERNEL=false ./scripts/setup-suite.sh output
+SUITE=trixie ./scripts/build-image.sh output
+SUITE=trixie ./scripts/setup-suite.sh output
 
-# Ubuntu jammy with kernel recompilation
-SUITE=jammy RECOMPILE_KERNEL=true ./scripts/build-image.sh output
-SUITE=jammy RECOMPILE_KERNEL=true ./scripts/setup-suite.sh output
+# Ubuntu jammy with prebuilt kernel
+SUITE=jammy ./scripts/build-image.sh output
+SUITE=jammy ./scripts/setup-suite.sh output
+```
+
+For custom kernel builds, use Docker-based build script separately:
+```bash
+./scripts/build_clockworkpi_kernel.sh
 ```
 
 ## CI/CD Workflow
