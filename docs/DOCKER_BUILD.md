@@ -10,11 +10,13 @@ The uConsole Image Builder now supports building the kernel using Docker contain
 - **Cross-platform**: Works on any system with Docker
 - **CI/CD friendly**: Easy integration with GitHub Actions and other CI systems
 
-## Docker vs. Native Build Comparison
+## Docker Build (Now Default)
+
+**Note:** As of this version, Docker builds are the only supported method for kernel compilation. Native/chroot builds have been removed to ensure consistency and reproducibility.
 
 ### Output Files
 
-Both Docker and native builds produce **identical output files**:
+Docker builds produce the following output files:
 
 1. **Kernel .deb packages**:
    - `linux-image-*.deb` - Kernel image package
@@ -28,66 +30,56 @@ Both Docker and native builds produce **identical output files**:
    - Default output: `artifacts/kernel-debs/`
    - Custom output: Specified as first argument to build script
 
-### Build Process Comparison
+### Build Process Features
 
-| Aspect | Native Build | Docker Build |
-|--------|--------------|--------------|
-| **Dependencies** | Must install on host | Contained in image |
-| **Build time** | 1-2 hours | 1-2 hours (same) |
-| **Disk space** | Build artifacts on host | Only .deb in output |
-| **Cleanup** | Manual cleanup needed | Automatic in container |
-| **Reproducibility** | Host-dependent | Consistent |
-| **Privileges** | Requires sudo | Docker access only |
+| Aspect | Docker Build |
+|--------|--------------|
+| **Dependencies** | All contained in Docker image |
+| **Build time** | 1-2 hours |
+| **Disk space** | Only .deb files in output directory |
+| **Cleanup** | Automatic in container |
+| **Reproducibility** | Fully consistent across systems |
+| **Privileges** | Docker access only (no sudo needed) |
 
 ## Usage
 
 ### Basic Usage
 
 ```bash
-# Using Docker (recommended)
-USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
+# Build kernel using Docker (now the only method)
+./scripts/build_clockworkpi_kernel.sh
 
-# Using the dedicated Docker script
+# Alternative: use the Docker script directly
 ./scripts/build_kernel_docker.sh
-
-# Native build (traditional method)
-sudo ./scripts/build_clockworkpi_kernel.sh
 ```
 
 ### Custom Output Directory
 
 ```bash
 # Docker build with custom output
-USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh /path/to/output
-
-# Native build with custom output
-sudo ./scripts/build_clockworkpi_kernel.sh /path/to/output
+./scripts/build_clockworkpi_kernel.sh /path/to/output
 ```
 
 ### Environment Variables
 
-All environment variables work the same way for both build methods:
+Customize the kernel build with environment variables:
 
 ```bash
 # Custom kernel source
 KERNEL_REPO=https://github.com/custom/linux.git \
 KERNEL_BRANCH=custom-branch \
-USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
 
 # Disable patch application
 APPLY_PATCH=false \
-USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
 
 # Custom version suffix
 KERNEL_LOCALVERSION=-custom \
-USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
 
 # Set Debian changelog distribution
 KDEB_CHANGELOG_DIST=bookworm \
-USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
 ```
 
@@ -97,7 +89,6 @@ USE_DOCKER=true \
 - `KERNEL_LOCALVERSION`: Version suffix (default: `-raspi`)
 - `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
 - `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
-- `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)
 - `KDEB_CHANGELOG_DIST`: Debian changelog distribution (default: `stable`)
 - `DOCKER_IMAGE`: Docker image name (default: `uconsole-kernel-builder`)
 - `NO_CACHE`: Build Docker image without cache (`true`/`false`, default: `false`)
@@ -127,10 +118,9 @@ The Dockerfile creates a build environment based on Ubuntu 22.04 with:
    - Creates .deb packages
    - Copies output to mounted volume
 
-3. **`build_clockworkpi_kernel.sh`**: Unified entry point
-   - Checks `USE_DOCKER` environment variable
-   - Delegates to Docker script if enabled
-   - Otherwise runs native build
+3. **`build_clockworkpi_kernel.sh`**: Main entry point
+   - Always uses Docker for builds
+   - Delegates to Docker script for all builds
 
 ### Volume Mounts
 
@@ -165,17 +155,13 @@ To verify that Docker builds produce working kernel packages:
 
 ```bash
 # Build kernel using Docker
-USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh /tmp/test-kernel-docker
+./scripts/build_clockworkpi_kernel.sh /tmp/test-kernel
 
-# Build kernel natively (for comparison)
-sudo ./scripts/build_clockworkpi_kernel.sh /tmp/test-kernel-native
-
-# Compare package names and sizes
-ls -lh /tmp/test-kernel-docker/*.deb
-ls -lh /tmp/test-kernel-native/*.deb
+# Verify packages were created
+ls -lh /tmp/test-kernel/*.deb
 ```
 
-**Note**: This will take 2-4 hours total (1-2 hours per build).
+**Note**: This will take 1-2 hours.
 
 ## GitHub Actions Integration
 
@@ -198,7 +184,7 @@ jobs:
       
       - name: Build ClockworkPi kernel using Docker
         run: |
-          USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
+          ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
 ```
 
 Benefits for CI:
@@ -287,9 +273,7 @@ Build and use the custom image:
 docker build -t uconsole-kernel-builder-custom -f Dockerfile.custom .
 
 # Use custom image for kernel build
-DOCKER_IMAGE=uconsole-kernel-builder-custom \
-USE_DOCKER=true \
-./scripts/build_clockworkpi_kernel.sh
+DOCKER_IMAGE=uconsole-kernel-builder-custom ./scripts/build_clockworkpi_kernel.sh
 ```
 
 ### Rebuild Docker Image
@@ -297,9 +281,7 @@ USE_DOCKER=true \
 Force rebuild of Docker image without cache:
 
 ```bash
-NO_CACHE=true \
-USE_DOCKER=true \
-./scripts/build_clockworkpi_kernel.sh
+NO_CACHE=true ./scripts/build_clockworkpi_kernel.sh
 ```
 
 ### Debug Container
@@ -310,43 +292,38 @@ Run interactive shell in build container:
 docker run --rm -it uconsole-kernel-builder bash
 ```
 
-## Output File Compatibility
+## Output Files
 
-The output files from Docker builds are **100% compatible** with native builds:
+Docker builds produce standard Debian kernel packages:
 
-1. **Binary Compatibility**: Same cross-compiler toolchain (aarch64-linux-gnu-gcc)
+1. **Binary Compatibility**: Uses standard cross-compiler toolchain (aarch64-linux-gnu-gcc)
 2. **Package Format**: Standard Debian .deb packages
-3. **Installation**: Use same `dpkg -i` command
-4. **Functionality**: Identical kernel configuration and features
+3. **Installation**: Use standard `dpkg -i` command
+4. **Functionality**: Full kernel configuration and features for Raspberry Pi CM4
 
 ### Verification
 
-To verify output compatibility:
+To verify output packages:
 
 ```bash
 # Extract package metadata
 dpkg-deb --info artifacts/kernel-debs/linux-image-*.deb
 
-# Compare checksums (if building same source)
+# Verify checksums
 sha256sum artifacts/kernel-debs/*.deb
 ```
 
-The only differences in metadata will be:
+Build metadata includes:
 - Build timestamp
-- Build hostname (container ID vs. host)
-- Build path (`/build/linux` vs. `/tmp/kernel-build-*/linux`)
-
-These differences do **not** affect the kernel binary or functionality.
+- Build hostname (Docker container ID)
+- Build path (`/build/linux`)
+- Kernel version and configuration
 
 ## FAQ
 
-**Q: Do Docker builds take longer than native builds?**
+**Q: How long does a Docker build take?**
 
-A: No, build time is the same (1-2 hours). The first run may be slightly slower due to Docker image building (~3-5 minutes), but subsequent builds reuse the cached image.
-
-**Q: Can I use the same output directory for both Docker and native builds?**
-
-A: Yes, but not simultaneously. The output files are compatible, so you can switch between methods.
+A: Build time is 1-2 hours. The first run may be slightly slower due to Docker image building (~3-5 minutes), but subsequent builds reuse the cached image.
 
 **Q: Do I need sudo for Docker builds?**
 
@@ -360,13 +337,17 @@ A: Yes, Docker builds work on ARM64 systems. The cross-compilation tools are sti
 
 A: Yes! Docker builds work on any platform that supports Docker Desktop, including Windows and macOS.
 
+**Q: Why are native builds no longer supported?**
+
+A: Docker builds provide consistent, reproducible results across all platforms. This eliminates environment-related build issues and ensures that all builds produce identical kernel packages.
+
 ## Conclusion
 
-Docker-based kernel building provides a modern, reproducible approach to building the uConsole kernel. The output files are identical to native builds, ensuring full compatibility while providing better isolation and consistency.
+Docker-based kernel building is now the only supported method for building the uConsole kernel. This ensures consistent, reproducible builds across all platforms.
 
-For most users, we recommend using Docker builds:
+To build a kernel:
 ```bash
-USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
+./scripts/build_clockworkpi_kernel.sh
 ```
 
 This provides the best balance of convenience, reproducibility, and reliability.
