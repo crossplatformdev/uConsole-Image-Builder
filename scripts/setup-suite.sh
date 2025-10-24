@@ -3,7 +3,7 @@ set -e
 
 ############################################################################################################
 # Unified setup script for uConsole - supports jammy, trixie, bookworm, and popos                        #
-# Supports RECOMPILE_KERNEL toggle to either build kernel from source or use prebuilt                    #
+# Always uses prebuilt kernel. For custom kernel builds, use ./scripts/build_clockworkpi_kernel.sh       #
 ############################################################################################################
 
 # Get script directory and source common functions
@@ -17,22 +17,11 @@ if [ $# -ge 1 ]; then
     if [ $# -ge 2 ]; then
         SUITE="$2"
     fi
-    if [ $# -ge 3 ]; then
-        RECOMPILE_KERNEL="$3"
-    fi
 else
     OUTDIR="${OUTDIR:-output}"
 fi
 
 SUITE="${SUITE:-jammy}"
-RECOMPILE_KERNEL="${RECOMPILE_KERNEL:-false}"
-
-# Normalize RECOMPILE_KERNEL to true/false
-if [[ "$RECOMPILE_KERNEL" =~ ^(1|yes|YES|Yes|true|TRUE|True)$ ]]; then
-    RECOMPILE_KERNEL="true"
-else
-    RECOMPILE_KERNEL="false"
-fi
 
 # Determine debootstrap suite (popos uses jammy)
 if [[ "$SUITE" == "popos" ]]; then
@@ -48,7 +37,6 @@ echo "================================================"
 echo "Setting up $SUITE for uConsole"
 echo "================================================"
 echo "Rootfs: $ROOTFS"
-echo "Recompile Kernel: $RECOMPILE_KERNEL"
 echo "================================================"
 
 # Verify rootfs exists
@@ -154,83 +142,19 @@ DISTRIB_DESCRIPTION="Pop!_OS 22.04 LTS"
 EOF
 fi
 
-# Kernel handling
-if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
-    echo "================================================"
-    echo "Building kernel from source (crossplatformdev/linux@rpi-6.12.y)"
-    echo "================================================"
-    
-    # Install kernel build dependencies in chroot
-    echo "Installing kernel build dependencies..."
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        build-essential \
-        bc \
-        kmod \
-        cpio \
-        flex \
-        libncurses5-dev \
-        libelf-dev \
-        libssl-dev \
-        bison \
-        fakeroot \
-        rsync \
-        git"
-    
-    # Prepare kernel source for chroot build
-    echo "Preparing kernel source..."
-    
-    # Check if we have the linux submodule in the repository
-    if [ -d "$SCRIPT_DIR/../linux" ] && [ -e "$SCRIPT_DIR/../linux/.git" ]; then
-        echo "Using kernel source from repository submodule..."
-        
-        # Use rsync to copy the linux submodule into the chroot, excluding .git
-        # to avoid submodule path issues
-        rsync -a --exclude='.git' "$SCRIPT_DIR/../linux/" "$ROOTFS/tmp/kernel-source/"
-        
-        echo "Kernel source copied from submodule"
-    else
-        echo "WARNING: Linux submodule not found, falling back to git clone"
-        echo "To use the embedded linux folder, run: git submodule update --init linux"
-        
-        # Clone kernel source in chroot (fallback)
-        chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-            git clone --depth=1 --branch rpi-6.12.y https://github.com/raspberrypi/linux.git kernel-source"
-    fi
-    
-    # Build kernel debs
-    echo "Building kernel (this may take a while)..."
-    chroot "$ROOTFS" /bin/bash -c "cd /tmp/kernel-source && \
-        make ARCH=arm64 bcm2711_defconfig && \
-        LOCALVERSION=-raspi fakeroot make -j\$(nproc) ARCH=arm64 CROSS_COMPILE= deb-pkg"
-    
-    # Install kernel debs
-    echo "Installing kernel packages..."
-    chroot "$ROOTFS" /bin/bash -c "apt-get update"
-    chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
-    chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-        sudo dpkg -i linux-*.deb || true && \
-        sudo apt-get install -f -y"
-    
-    # Clean up kernel source
-    echo "Cleaning up kernel build artifacts..."
-    chroot "$ROOTFS" /bin/bash -c "rm -rf /tmp/kernel-source /tmp/linux-*.deb"
-    
-    echo "Kernel compilation and installation complete"
-else
-    echo "================================================"
-    echo "Using prebuilt kernel from clockworkpi/apt"
-    echo "================================================"
+# Kernel handling - always use prebuilt kernel from clockworkpi/apt
+# For custom kernel builds, use Docker: ./scripts/build_clockworkpi_kernel.sh
+echo "================================================"
+echo "Using prebuilt kernel from clockworkpi/apt"
+echo "================================================"
 
-    # Setup ClockworkPi repository using common function
-    setup_clockworkpi_repository "$ROOTFS" "bookworm"
-    chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
-    chroot "$ROOTFS" /bin/bash -c "apt-get install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
-    
-    # Note: The actual package installation would depend on what packages are available in the repo
-    # For now, we document this in the README
-    echo "Prebuilt kernel repository configured"
-    echo "Note: Install uconsole-specific packages as needed from the repository"
-fi
+# Setup ClockworkPi repository using common function
+setup_clockworkpi_repository "$ROOTFS" "bookworm"
+chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
+chroot "$ROOTFS" /bin/bash -c "apt-get install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
+
+echo "Prebuilt kernel repository configured"
+echo "Note: To build custom kernel, use: ./scripts/build_clockworkpi_kernel.sh"
 
 # Per-suite wait timing differences (as mentioned in original scripts)
 # These wait times may be needed for certain operations to complete
@@ -251,23 +175,21 @@ sudo chroot "$ROOTFS" /bin/bash -c "apt-get clean"
 sudo chroot "$ROOTFS" /bin/bash -c "rm -rf /var/lib/apt/lists/*"
 
 # Create README for kernel installation
-KERNEL_STATUS="prebuilt repository"
-if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
-    KERNEL_STATUS="compiled from source (rpi-6.12.y)"
-fi
-
 cat > "$ROOTFS/root/KERNEL_README.txt" << EOF
 ========================================
 uConsole $SUITE - Kernel Setup
 ========================================
 
-This image was built with kernel mode: $KERNEL_STATUS
+This image was built with prebuilt kernel from ClockworkPi repository.
 
-The kernel should include:
+The kernel includes:
 - Raspberry Pi 6.12.y base with uConsole patches
 - Device tree overlays for clockworkpi-uconsole
 - Audio remapping (pins_12_13)
 - Display drivers
+
+To build a custom kernel, use Docker:
+  ./scripts/build_clockworkpi_kernel.sh
 
 For more information about kernel configuration and installation,
 refer to the uConsole documentation.
@@ -288,5 +210,5 @@ sudo umount "$ROOTFS/sys" || true
 echo "================================================"
 echo "$SUITE setup complete!"
 echo "Rootfs location: $ROOTFS"
-echo "Kernel mode: $KERNEL_STATUS"
+echo "Kernel: Prebuilt from ClockworkPi repository"
 echo "================================================"
