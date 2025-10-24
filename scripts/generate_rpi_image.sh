@@ -204,54 +204,7 @@ else
     # Run rpi-image-gen in rootless mode
     # rpi-image-gen handles podman unshare internally when needed
     echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
-    ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" || {
-        echo "WARNING: rpi-image-gen build failed"
-        echo "NOTE: For manual rootfs creation and kernel installation, you'll need root privileges"
-        echo "Falling back to manual rootfs creation (requires sudo)..."
-        
-        # Check if we have root for fallback
-        if [ "$EUID" -ne 0 ]; then
-            echo "ERROR: Fallback requires root privileges. Please run with sudo or fix rpi-image-gen errors." >&2
-            exit 1
-        fi
-        
-        # Fallback: Create rootfs manually using debootstrap
-        echo "Creating base rootfs with debootstrap..."
-        ROOTFS_DIR="$OUTPUT_DIR/rootfs-${SUITE}-${ARCH}"
-        
-        # Use existing build-image.sh if available
-        if [ -x "$SCRIPT_DIR/build-image.sh" ]; then
-            SUITE="$SUITE" ARCH="$ARCH" "$SCRIPT_DIR/build-image.sh" "$OUTPUT_DIR"
-        else
-            # Manual debootstrap
-            mkdir -p "$ROOTFS_DIR"
-            if [[ "$SUITE" == "jammy" ]] || [[ "$SUITE" == "focal" ]]; then
-                REPO_URL="http://ports.ubuntu.com/ubuntu-ports"
-            else
-                REPO_URL="http://deb.debian.org/debian"
-            fi
-            
-            debootstrap --arch="$ARCH" "$SUITE" "$ROOTFS_DIR" "$REPO_URL"
-        fi
-        
-        # We'll create the image manually below
-        IMAGE_FILE="$OUTPUT_DIR/${IMAGE_NAME}.img"
-        MANUAL_IMAGE=true
-    }
-    
-    # Find the generated image
-    if [ -z "${MANUAL_IMAGE:-}" ]; then
-        IMAGE_FILE=$(find "$BUILD_DIR" -name "*.img" -type f | head -1)
-        
-        if [ -z "$IMAGE_FILE" ]; then
-            echo "ERROR: rpi-image-gen did not produce an image file" >&2
-            exit 1
-        fi
-        
-        echo "Base image created: $IMAGE_FILE"
-    fi
-    
-    cd "$REPO_ROOT"
+    ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" 
 fi
 
 # Check if we need to customize the image (only if using manual fallback or custom kernel)
