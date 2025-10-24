@@ -40,6 +40,7 @@ else
 fi
 
 # Ensure we have the branch
+git remote set-url origin "$RPI_REMOTE"
 git fetch origin "$BRANCH" --depth=1
 git checkout -f "$BRANCH"
 
