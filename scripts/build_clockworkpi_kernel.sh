@@ -75,6 +75,7 @@ if command -v apt-get &> /dev/null; then
         debhelper \
         kernel-wedge \
         wget \
+        crossbuild-essential-arm64 \
         ca-certificates
 else
     echo "WARNING: apt-get not found. Please ensure build dependencies are installed." >&2
@@ -144,7 +145,9 @@ echo "Using $(nproc) parallel jobs"
 LOCALVERSION="$KERNEL_LOCALVERSION" \
     fakeroot make -j$(nproc) \
     ARCH=arm64 \
-    CROSS_COMPILE= \
+    CROSS_COMPILE=aarch64-linux-gnu- \
+    LOCALVERSION="-raspi" \               
+    CONFIG_LOCALVERSION="-raspi" \
     bindeb-pkg
 
 # Move .deb files to output directory
