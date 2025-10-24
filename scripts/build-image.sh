@@ -35,16 +35,13 @@ if [ -d "$ROOTFS" ]; then
     rm -rf "$ROOTFS/**"
 fi
 
-# Install required packages
-echo "Installing debootstrap and dependencies..."
-sudo apt-get update
-sudo apt-get install -y debootstrap qemu-user-static binfmt-support
-
 # Use environment variables for image name and link
 IMAGE_NAME="${IMAGE_NAME:-pop-os_22.04_arm64_raspi_4.img.xz}"
 IMAGE_LINK="${IMAGE_LINK:-https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz}"
 
-wget "$IMAGE_LINK"
+# Download the image redirecting output to /dev/null
+echo "Downloading image from $IMAGE_LINK..."
+wget "$IMAGE_LINK" -O "$IMAGE_NAME" >/dev/null 2>&1
 
 #Extract the image
 unxz "$IMAGE_NAME"
@@ -57,7 +54,7 @@ IMAGE_NAME_WITHOUT_XZ="${IMAGE_NAME%.xz}"
 
 # Find a free loop device and set it up with partitions
 LOOP_DEVICE=$(losetup -f)
-losetup "$LOOP_DEVICE" -P "$IMAGE_NAME_WITHOUT_XZ"
+sudo losetup "$LOOP_DEVICE" -P "$IMAGE_NAME_WITHOUT_XZ"
 
 if [ ! -d "$ROOTFS" ]; then
    mkdir -p "$ROOTFS"
