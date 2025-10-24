@@ -1,0 +1,38 @@
+# Git files
+.git
+.gitignore
+.gitmodules
+
+# Build outputs
+output/
+build-output/
+artifacts/kernel-debs/*.deb
+artifacts/kernel-debs/*.changes
+artifacts/kernel-debs/*.buildinfo
+
+# Documentation
+*.md
+CHANGES.md
+README.md
+LICENSE
+
+# IDE
+.vscode/
+
+# GitHub
+.github/
+
+# rpi-image-gen build outputs
+rpi-image-gen/build/
+rpi-image-gen/deploy/
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+temp_mount/
+
+# Kernel source directories
+linux/
+linux-raspi/
+ClockworkPi-linux/

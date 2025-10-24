@@ -96,6 +96,12 @@ sudo ./scripts/build_clockworkpi_kernel.sh
 
 # Or specify custom output directory
 sudo ./scripts/build_clockworkpi_kernel.sh /path/to/output
+
+# Use Docker for reproducible builds (recommended)
+USE_DOCKER=true ./scripts/build_kernel_docker.sh
+
+# Or use Docker mode via the main script
+USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh
 ```
 
 The kernel build process:
@@ -111,6 +117,13 @@ The kernel build process:
 - `KERNEL_LOCALVERSION`: Version suffix (default: `-uconsole`)
 - `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
 - `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
+- `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)
+
+**Docker Build Benefits:**
+- **Reproducible**: Same build environment every time
+- **Isolated**: No need to install build dependencies on host
+- **Clean**: No leftover build artifacts on host system
+- **Cross-platform**: Works on any system with Docker
 
 To install kernel packages on an existing system:
 ```bash
