@@ -176,10 +176,27 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
         rsync \
         git"
     
-    # Clone kernel source in chroot
-    echo "Cloning kernel source..."
-    chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-        git clone --depth=1 --branch rpi-6.12.y https://github.com/crossplatformdev/linux.git kernel-source"
+    # Prepare kernel source for chroot build
+    echo "Preparing kernel source..."
+    
+    # Check if we have the linux submodule in the repository
+    if [ -d "$SCRIPT_DIR/../linux" ] && [ -d "$SCRIPT_DIR/../linux/.git" ]; then
+        echo "Using kernel source from repository submodule..."
+        # Copy the linux submodule into the chroot
+        cp -a "$SCRIPT_DIR/../linux" "$ROOTFS/tmp/kernel-source"
+        
+        # Make sure we're on the right branch
+        chroot "$ROOTFS" /bin/bash -c "cd /tmp/kernel-source && \
+            git fetch origin rpi-6.12.y --depth=1 2>/dev/null || true && \
+            git checkout -f rpi-6.12.y 2>/dev/null || true"
+    else
+        echo "WARNING: Linux submodule not found, falling back to git clone"
+        echo "To use the embedded linux folder, run: git submodule update --init linux"
+        
+        # Clone kernel source in chroot (fallback)
+        chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
+            git clone --depth=1 --branch rpi-6.12.y https://github.com/crossplatformdev/linux.git kernel-source"
+    fi
     
     # Build kernel debs
     echo "Building kernel (this may take a while)..."

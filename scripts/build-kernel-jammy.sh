@@ -7,13 +7,22 @@ OUTDIR="${1:-kernel-build-output}"
 BRANCH="rpi-6.12.y"
 RPI_REMOTE="https://github.com/raspberrypi/linux.git"
 AKREX_REMOTE="https://github.com/ak-rex/ClockworkPi-linux.git"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
-# Clone upstream raspberrypi tree (if not already)
+# Use kernel source from repository submodule if available
 if [ ! -d linux ]; then
-  git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
+  if [ -d "$REPO_ROOT/linux" ] && [ -d "$REPO_ROOT/linux/.git" ]; then
+    echo "Using kernel source from repository submodule..."
+    cp -a "$REPO_ROOT/linux" linux
+  else
+    echo "WARNING: Linux submodule not found, falling back to git clone"
+    echo "To use the embedded linux folder, run: git submodule update --init linux"
+    git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
+  fi
 fi
 cd linux
 

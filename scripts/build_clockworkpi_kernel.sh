@@ -81,17 +81,38 @@ else
     echo "WARNING: apt-get not found. Please ensure build dependencies are installed." >&2
 fi
 
-# Clone kernel source
-echo "Cloning kernel source..."
-if [ -d "linux" ]; then
-    echo "Removing existing linux directory..."
-    rm -rf linux
+# Use kernel source from repository submodule
+echo "Using kernel source from repository..."
+
+# Check if the linux submodule exists in the repository root
+if [ -d "$REPO_ROOT/linux" ] && [ -d "$REPO_ROOT/linux/.git" ]; then
+    echo "Found linux submodule in repository"
+    
+    # Create a working copy in the build directory to avoid modifying the submodule
+    echo "Creating working copy of kernel source..."
+    cp -a "$REPO_ROOT/linux" linux
+    cd linux
+    
+    # Ensure we're on the correct branch
+    git fetch origin "$KERNEL_BRANCH" --depth=1 2>/dev/null || true
+    git checkout -f "$KERNEL_BRANCH" 2>/dev/null || true
+    
+    echo "Kernel source ready ($(git describe --always))"
+else
+    echo "WARNING: Linux submodule not found at $REPO_ROOT/linux"
+    echo "Falling back to cloning from $KERNEL_REPO"
+    echo "To use the embedded linux folder, run: git submodule update --init linux"
+    
+    if [ -d "linux" ]; then
+        echo "Removing existing linux directory..."
+        rm -rf linux
+    fi
+    
+    git clone --depth=1 --branch "$KERNEL_BRANCH" "$KERNEL_REPO" linux
+    cd linux
+    
+    echo "Kernel source cloned ($(git describe --always))"
 fi
-
-git clone --depth=1 --branch "$KERNEL_BRANCH" "$KERNEL_REPO" linux
-cd linux
-
-echo "Kernel source cloned ($(git describe --always))"
 
 # Apply ak-rex patch if enabled
 if [ "$APPLY_PATCH" = "true" ]; then
