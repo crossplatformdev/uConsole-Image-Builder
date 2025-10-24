@@ -10,12 +10,6 @@
 
 set -e
 
-# Get script directory for sourcing common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Source common ClockworkPi functions
-source "$SCRIPT_DIR/common_clockworkpi.sh"
-
 ROOTFS_DIR="${1:-}"
 SUITE="${2:-bookworm}"
 
@@ -43,9 +37,62 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Add ClockworkPi apt repository and install packages using common functions
-add_clockworkpi_repo "$ROOTFS_DIR" "$SUITE"
-install_clockworkpi_kernel_packages "$ROOTFS_DIR"
+# Add ClockworkPi GPG key
+echo "Adding ClockworkPi repository GPG key..."
+if ! chroot "$ROOTFS_DIR" /bin/bash -c "
+    wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | \
+    gpg --dearmor | \
+    tee /etc/apt/trusted.gpg.d/clockworkpi.gpg > /dev/null
+"; then
+    echo "WARNING: Failed to add GPG key via wget, trying alternative method..." >&2
+    # Alternative: Download key on host and copy it
+    wget -q -O /tmp/clockworkpi-key.gpg https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg
+    gpg --dearmor < /tmp/clockworkpi-key.gpg > "$ROOTFS_DIR/etc/apt/trusted.gpg.d/clockworkpi.gpg"
+    rm -f /tmp/clockworkpi-key.gpg
+fi
+
+# Add ClockworkPi apt repository
+echo "Adding ClockworkPi apt repository..."
+
+# Determine which repository to use based on suite
+# The ClockworkPi repository uses Debian bookworm packages
+REPO_SUITE="bookworm"
+
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
+    echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/debian stable main' | \
+    tee /etc/apt/sources.list.d/clockworkpi.list
+"
+
+# Update apt cache
+echo "Updating apt cache..."
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
+    apt-get update
+"
+
+# Install kernel build dependencies first
+echo "Installing kernel dependencies..."
+sudo chroot "$ROOTFS_DIR" /bin/bash -c "
+    DEBIAN_FRONTEND=noninteractive apt-get install -y initramfs-tools
+"
+
+# Install ClockworkPi kernel packages
+echo "Installing ClockworkPi kernel packages..."
+
+# Try to install kernel packages (may need --allow-unauthenticated if GPG key setup fails)
+if ! chroot "$ROOTFS_DIR" /bin/bash -c "
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        uconsole-kernel-cm4-rpi \
+        clockworkpi-audio \
+        clockworkpi-cm-firmware
+"; then
+    echo "WARNING: Standard installation failed, trying with --allow-unauthenticated..." >&2
+    chroot "$ROOTFS_DIR" /bin/bash -c "
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated \
+            uconsole-kernel-cm4-rpi \
+            clockworkpi-audio \
+            clockworkpi-cm-firmware
+    "
+fi
 
 # Create a kernel info file
 echo "Creating kernel installation record..."
@@ -57,7 +104,7 @@ ClockworkPi uConsole Kernel Information
 
 Installation Method: Prebuilt packages from ClockworkPi apt repository
 Repository: https://github.com/clockworkpi/apt
-Suite: bookworm
+Suite: $REPO_SUITE
 
 Installed Packages:
 - uconsole-kernel-cm4-rpi: Linux kernel for uConsole CM4
