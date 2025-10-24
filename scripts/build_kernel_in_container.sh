@@ -29,11 +29,48 @@ echo "================================================"
 # Build directory inside container
 cd /build
 
+APT_SOURCES_CONTENT=$(cat /etc/apt/sources.list)
+echo "Current APT sources:"
+echo "$APT_SOURCES_CONTENT"
+
+# Append arm64 architecture to sources if not already present
+tee /etc/apt/sources.list << EOF
+deb [arch=amd64] https://archive.ubuntu.com/ubuntu $(lsb_release -cs) main universe 
+deb [arch=arm64] https://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs) main universe
+EOF
+
+echo "Updated APT sources:"
+cat /etc/apt/sources.list
+
+# Add arm64 architecture for cross-compilation
+dpkg --add-architecture arm64
+
 # Ensure the Docker image has necessary packages installed
 apt-get update
 
-# Install kernel build dependencies on docker container
-apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
+# Install kernel build dependencies on docker container for architecture arm64
+apt-get install -y \
+    software-properties-common
+    
+apt install -y \
+    build-essential \
+    bc \
+    bison \
+    flex \
+    libssl-dev \
+    libncurses-dev \
+    libelf-dev \
+    kmod \
+    cpio \
+    rsync \
+    git \
+    fakeroot \
+    dpkg-dev \
+    debhelper \
+    kernel-wedge \
+    crossbuild-essential-arm64 \
+    g++-aarch64-linux-gnu \
+    gcc-aarch64-linux-gnu
 
 # Use the mounted linux source
 echo "Using mounted linux source..."
@@ -53,6 +90,19 @@ fi
 # Copy the linux source to a writable location
 cp -r linux-source linux
 cd linux
+
+# Remove any .git file/directory from the submodule copy
+# (submodules have a .git file pointing to parent's .git/modules/linux)
+rm -rf .git
+
+# Initialize as a git repository (required for make deb-pkg)
+# The kernel build system requires a git repository to create source packages
+echo "Initializing git repository for kernel build..."
+git init
+git config user.email "build@uconsole-image-builder"
+git config user.name "uConsole Image Builder"
+git add .
+git commit -m "Initial commit from linux submodule" --quiet
 
 echo "Kernel source ready ($(git describe --always 2>/dev/null || echo 'no git info'))"
 
