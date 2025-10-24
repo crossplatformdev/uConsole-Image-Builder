@@ -66,6 +66,29 @@ if [ "${APPLY_PATCH}" = "true" ]; then
     fi
 fi
 
+# Ensure kernel build dependencies are installed
+echo "Verifying kernel build dependencies..."
+apt-get update 
+apt-get install -y \
+    build-essential \
+    bc \
+    bison \
+    flex \
+    libssl-dev \
+    libncurses-dev \
+    libelf-dev \
+    kmod \
+    cpio \
+    rsync \
+    git \
+    fakeroot \
+    dpkg-dev \
+    debhelper \
+    kernel-wedge \
+    crossbuild-essential-arm64 
+
+dpkg-builddeps -i -r -y
+
 # Configure kernel
 echo "Configuring kernel..."
 make ARCH=arm64 bcm2711_defconfig
@@ -73,6 +96,7 @@ make ARCH=arm64 bcm2711_defconfig
 # Build kernel .deb packages
 echo "Building kernel packages (this will take a while)..."
 echo "Using $(nproc) parallel jobs"
+
 
 # Build using bindeb-pkg target (creates binary .deb packages only)
 # Set KDEB_CHANGELOG_DIST to specify the distribution in debian/changelog
