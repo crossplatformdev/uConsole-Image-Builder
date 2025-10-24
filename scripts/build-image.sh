@@ -37,58 +37,45 @@ fi
 
 # Install required packages
 echo "Installing debootstrap and dependencies..."
-apt-get update
-apt-get install -y debootstrap qemu-user-static binfmt-support
+sudo apt-get update
+sudo apt-get install -y debootstrap qemu-user-static binfmt-support
 
-# Determine repository URL based on suite
-if [[ "$SUITE" == "jammy" ]]; then
-    REPO_URL="http://ports.ubuntu.com/ubuntu-ports"
-    # Run debootstrap
-    echo "Running debootstrap for $SUITE ($ARCH)..."
-    debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
-elif [[ "$SUITE" == "popos" ]]; then
-    # Use environment variables for image name and link
-    IMAGE_NAME="${IMAGE_NAME:-pop-os_22.04_arm64_raspi_4.img.xz}"
-    IMAGE_LINK="${IMAGE_LINK:-https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz}"
-    
-    wget "$IMAGE_LINK"
-    
-    #Extract the image
-    unxz "$IMAGE_NAME"
-    
-    #Mount the image
-    losetup -D
-    
-    # Derive IMAGE_NAME_WITHOUT_XZ by removing .xz extension
-    IMAGE_NAME_WITHOUT_XZ="${IMAGE_NAME%.xz}"
-    
-    # Find a free loop device and set it up with partitions
-    LOOP_DEVICE=$(losetup -f)
-    losetup "$LOOP_DEVICE" -P "$IMAGE_NAME_WITHOUT_XZ"
-    
-    if [ ! -d "$ROOTFS" ]; then
-       mkdir -p "$ROOTFS"
-    fi
-    
-    mount "${LOOP_DEVICE}p2" "$ROOTFS"
-    
-    if [ ! -d "$ROOTFS/boot/firmware" ]; then
-       mkdir -p "$ROOTFS/boot/firmware"
-    fi
-    
-    mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
-    
-    
-    mount --bind /dev "$ROOTFS/dev"
-    mount --bind /dev/pts "$ROOTFS/dev/pts"
-    mount --bind /proc "$ROOTFS/proc"
-    mount --bind /sys "$ROOTFS/sys"
-else
-    REPO_URL="http://deb.debian.org/debian"
-    # Run debootstrap
-    echo "Running debootstrap for $SUITE ($ARCH)..."
-    debootstrap --arch="$ARCH" --foreign "$SUITE" "$ROOTFS" "$REPO_URL"
+# Use environment variables for image name and link
+IMAGE_NAME="${IMAGE_NAME:-pop-os_22.04_arm64_raspi_4.img.xz}"
+IMAGE_LINK="${IMAGE_LINK:-https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz}"
+
+wget "$IMAGE_LINK"
+
+#Extract the image
+unxz "$IMAGE_NAME"
+
+#Mount the image
+losetup -D
+
+# Derive IMAGE_NAME_WITHOUT_XZ by removing .xz extension
+IMAGE_NAME_WITHOUT_XZ="${IMAGE_NAME%.xz}"
+
+# Find a free loop device and set it up with partitions
+LOOP_DEVICE=$(losetup -f)
+losetup "$LOOP_DEVICE" -P "$IMAGE_NAME_WITHOUT_XZ"
+
+if [ ! -d "$ROOTFS" ]; then
+   mkdir -p "$ROOTFS"
 fi
+
+mount "${LOOP_DEVICE}p2" "$ROOTFS"
+
+if [ ! -d "$ROOTFS/boot/firmware" ]; then
+   mkdir -p "$ROOTFS/boot/firmware"
+fi
+
+mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
+
+
+mount --bind /dev "$ROOTFS/dev"
+mount --bind /dev/pts "$ROOTFS/dev/pts"
+mount --bind /proc "$ROOTFS/proc"
+mount --bind /sys "$ROOTFS/sys"
 
 # For non-image-based distributions, complete debootstrap setup
 if [[ "$SUITE" != "popos" ]]; then
