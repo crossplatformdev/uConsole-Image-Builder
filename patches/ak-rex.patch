@@ -1,72 +1,4103 @@
-# ClockworkPi uConsole Kernel Patch (ak-rex)
-
-This is a placeholder for the ak-rex kernel patch for ClockworkPi uConsole devices.
-
-## About the Patch
-
-The ak-rex patch adds support for ClockworkPi uConsole devices to the Raspberry Pi kernel.
-It includes:
-- Device tree overlays for uConsole-specific hardware
-- Audio configuration for the uConsole speaker
-- Display drivers and settings
-- GPIO mappings for the uConsole keyboard and buttons
-
-## Obtaining the Patch
-
-The actual patch can be obtained from one of these sources:
-
-1. **ClockworkPi apt repository**: https://github.com/clockworkpi/apt
-   - Contains prebuilt kernel packages with the patch already applied
-   
-2. **ClockworkPi Linux kernel source**: Various community forks exist
-   - https://github.com/clockworkpi/uConsole (official repository with kernel downloads)
-   - Community forks by ak-rex and others on GitHub
-   
-3. **Generate from kernel source diff**:
-   ```bash
-   # Clone the base Raspberry Pi kernel
-   git clone https://github.com/raspberrypi/linux.git rpi-linux
-   cd rpi-linux
-   git checkout rpi-6.12.y  # or appropriate version
-   
-   # Clone the ClockworkPi kernel
-   git clone https://github.com/[source]/ClockworkPi-linux.git clockworkpi-linux
-   cd clockworkpi-linux
-   git checkout [appropriate-branch]
-   
-   # Generate diff/patch
-   git diff rpi-6.12.y..HEAD > ../ak-rex.patch
-   ```
-
-## Using Prebuilt Kernels (Recommended)
-
-Instead of applying patches and building from source, the recommended approach is to use
-the prebuilt kernel packages from the ClockworkPi apt repository. See 
-`scripts/install_clockworkpi_kernel.sh` for the implementation.
-
-## Building from Source with Patch
-
-If you need to build from source:
-
-1. Place the actual patch file in this directory as `ak-rex.patch`
-2. The `scripts/build_clockworkpi_kernel.sh` script will apply it during the kernel build
-3. Update the patch application command in that script if needed
-
-## Patch Format
-
-The patch should be in unified diff format and compatible with `git am` or `patch -p1`.
-
-Example application:
-```bash
-cd /path/to/kernel/source
-git am < /path/to/patches/ak-rex.patch
-# or
-patch -p1 < /path/to/patches/ak-rex.patch
-```
-
-## TODO
-
-- [ ] Obtain actual ak-rex patch file from upstream source
-- [ ] Verify patch applies cleanly to target kernel version
-- [ ] Document specific kernel version compatibility
-- [ ] Add patch metadata (author, date, description)
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+index 77f3ecb1e2e7b7..175f7325fde361 100644
+--- a/arch/arm/boot/dts/overlays/Makefile
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -42,6 +42,12 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
+ 	chipcap2.dtbo \
+ 	chipdip-dac.dtbo \
+ 	cirrus-wm5102.dtbo \
++	clockworkpi-custom-battery.dtbo \
++	clockworkpi-devterm-cm5.dtbo \
++	clockworkpi-devterm.dtbo \
++	clockworkpi-uconsole-cm3.dtbo \
++	clockworkpi-uconsole-cm5.dtbo \
++	clockworkpi-uconsole.dtbo \
+ 	cm-swap-i2c0.dtbo \
+ 	cma.dtbo \
+ 	crystalfontz-cfa050_pi_m.dtbo \
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-custom-battery-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-custom-battery-overlay.dts
+new file mode 100644
+index 00000000000000..a5b0f3bb4a1847
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-custom-battery-overlay.dts
+@@ -0,0 +1,19 @@
++/dts-v1/;
++/plugin/;
++
++/ {
++	compatible = "brcm,bcm2835";
++
++	fragment@0 {
++		target-path = "/battery@0";
++		frag0: __overlay__ {
++			energy-full-design-microwatt-hours = <24790000>;
++			charge-full-design-microamp-hours = <6700000>;
++		};
++	};
++
++	__overrides__ {
++		energy_full_design_uwh = <&frag0>, "energy-full-design-microwatt-hours:0";
++		charge_full_design_uah = <&frag0>, "charge-full-design-microamp-hours:0";
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts
+new file mode 100644
+index 00000000000000..9baa0f82173305
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-devterm-cm5-overlay.dts
+@@ -0,0 +1,144 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	compatible = "brcm,bcm2835";
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			compatible = "i2c-gpio";
++			reg = <3>;
++			pinctrl-0 = <&i2c0_pins>;
++			pinctrl-names = "default";
++			gpios = <&rp1_gpio 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)
++					&rp1_gpio 1 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++			i2c-gpio,delay-us = <2>;
++			status = "okay";
++			axp22x: pmic@34 {
++				interrupt-controller;
++				#interrupt-cells = <1>;
++				compatible = "x-powers,axp228", "x-powers,axp223", "x-powers,axp221";
++				reg = <0x34>;
++				interrupt-parent = <&rp1_gpio>;
++				interrupts = <2 8>; /* Adjusted IRQ for RP1 */
++				irq-gpios = <&rp1_gpio 2 0>;
++				regulators {
++					x-powers,dcdc-freq = <3000>;
++					reg_aldo1: aldo1 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "audio-vdd";
++					};
++					reg_aldo2: aldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "display-vcc";
++					};
++					reg_dldo2: dldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo2";
++					};
++					reg_dldo3: dldo3 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo3";
++					};
++					reg_dldo4: dldo4 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo4";
++					};
++					reg_dcdc3: dcdc3 {
++						regulator-name = "sys-1v8";
++						regulator-always-on;
++						regulator-min-microvolt = <1800000>;
++						regulator-max-microvolt = <1800000>;
++					};
++				};
++				battery_power_supply: battery-power-supply {
++					compatible = "x-powers,axp221-battery-power-supply";
++					monitored-battery = <&battery>;
++				};
++				ac_power_supply: ac_power_supply {
++					compatible = "x-powers,axp221-ac-power-supply";
++				};
++				axp_adc: adc {
++					compatible = "x-powers,axp221-adc";
++					#io-channel-cells = <1>;
++				};
++				axp_gpio: gpio {
++					compatible = "x-powers,axp221-gpio";
++					#gpio-cells = <2>;
++					gpio-controller;
++					status = "disabled";
++					gpio0_out: gpio0-out-pin {
++						pins = "GPIO0";
++						function = "gpio_out";
++					};
++				};
++			};
++		};
++	};
++	fragment@1 {
++		target-path = "/";
++		__overlay__  {
++			battery: battery@0 {
++				compatible = "simple-battery";
++				device-chemistry = "lithium-ion";
++				constant-charge-current-max-microamp = <2100000>;
++				voltage-max-design-microvolt = <4200000>;
++				re-charge-voltage-microvolt = <4000000>;
++				voltage-min-design-microvolt = <2900000>;
++				energy-full-design-microwatt-hours = <24790000>;
++				charge-full-design-microamp-hours = <6700000>;
++			};
++		};
++	};
++	fragment@2 {
++		target-path = "/";
++		__overlay__ {
++			ocp8178_backlight: backlight@0 {
++				compatible = "ocp8178-backlight";
++				backlight-control-gpios = <&rp1_gpio 9 0>;
++				default-brightness = <5>;
++			};
++		};
++	};
++	fragment@3 {
++		target = <&dsi1>; // dsi1 has iommu property
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++			port {
++				dsi_out_port: endpoint {
++					remote-endpoint = <&panel_dsi_port>;
++				};
++			};
++			panel_cwd686: panel@0 {
++				compatible = "cw,cwd686";
++				reg = <0>;
++				reset-gpio = <&rp1_gpio 8 1>;
++				backlight = <&ocp8178_backlight>;
++				rotation = <90>;
++				vci-supply = <&reg_dcdc3>;
++				vcc-supply = <&reg_aldo2>;
++				port {
++					panel_dsi_port: endpoint {
++						remote-endpoint = <&dsi_out_port>;
++					};
++				};
++			};
++		};
++	};
++};
+\ No newline at end of file
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
+new file mode 100644
+index 00000000000000..ab0b81c30c0cb2
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-devterm-overlay.dts
+@@ -0,0 +1,231 @@
++/dts-v1/;
++/plugin/;
++
++/{
++	compatible = "brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c1_pins>;
++			status = "okay";
++
++			adc101c: adc@54 {
++				reg = <0x54>;
++				compatible = "ti,adc101c";
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&spi4>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi4_pins &spi4_cs_pins>;
++			cs-gpios = <&gpio 4 1>;
++			status = "okay";
++
++			spidev4_0: spidev@0 {
++				compatible = "spidev";
++				reg = <0>;      /* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <125000000>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&uart1>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart1_pins>;
++			status = "okay";
++		};
++	};
++
++	fragment@3 {
++		target = <&gpio>;
++		__overlay__ {
++
++			i2c1_pins: i2c1 {
++				brcm,pins = <44 45>;
++				brcm,function = <6>;
++			};
++
++			spi4_pins: spi4_pins {
++				brcm,pins = <6 7>;
++				brcm,function = <7>;
++			};
++
++			spi4_cs_pins: spi0_cs_pins {
++				brcm,pins = <4>;
++				brcm,function = <1>;
++			};
++
++			uart1_pins: uart1_pins {
++				brcm,pins = <14 15>;
++				brcm,function = <2>;
++				brcm,pull = <0 2>;
++			};
++
++		};
++	};
++
++	fragment@4 {
++		target-path = "/chosen";
++		__overlay__ {
++			bootargs = "8250.nr_uarts=1";
++		};
++	};
++
++	fragment@5 {
++		target = <&i2c0if>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-0 = <&i2c0_pins>;
++			pinctrl-names = "default";
++			status = "okay";
++
++			axp22x: pmic@34 {
++				interrupt-controller;
++				#interrupt-cells = <1>;
++				compatible = "x-powers,axp221";
++				reg = <0x34>; /* i2c address */
++				interrupt-parent = <&gpio>;
++				interrupts = <2 8>;  /* IRQ_TYPE_EDGE_FALLING */
++				irq-gpios = <&gpio 2 0>;
++
++				regulators {
++
++					x-powers,dcdc-freq = <3000>;
++
++					reg_aldo1: aldo1 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "audio-vdd";
++					};
++
++					reg_aldo2: aldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "display-vcc";
++					};
++
++					reg_dldo2: dldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo2";
++					};
++
++					reg_dldo3: dldo3 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo3";
++					};
++
++					reg_dldo4: dldo4 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo4";
++					};
++
++				};
++
++				battery_power_supply: battery-power-supply {
++					compatible = "x-powers,axp221-battery-power-supply";
++					monitored-battery = <&battery>;
++				};
++
++				ac_power_supply: ac_power_supply {
++					compatible = "x-powers,axp221-ac-power-supply";
++				};
++
++			};
++		};
++	};
++
++	fragment@6 {
++		target = <&i2c0if>;
++		__overlay__ {
++			compatible = "brcm,bcm2708-i2c";
++		};
++	};
++
++	fragment@7 {
++		target-path = "/aliases";
++		__overlay__ {
++			i2c0 = "/soc/i2c@7e205000";
++		};
++	};
++
++	fragment@8 {
++		target-path = "/";
++		__overlay__  {
++			battery: battery@0 {
++				compatible = "simple-battery";
++				device-chemistry = "lithium-ion";
++				constant-charge-current-max-microamp = <2100000>;
++				voltage-max-design-microvolt = <4200000>;
++				re-charge-voltage-microvolt = <4000000>;
++				// adjust the following params according to your battery specs
++				voltage-min-design-microvolt = <3300000>;
++				energy-full-design-microwatt-hours = <24790000>; // 2x3350mAh * 3.7v
++				charge-full-design-microamp-hours = <6700000>; // 2x3350mAh
++			};
++		};
++	};
++
++	fragment@9 {
++		target=<&dsi1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			port {
++				dsi_out_port: endpoint {
++					remote-endpoint = <&panel_dsi_port>;
++				};
++			};
++
++			panel_cwd686: panel@0 {
++				compatible = "cw,cwd686";
++				reg = <0>;
++				reset-gpio = <&gpio 8 1>;
++				backlight = <&ocp8178_backlight>;
++				rotation = <90>;
++
++				port {
++					panel_dsi_port: endpoint {
++						remote-endpoint = <&dsi_out_port>;
++					};
++				};
++			};
++		};
++	};
++
++	fragment@10 {
++		target-path = "/";
++		__overlay__  {
++			ocp8178_backlight: backlight@0 {
++				compatible = "ocp8178-backlight";
++				backlight-control-gpios = <&gpio 9 0>;
++				default-brightness = <5>;
++			};
++		};
++	};
++
++};
++
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm3-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm3-overlay.dts
+new file mode 100644
+index 00000000000000..5dda9466e1bbf4
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm3-overlay.dts
+@@ -0,0 +1,410 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++
++/* uConsole All In One */
++
++/ {
++	compatible = "brcm,bcm2835";
++
++	fragment@80 {
++		target-path = "/chosen";
++		__overlay__ {
++			/* The bluetooth module need uart0/serial0, so must ensure console doesn't take up the serial port.
++			 * Somehow newer kernel uses serial as the default console, which must be avoided.
++			   Set console=tty1 ensures everything go to the DSI screen(or maybe HDMI). */
++			bootargs = "snd_bcm2835.enable_headphones=1 console=tty1";
++			/* 8250 auxiliary UART instead of pl011, which is used by Bluetooth */
++			stdout-path = "serial1:115200n8";
++		};
++	};
++
++	fragment@90 {
++        target-path = "/";
++		__overlay__ {
++			wifi_pwrseq: wifi-pwrseq {
++				compatible = "mmc-pwrseq-simple";
++				pinctrl-names = "default";
++				pinctrl-0 = <&wifi_rst_pin>;
++				reset-gpios = <&gpio 3 1>; /* GPIO3, GPIO_ACTIVE_LOW */
++				post-power-on-delay-ms = <200>;
++			};
++
++			audio_amplifier: audio-amplifier {
++				compatible = "simple-amplifier-switch";
++				sw-gpios = <&gpio 10 1>; /* GPIO10, GPIO_ACTIVE_LOW */
++				outputs-gpios = <&gpio 11 0>; /* GPIO11, GPIO_ACTIVE_HIGH */
++				// vdd-supply = <&uc_reg_5v0>;
++			};
++
++			ocp8178_backlight: backlight@0 {
++				compatible = "ocp8178-backlight";
++				backlight-control-gpios = <&gpio 9 0>; /* GPIO9 ACTIVE HIGH */
++				default-brightness = <5>;
++				// vdd-supply = <&uc_reg_5v0>;
++			};
++
++			battery: battery@0 {
++				compatible = "simple-battery";
++				constant-charge-current-max-microamp = <2100000>;
++				voltage-min-design-microvolt = <3300000>;
++				voltage-max-design-microvolt = <4200000>;
++			};
++
++			/* TPS61178, the supply for 5V bus, including USB, backlight
++			 */
++			// uc_reg_5v0: uc-reg-5v0 {
++			// 	compatible = "fixed-regulator";
++			// 	regulator-name = "sys-5v0";
++			// 	regulator-boot-on;
++			// 	regulator-always-on; /* cannot be turned off anyway */
++			// 	vin-supply = <&usb_power_supply>;
++			// };
++		};
++	};
++
++	// 91 to 94 are for the on board wireless module
++
++	fragment@91 {
++		/* BT */
++		target = <&uart0>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart0_pins &bt_pins>;
++			status = "okay";
++
++			bt: bluetooth {
++				compatible = "brcm,bcm4345c5";
++				interrupt-parent = <&gpio>;
++				interrupts = <6 4>; /* GPIO6, IRQ_TYPE_LEVEL_HIGH */
++				interrupt-names = "host-wake";
++				device-wakeup-gpios = <&gpio 7 0>; /* GPIO7, GPIO_ACTIVE_HIGH */
++				brcm,requires-autobaud-mode;
++				shutdown-gpios = <&gpio 5 0>; /* GPIO5, GPIO_ACTIVE_HIGH */
++				/* max-speed: datasheet shows max speed is 4000000,
++				* however, approperate speed must be set to ensure overall wireless performance.
++				*/
++				max-speed = <1500000>;
++				vbat-supply = <&reg_dldo1>;
++				vddio-supply = <&reg_aldo3>;
++			};
++		};
++	};
++
++	fragment@92 {
++		/* WLAN */
++		/* The general purpose SDHCI interface(SD1) */
++		target = <&mmc>;
++		__overlay__ {
++			pinctrl-0 = <&sdio_gpio22>;
++			pinctrl-names = "default";
++			mmc-pwrseq = <&wifi_pwrseq>;
++			// non-removable; /* don't use this, so the chip can be reliably initialized */
++			bus-width = <4>;
++			status = "okay";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			vmmc-supply = <&reg_dldo1>;
++			vqmmc-supply = <&reg_aldo3>;
++
++			brcmf: wifi@1 {
++				reg = <1>;
++				compatible = "brcm,bcm43456-fmac", "brcm,bcm4329-fmac";
++				/* The interrupt will not registered on CM3, so skip below */
++				// interrupt-parent = <&gpio>;
++				// interrupts = <4 8>; /* GPIO4, IRQ_TYPE_LEVEL_LOW */
++				// interrupt-names = "host-wake";
++			};
++		};
++	};
++
++	fragment@93 {
++		/* disable the mmc interface without polling */
++		target = <&mmcnr>;
++		__overlay__ {
++			status = "disabled";
++		};
++	};
++
++	fragment@94 {
++		target = <&gpio>;
++		__overlay__ {
++			sdio_gpio22: sdio_gpio22 {
++				brcm,pins = <22 23 24 25 26 27>;
++				brcm,function = <7>; /* ALT3 = SD1 */
++				brcm,pull = <0 0 0 0 0 0>; /* NP(0)*6, oe NP, PU(2)*5 */
++			};
++
++			/* UART0 with CTS/RTS on GPIO14-17 */
++			uart0_pins: uart0_pins {
++				brcm,pins = <14 15 16 17>;
++				brcm,function = <4 4 7 7>;
++				brcm,pull = <0 2 0 2>;
++			};
++
++			/* bt reset and interrupts */
++			bt_pins: bt_pins {
++				brcm,pins = <5 6 7>;
++				brcm,function = <1 0 1>;
++				brcm,pull = <0 2 0>;
++			};
++
++			wifi_rst_pin: wifi_rst_pin {
++				brcm,pins = <3>;
++				brcm,function = <1>;
++				brcm,pull = <2>;
++			};
++		};
++	};
++
++	// 96-99 handles i2c bus selection
++
++	fragment@96 {
++		target-path = "/";
++		__overlay__ {
++			i2c_uconsole_sw: i2c@100 {
++				reg = <100>;
++				compatible = "i2c-gpio";
++				gpios = <&gpio 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* sda */
++						 &gpio 1 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN) /* scl */
++					>;
++				i2c-gpio,delay-us = <2>;        /* ~100 kHz */
++				#address-cells = <1>;
++				#size-cells = <0>;
++			};
++		};
++	};
++
++	fragment@97 {
++		target = <&i2c0>;
++		i2c_uconsole_hw0: __dormant__ {
++			status = "okay";
++		};
++	};
++
++	fragment@98 {
++		target = <&i2c0if>;
++		__dormant__ {
++			status = "okay";
++		};
++	};
++
++	fragment@99 {
++		target = <&i2c0mux>;
++		__dormant__ {
++			status = "okay";
++		};
++	};
++
++	// Here's the one for PMU
++	// since we use i2c selection, pmu fragment's target should be editable
++	frag_pmu: fragment@101 {
++		/* PMU */
++		target = <&i2c_uconsole_sw>;
++		__overlay__ {
++			axp22x: pmic@34 {
++				interrupt-controller;
++				#interrupt-cells = <1>;
++				compatible = "x-powers,axp228", "x-powers,axp223", "x-powers,axp221";
++				reg = <0x34>; /* i2c address */
++				interrupt-parent = <&gpio>;
++				interrupts = <2 8>;  /* IRQ_TYPE_LEVEL_LOW */
++				irq-gpios = <&gpio 2 0>;
++
++				/* TODO: figure out the initial output states */
++				regulators {
++
++					x-powers,dcdc-freq = <3000>;
++
++					reg_dcdc1: dcdc1 {
++						regulator-name = "sys-3v3";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_dcdc3: dcdc3 {
++						regulator-name = "sys-1v8";
++						regulator-always-on;
++						regulator-min-microvolt = <1800000>;
++						regulator-max-microvolt = <1800000>;
++					};
++
++					/* TODO: switch this on demand? */
++					reg_aldo1: aldo1 {
++						regulator-name = "aud-3v3";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_aldo2: aldo2 {
++						regulator-name = "disp-3v3";
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					/* This pull up is required to make BT stable.
++					* This pull up must set to 3.3v when voltage jumpers are not changed,
++					* or the chip will not show up.
++					* It may originate from CM3 IO refs input voltages.
++					*/
++					reg_aldo3: aldo3 {
++						regulator-name = "vdd-wifi";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					/* DLDO1 and ELDO1-3 are connected in parallel. */
++					/* So I think they should be left on */
++					reg_dldo1: dldo1 {
++						regulator-name = "vbat-wifi-a";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					/* DLDO2-DLDO4 are connected in parallel.
++					* They seem not necessary, BUT they are connected to the TPS2553's enable pin!
++					* Disable them will shutdown the USB 5V line.
++					*/
++					reg_dldo2: dldo2 {
++						regulator-name = "vcc-3v3-ext-a";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_dldo3: dldo3 {
++						regulator-name = "vcc-3v3-ext-b";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_dldo4: dldo4 {
++						regulator-name = "vcc-3v3-ext-c";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_eldo1: eldo1 {
++						regulator-name = "vbat-wifi-b";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_eldo2: eldo2 {
++						regulator-name = "vbat-wifi-c";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++
++					reg_eldo3: eldo3 {
++						regulator-name = "vbat-wifi-d";
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++					};
++				};
++
++				battery_power_supply: battery-power-supply {
++					compatible = "x-powers,axp221-battery-power-supply";
++					monitored-battery = <&battery>;
++				};
++
++				ac_power_supply: ac_power_supply {
++					compatible = "x-powers,axp221-ac-power-supply";
++				};
++
++				axp_adc: adc {
++					compatible = "x-powers,axp221-adc";
++					#io-channel-cells = <1>;
++				};
++
++				axp_gpio: gpio {
++					compatible = "x-powers,axp221-gpio";
++					gpio-controller;
++					#gpio-cells = <2>;
++					status = "disabled";
++
++					gpio0_out: gpio0-out-pin {
++						pins = "GPIO0";
++						function = "gpio_out";
++					};
++				};
++
++				/* IPSOUT, feed to on-board buck to get 5V output */
++				/* TODO: figure out how to configure it properly */
++				usb_power_supply: usb-power {
++					compatible = "x-powers,axp221-usb-power-supply";
++				};
++			};
++		};
++	};
++
++	__overrides__ {
++		cm4 = <0>, "-91-92-93-94", // disable BT, WiFi on uConsole main board, and other fixes for CM3
++				<&reg_dldo1>, "regulator-always-on!", // disable ldos for wireless module
++				<&reg_eldo1>, "regulator-always-on!",
++				<&reg_eldo2>, "regulator-always-on!",
++				<&reg_eldo3>, "regulator-always-on!";
++		hwi2c = <0>, "-96+97+98+99", // disable SW i2c, enable HW i2c0
++				<&frag_pmu>, "target:0=",<&i2c_uconsole_hw0>; // move PMU from sw i2c(3) to hw i2c0
++	};
++};
++
++&leds {
++	/delete-node/ led-act;
++
++	/* This is the green LED under the power button,
++	 * However this is not usable without a hardware modification(move R117 to R116)
++	 */
++	// act_led: led-act {
++	//	linux,default-trigger = "default-on";
++	// 	gpios = <&axp_gpio 0 1>; /* gpio0 on pmu, low active */
++	// 	// function = "activity";
++	// };
++
++	/* This is the orange charging LED under the power button.
++	 * Requires a patch to the pinctrl-axp209 driver, because
++	 * charge led is not a gpio thus not supported.
++	 */
++	// chg_led: led-chg {
++	// 	linux,default-trigger = "axp20x-battery-charging-blink-full-solid";
++	// 	gpios = <&axp_gpio 99 1>; /* CHGLED on pmu, low active */
++	// };
++};
++
++&dsi1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	port {
++		dsi_out_port: endpoint {
++			remote-endpoint = <&panel_dsi_port>;
++		};
++	};
++
++	panel_cwu50_cm3: panel@0 {
++		compatible = "clockwork,cwu50-cm3";
++		reg = <0>;
++		reset-gpio = <&gpio 8 1>; /* GPIO8 ACTIVE LOW */
++		backlight = <&ocp8178_backlight>;
++		rotation = <90>;
++		iovcc-supply = <&reg_dcdc3>;
++		vci-supply = <&reg_aldo2>;
++
++		port {
++			panel_dsi_port: endpoint {
++				remote-endpoint = <&dsi_out_port>;
++			};
++		};
++	};
++};
+\ No newline at end of file
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
+new file mode 100644
+index 00000000000000..60badef9ef8fe5
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-cm5-overlay.dts
+@@ -0,0 +1,181 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/clock/rp1.h>
++
++
++/ {
++	compatible = "brcm,bcm2835";
++	fragment@0 {
++		target = <&i2c0>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			compatible = "i2c-gpio";
++			reg = <3>;
++			pinctrl-0 = <&i2c0_pins>;
++			pinctrl-names = "default";
++			gpios = <&rp1_gpio 0 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)
++					&rp1_gpio 1 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
++			i2c-gpio,delay-us = <2>;
++			status = "okay";
++			axp22x: pmic@34 {
++				interrupt-controller;
++				#interrupt-cells = <1>;
++				compatible = "x-powers,axp228", "x-powers,axp223", "x-powers,axp221";
++				reg = <0x34>;
++				interrupt-parent = <&rp1_gpio>;
++				interrupts = <2 8>; /* Adjusted IRQ for RP1 */
++				irq-gpios = <&rp1_gpio 2 0>;
++				regulators {
++					x-powers,dcdc-freq = <3000>;
++					reg_aldo1: aldo1 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "audio-vdd";
++					};
++					reg_aldo2: aldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "disp-vcc";
++					};
++					reg_aldo3: aldo3 {
++						regulator-boot-off;
++						regulator-name = "wifi-vdd";
++					};
++					reg_dldo1: dldo1 {
++						regulator-boot-off;
++						regulator-name = "wifi-vbat-1";
++					};
++					reg_dldo2: dldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "ext-3v3-1";
++					};
++					reg_dldo3: dldo3 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "ext-3v3-2";
++					};
++					reg_dldo4: dldo4 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "ext-3v3-3";
++					};
++					reg_dcdc3: dcdc3 {
++						regulator-always-on;
++						regulator-min-microvolt = <1800000>;
++						regulator-max-microvolt = <1800000>;
++						regulator-name = "sys-1v8";
++					};
++					reg_eldo1: eldo1 {
++						regulator-boot-off;
++						regulator-name = "wifi-vbat-2";
++					};
++					reg_eldo2: eldo2 {
++						regulator-boot-off;
++						regulator-name = "wifi-vbat-3";
++					};
++					reg_eldo3: eldo3 {
++						regulator-boot-off;
++						regulator-name = "wifi-vbat-4";
++					};
++				};
++				battery_power_supply: battery-power-supply {
++					compatible = "x-powers,axp221-battery-power-supply";
++					monitored-battery = <&battery>;
++				};
++				ac_power_supply: ac_power_supply {
++					compatible = "x-powers,axp221-ac-power-supply";
++				};
++				usb_power_supply: usb-power {
++					compatible = "x-powers,axp223-usb-power-supply";
++					status = "disabled";
++				};
++				axp_adc: adc {
++					compatible = "x-powers,axp221-adc";
++					#io-channel-cells = <1>;
++				};
++				axp_gpio: gpio {
++					compatible = "x-powers,axp221-gpio";
++					#gpio-cells = <2>;
++					gpio-controller;
++					status = "disabled";
++					gpio0_out: gpio0-out-pin {
++						pins = "GPIO0";
++						function = "gpio_out";
++					};
++				};
++			};
++		};
++	};
++	fragment@1 {
++		target-path = "/";
++		__overlay__  {
++			battery: battery@0 {
++				compatible = "simple-battery";
++				device-chemistry = "lithium-ion";
++				constant-charge-current-max-microamp = <2100000>;
++				voltage-max-design-microvolt = <4200000>;
++				re-charge-voltage-microvolt = <4000000>;
++				voltage-min-design-microvolt = <2900000>;
++				energy-full-design-microwatt-hours = <24790000>;
++				charge-full-design-microamp-hours = <6700000>;
++			};
++		};
++	};
++	fragment@2 {
++		target = <&i2c1>;
++		__overlay__ {
++			status = "okay";
++			pinctrl-0 = <&rp1_i2c1_2_3>;
++			clock-frequency = <100000>;
++		};
++	};
++	fragment@3 {
++		target-path = "/";
++		__overlay__ {
++			ocp8178_backlight: backlight@0 {
++				compatible = "ocp8178-backlight";
++				backlight-control-gpios = <&rp1_gpio 9 0>;
++				default-brightness = <5>;
++			};
++		};
++	};
++	fragment@4 {
++		target = <&dsi1>; // dsi1 has iommu property
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++			assigned-clocks = <&rp1_clocks RP1_CLK_MIPI1_DSI_BYTECLOCK>, <&rp1_clocks RP1_CLK_MIPI1_DPI>;
++			assigned-clock-rates = <45833333>, <61111240>;
++			port {
++				dsi_out_port: endpoint {
++					remote-endpoint = <&panel_dsi_port>;
++				};
++			};
++			panel_cwu50: panel@0 {
++				compatible = "cw,cwu50";
++				reg = <0>;
++				reset-gpio = <&rp1_gpio 8 1>; /* GPIO_ACTIVE_LOW */
++				backlight = <&ocp8178_backlight>;
++				rotation = <90>;
++				vci-supply = <&reg_dcdc3>;
++				iovcc-supply = <&reg_aldo2>;
++				status = "okay";
++				port {
++					panel_dsi_port: endpoint {
++						remote-endpoint = <&dsi_out_port>;
++					};
++				};
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
+new file mode 100644
+index 00000000000000..4a1e9789abdda2
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/clockworkpi-uconsole-overlay.dts
+@@ -0,0 +1,232 @@
++/dts-v1/;
++/plugin/;
++
++/{
++	compatible = "brcm,bcm2835";
++
++	fragment@0 {
++		target = <&i2c1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&i2c1_pins>;
++			status = "okay";
++
++			adc101c: adc@54 {
++				reg = <0x54>;
++				compatible = "ti,adc101c";
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@1 {
++		target = <&spi4>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&spi4_pins &spi4_cs_pins>;
++			cs-gpios = <&gpio 4 1>;
++			status = "okay";
++
++			spidev4_0: spidev@0 {
++				compatible = "spidev";
++				reg = <0>;      /* CE0 */
++				#address-cells = <1>;
++				#size-cells = <0>;
++				spi-max-frequency = <125000000>;
++				status = "okay";
++			};
++		};
++	};
++
++	fragment@2 {
++		target = <&uart1>;
++		__overlay__ {
++			pinctrl-names = "default";
++			pinctrl-0 = <&uart1_pins>;
++			status = "okay";
++		};
++	};
++
++	fragment@3 {
++		target = <&gpio>;
++		__overlay__ {
++
++			i2c1_pins: i2c1 {
++				brcm,pins = <44 45>;
++				brcm,function = <6>;
++			};
++
++			spi4_pins: spi4_pins {
++				brcm,pins = <6 7>;
++				brcm,function = <7>;
++			};
++
++			spi4_cs_pins: spi0_cs_pins {
++				brcm,pins = <4>;
++				brcm,function = <1>;
++			};
++
++			uart1_pins: uart1_pins {
++				brcm,pins = <14 15>;
++				brcm,function = <2>;
++				brcm,pull = <0 2>;
++			};
++
++		};
++	};
++
++	fragment@4 {
++		target-path = "/chosen";
++		__overlay__ {
++			bootargs = "8250.nr_uarts=1";
++		};
++	};
++
++	fragment@5 {
++		target = <&i2c0if>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			pinctrl-0 = <&i2c0_pins>;
++			pinctrl-names = "default";
++			status = "okay";
++
++			axp22x: pmic@34 {
++				interrupt-controller;
++				#interrupt-cells = <1>;
++				compatible = "x-powers,axp221";
++				reg = <0x34>; /* i2c address */
++				interrupt-parent = <&gpio>;
++				interrupts = <2 8>;  /* IRQ_TYPE_EDGE_FALLING */
++				irq-gpios = <&gpio 2 0>;
++
++				regulators {
++
++					x-powers,dcdc-freq = <3000>;
++
++					reg_aldo1: aldo1 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "audio-vdd";
++					};
++
++					reg_aldo2: aldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "display-vcc";
++					};
++
++					reg_dldo2: dldo2 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo2";
++					};
++
++					reg_dldo3: dldo3 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo3";
++					};
++
++					reg_dldo4: dldo4 {
++						regulator-always-on;
++						regulator-min-microvolt = <3300000>;
++						regulator-max-microvolt = <3300000>;
++						regulator-name = "dldo4";
++					};
++
++				};
++
++				battery_power_supply: battery-power-supply {
++					compatible = "x-powers,axp221-battery-power-supply";
++					monitored-battery = <&battery>;
++				};
++
++				ac_power_supply: ac_power_supply {
++					compatible = "x-powers,axp221-ac-power-supply";
++				};
++
++			};
++		};
++	};
++
++	fragment@6 {
++		target = <&i2c0if>;
++		__overlay__ {
++			compatible = "brcm,bcm2708-i2c";
++		};
++	};
++
++	fragment@7 {
++		target-path = "/aliases";
++		__overlay__ {
++			i2c0 = "/soc/i2c@7e205000";
++		};
++	};
++
++	fragment@8 {
++		target-path = "/";
++		__overlay__  {
++			battery: battery@0 {
++				compatible = "simple-battery";
++				device-chemistry = "lithium-ion";
++				constant-charge-current-max-microamp = <2100000>;
++				voltage-max-design-microvolt = <4200000>;
++				re-charge-voltage-microvolt = <4000000>;
++				// adjust the following params according to your battery specs
++				voltage-min-design-microvolt = <3300000>;
++				energy-full-design-microwatt-hours = <24790000>; // 2x3350mAh * 3.7v
++				charge-full-design-microamp-hours = <6700000>; // 2x3350mAh
++			};
++		};
++	};
++
++	fragment@9 {
++		target=<&dsi1>;
++		__overlay__ {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "okay";
++
++			port {
++				dsi_out_port: endpoint {
++					remote-endpoint = <&panel_dsi_port>;
++				};
++			};
++
++			panel_cwu50: panel@0 {
++				compatible = "cw,cwu50";
++				reg = <0>;
++				reset-gpio = <&gpio 8 1>;
++				backlight = <&ocp8178_backlight>;
++				rotation = <90>;
++				iovcc-supply = <&reg_aldo2>;
++
++				port {
++					panel_dsi_port: endpoint {
++						remote-endpoint = <&dsi_out_port>;
++					};
++				};
++			};
++		};
++	};
++
++	fragment@10 {
++		target-path = "/";
++		__overlay__  {
++			ocp8178_backlight: backlight@0 {
++				compatible = "ocp8178-backlight";
++				backlight-control-gpios = <&gpio 9 0>;
++				default-brightness = <5>;
++			};
++		};
++	};
++
++};
++
+diff --git a/arch/arm64/configs/bcm2711_defconfig b/arch/arm64/configs/bcm2711_defconfig
+index 90a5006be1e795..c36651529a6e9f 100644
+--- a/arch/arm64/configs/bcm2711_defconfig
++++ b/arch/arm64/configs/bcm2711_defconfig
+@@ -1771,5 +1771,21 @@ CONFIG_STACK_TRACER=y
+ CONFIG_SCHED_TRACER=y
+ CONFIG_FTRACE_SYSCALLS=y
+ CONFIG_BLK_DEV_IO_TRACE=y
++CONFIG_REGMAP_I2C=y
++CONFIG_INPUT_AXP20X_PEK=y
++CONFIG_CHARGER_AXP20X=m
++CONFIG_BATTERY_AXP20X=m
++CONFIG_AXP20X_POWER=m
++CONFIG_MFD_AXP20X=y
++CONFIG_MFD_AXP20X_I2C=y
++CONFIG_REGULATOR_AXP20X=y
++CONFIG_DRM_PANEL_CWD686=m
++CONFIG_DRM_PANEL_CWU50=m
++CONFIG_DRM_PANEL_CWU50_CM3=m
++CONFIG_BACKLIGHT_OCP8178=m
++CONFIG_AXP20X_ADC=m
++CONFIG_TI_ADC081C=m
++CONFIG_CRYPTO_LIB_ARC4=y
++CONFIG_CRC_CCITT=y
+ # CONFIG_UPROBE_EVENTS is not set
+ # CONFIG_STRICT_DEVMEM is not set
+diff --git a/arch/arm64/configs/bcm2712_defconfig b/arch/arm64/configs/bcm2712_defconfig
+index 56292357c08892..b9e396d4617ec1 100644
+--- a/arch/arm64/configs/bcm2712_defconfig
++++ b/arch/arm64/configs/bcm2712_defconfig
+@@ -1773,5 +1773,20 @@ CONFIG_STACK_TRACER=y
+ CONFIG_SCHED_TRACER=y
+ CONFIG_FTRACE_SYSCALLS=y
+ CONFIG_BLK_DEV_IO_TRACE=y
++CONFIG_REGMAP_I2C=y
++CONFIG_INPUT_AXP20X_PEK=y
++CONFIG_CHARGER_AXP20X=m
++CONFIG_BATTERY_AXP20X=m
++CONFIG_AXP20X_POWER=m
++CONFIG_MFD_AXP20X=y
++CONFIG_MFD_AXP20X_I2C=y
++CONFIG_REGULATOR_AXP20X=y
++CONFIG_DRM_PANEL_CWD686=m
++CONFIG_DRM_PANEL_CWU50=m
++CONFIG_BACKLIGHT_OCP8178=m
++CONFIG_AXP20X_ADC=m
++CONFIG_TI_ADC081C=m
++CONFIG_CRYPTO_LIB_ARC4=y
++CONFIG_CRC_CCITT=y
+ # CONFIG_UPROBE_EVENTS is not set
+ # CONFIG_STRICT_DEVMEM is not set
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index 928b9f1bf7d52f..1a750ba2af1eac 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -96,6 +96,39 @@ config DRM_PANEL_BOE_TV101WUM_LL2
+ 	  Say Y here if you want to support for BOE TV101WUM-LL2
+ 	  WUXGA PANEL DSI Video Mode panel
+ 
++config DRM_PANEL_CWD686
++	tristate "CWD686 panel"
++ 	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for CWD686 panel.
++	  The panel has a 480x1280 resolution and uses 24 bit RGB per pixel.
++	  To compile this driver as a module, choose M here: the module
++	  will be called panel-cwd686.
++
++config DRM_PANEL_CWU50
++	tristate "CWU50 panel"
++ 	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for CWU50 panel.
++	  The panel has a 720x1280 resolution and uses 24 bit RGB per pixel.
++	  To compile this driver as a module, choose M here: the module
++	  will be called panel-cwu50.
++
++config DRM_PANEL_CWU50_CM3
++	tristate "CWU50_CM3 panel"
++ 	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for CWU50_CM3 panel.
++	  The panel has a 720x1280 resolution and uses 24 bit RGB per pixel.
++	  To compile this driver as a module, choose M here: the module
++	  will be called panel-cwu50-cm3.
++
+ config DRM_PANEL_EBBG_FT8719
+ 	tristate "EBBG FT8719 panel driver"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index c13a08111d0c26..7b89f14c57850a 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -104,3 +104,6 @@ obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN) += panel-waveshare-dsi.o
+ obj-$(CONFIG_DRM_PANEL_WAVESHARE_TOUCHSCREEN_V2) += panel-waveshare-dsi-v2.o
+ obj-$(CONFIG_DRM_PANEL_WIDECHIPS_WS2401) += panel-widechips-ws2401.o
+ obj-$(CONFIG_DRM_PANEL_XINPENG_XPP055C272) += panel-xinpeng-xpp055c272.o
++obj-$(CONFIG_DRM_PANEL_CWD686) += panel-cwd686.o
++obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50.o
++obj-$(CONFIG_DRM_PANEL_CWU50) += panel-cwu50-cm3.o
+diff --git a/drivers/gpu/drm/panel/panel-cwd686.c b/drivers/gpu/drm/panel/panel-cwd686.c
+new file mode 100644
+index 00000000000000..e429e8ddf96935
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-cwd686.c
+@@ -0,0 +1,296 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++#include <drm/drm_modes.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++#include <linux/delay.h>
++#include <linux/of_device.h>
++#include <linux/module.h>
++
++struct cwd686 {
++	struct device *dev;
++	struct drm_panel panel;
++	struct regulator *supply;
++	struct gpio_desc *reset_gpio;
++	struct backlight_device *backlight;
++	bool prepared;
++	bool enabled;
++	enum drm_panel_orientation orientation;
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock = 54465,
++	.hdisplay = 480,
++	.hsync_start = 480 + 150,
++	.hsync_end = 480 + 150 + 24,
++	.htotal = 480 + 150 + 24 + 40,
++	.vdisplay = 1280,
++	.vsync_start = 1280 + 12,
++	.vsync_end = 1280 + 12+ 6,
++	.vtotal = 1280 + 12 + 6 + 10,
++};
++
++static inline struct cwd686 *panel_to_cwd686(struct drm_panel *panel)
++{
++	return container_of(panel, struct cwd686, panel);
++}
++
++#define dcs_write_seq(seq...)                              \
++({                                                              \
++	static const u8 d[] = { seq };                          \
++	mipi_dsi_dcs_write_buffer(dsi, d, ARRAY_SIZE(d));	 \
++})
++
++static void cwd686_init_sequence(struct cwd686 *ctx) 
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++
++	dcs_write_seq(0xF0,0x5A,0x59);
++	dcs_write_seq(0xF1,0xA5,0xA6);
++	dcs_write_seq(0xB0,0x54,0x32,0x23,0x45,0x44,0x44,0x44,0x44,0x9F,0x00,0x01,0x9F,0x00,0x01);
++	dcs_write_seq(0xB1,0x32,0x84,0x02,0x83,0x29,0x06,0x06,0x72,0x06,0x06);
++	dcs_write_seq(0xB2,0x73);
++	dcs_write_seq(0xB3,0x0B,0x09,0x13,0x11,0x0F,0x0D,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x05,0x07);
++	dcs_write_seq(0xB4,0x0A,0x08,0x12,0x10,0x0E,0x0C,0x00,0x00,0x00,0x03,0x00,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x04,0x06);
++	dcs_write_seq(0xB6,0x13,0x13);
++	dcs_write_seq(0xB8,0xB4,0x43,0x02,0xCC);
++	dcs_write_seq(0xB9,0xA5,0x20,0xFF,0xC8);
++	dcs_write_seq(0xBA,0x88,0x23);
++	dcs_write_seq(0xBD,0x43,0x0E,0x0E,0x50,0x50,0x29,0x10,0x03,0x44,0x03);
++	dcs_write_seq(0xC1,0x00,0x0C,0x16,0x04,0x00,0x30,0x10,0x04);
++	dcs_write_seq(0xC2,0x21,0x81);
++	dcs_write_seq(0xC3,0x02,0x30);
++	dcs_write_seq(0xC7,0x25,0x6A);
++	dcs_write_seq(0xC8,0x7C,0x68,0x59,0x4E,0x4B,0x3C,0x41,0x2B,0x44,0x43,0x43,0x60,0x4E,0x55,0x47,0x44,0x38,0x27,0x06,0x7C,0x68,0x59,0x4E,0x4B,0x3C,0x41,0x2B,0x44,0x43,0x43,0x60,0x4E,0x55,0x47,0x44,0x38,0x27,0x06);//GAMMA2.2
++	//dcs_write_seq(0xC8,0x7C,0x66,0x56,0x4A,0x46,0x37,0x3B,0x24,0x3D,0x3C,0x3A,0x56,0x42,0x48,0x39,0x38,0x2C,0x17,0x06,0x7C,0x66,0x56,0x4A,0x46,0x37,0x3B,0x24,0x3D,0x3C,0x3A,0x56,0x42,0x48,0x39,0x38,0x2C,0x17,0x06);//GAMMA2.5
++	//dcs_write_seq(0xC8,0x7C,0x69,0x5B,0x50,0x4E,0x40,0x46,0x31,0x4A,0x49,0x49,0x67,0x56,0x5E,0x51,0x4E,0x41,0x2F,0x06,0x7C,0x69,0x5B,0x50,0x4E,0x40,0x46,0x31,0x4A,0x49,0x49,0x67,0x56,0x5E,0x51,0x4E,0x41,0x2F,0x06);//GAMMA2.0
++	//dcs_write_seq(0xC8,0x7C,0x6D,0x60,0x56,0x54,0x47,0x4c,0x37,0x50,0x4e,0x4e,0x6d,0x5c,0x66,0x59,0x56,0x4A,0x36,0x06,0x7C,0x6D,0x60,0x56,0x54,0x47,0x4c,0x37,0x50,0x4e,0x4e,0x6d,0x5c,0x66,0x59,0x56,0x4A,0x36,0x06);//GAMMA1.8
++	//dcs_write_seq(0xC8,0x7C,0x6e,0x62,0x59,0x58,0x4b,0x52,0x3d,0x57,0x56,0x56,0x75,0x66,0x71,0x66,0x64,0x55,0x44,0x06,0x7C,0x6e,0x62,0x59,0x58,0x4b,0x52,0x3d,0x57,0x56,0x56,0x75,0x66,0x71,0x66,0x64,0x55,0x44,0x06);//GAMMA1.6
++	dcs_write_seq(0xD4,0x00,0x00,0x00,0x32,0x04,0x51);
++	dcs_write_seq(0xF1,0x5A,0x59);
++	dcs_write_seq(0xF0,0xA5,0xA6);
++	dcs_write_seq(0x36,0x14);
++	dcs_write_seq(0x35,0x00);
++	dcs_write_seq(0x11);
++	msleep(120);
++	dcs_write_seq(0x29);
++	msleep(20);
++}
++
++static int cwd686_disable(struct drm_panel *panel)
++{
++	struct cwd686 *ctx = panel_to_cwd686(panel);
++
++	if (!ctx->enabled)
++		return 0;
++
++	backlight_disable(ctx->backlight);
++
++	ctx->enabled = false;
++
++	return 0;
++}
++
++static int cwd686_unprepare(struct drm_panel *panel)
++{
++#if 0
++	struct cwd686 *ctx = panel_to_cwd686(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (!ctx->prepared)
++		return 0;
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to turn display off (%d)\n", ret);
++		return ret;
++	}
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to enter sleep mode (%d)\n", ret);
++		return ret;
++	}
++	msleep(120);
++
++	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++	msleep(5);
++
++	ctx->prepared = false;
++#endif
++
++	return 0;
++}
++
++static int cwd686_prepare(struct drm_panel *panel)
++{
++	struct cwd686 *ctx = panel_to_cwd686(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (ctx->prepared)
++		return 0;
++
++	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++	msleep(10);
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++	msleep(120);
++
++	/* Enabe tearing mode: send TE (tearing effect) at VBLANK */
++	ret = mipi_dsi_dcs_set_tear_on(dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (ret) {
++		dev_err(ctx->dev, "failed to enable vblank TE (%d)\n", ret);
++		return ret;
++	}
++	/* Exit sleep mode and power on */
++
++	cwd686_init_sequence(ctx);
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to exit sleep mode (%d)\n", ret);
++		return ret;
++	}
++	msleep(120);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to turn display on (%d)\n", ret);
++		return ret;
++	}
++	msleep(20);
++
++	ctx->prepared = true;
++
++	return 0;
++}
++
++static int cwd686_enable(struct drm_panel *panel)
++{
++	struct cwd686 *ctx = panel_to_cwd686(panel);
++
++	if (ctx->enabled)
++		return 0;
++
++	backlight_enable(ctx->backlight);
++
++	ctx->enabled = true;
++
++	return 0;
++}
++
++static int cwd686_get_modes(struct drm_panel *panel, struct drm_connector *connector)
++{
++	struct cwd686 *ctx = panel_to_cwd686(panel);
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(connector->dev, &default_mode);
++	if (!mode) {
++		dev_err(panel->dev, "bad mode or failed to add mode\n");
++		return -EINVAL;
++	}
++	drm_mode_set_name(mode);
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++
++	connector->display_info.width_mm = mode->width_mm;
++	connector->display_info.height_mm = mode->height_mm;
++
++	/* set up connector's "panel orientation" property */
++	drm_connector_set_panel_orientation(connector, ctx->orientation);
++
++	drm_mode_probed_add(connector, mode);
++
++	return 1; /* Number of modes */
++}
++
++static const struct drm_panel_funcs cwd686_drm_funcs = {
++	.disable = cwd686_disable,
++	.unprepare = cwd686_unprepare,
++	.prepare = cwd686_prepare,
++	.enable = cwd686_enable,
++	.get_modes = cwd686_get_modes,
++};
++
++static int cwd686_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct cwd686 *ctx;
++	int ret;
++
++	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++	ctx->dev = dev;
++
++	dsi->lanes = 4;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE | MIPI_DSI_MODE_LPM;
++
++	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
++	if (IS_ERR(ctx->reset_gpio)) {
++		ret = PTR_ERR(ctx->reset_gpio);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "failed to request GPIO (%d)\n", ret);
++		return ret;
++	}
++
++	ctx->backlight = devm_of_find_backlight(dev);
++	if (IS_ERR(ctx->backlight)) {
++		dev_err(ctx->dev, "devm_of_find_backlight");
++		return PTR_ERR(ctx->backlight);
++	}
++
++	ret = of_drm_get_panel_orientation(dev->of_node, &ctx->orientation);
++	if (ret) {
++		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
++		return ret;
++	}
++
++	ctx->panel.prepare_prev_first = true;
++
++	drm_panel_init(&ctx->panel, dev, &cwd686_drm_funcs, DRM_MODE_CONNECTOR_DSI);
++
++	drm_panel_add(&ctx->panel);
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0) {
++		dev_err(dev, "mipi_dsi_attach() failed: %d\n", ret);
++		drm_panel_remove(&ctx->panel);
++		return ret;
++	}
++
++	return 0;
++}
++
++static void cwd686_remove(struct mipi_dsi_device *dsi)
++{
++	struct cwd686 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++}
++
++static const struct of_device_id cwd686_of_match[] = {
++	{ .compatible = "cw,cwd686" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, cwd686_of_match);
++
++static struct mipi_dsi_driver cwd686_driver = {
++	.probe = cwd686_probe,
++	.remove = cwd686_remove,
++	.driver = {
++		.name = "panel-cwd686",
++		.of_match_table = cwd686_of_match,
++	},
++};
++module_mipi_dsi_driver(cwd686_driver);
++
++MODULE_DESCRIPTION("DRM Driver for cwd686 MIPI DSI panel");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-cwu50-cm3.c b/drivers/gpu/drm/panel/panel-cwu50-cm3.c
+new file mode 100644
+index 00000000000000..5a8eaf83c97aba
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-cwu50-cm3.c
+@@ -0,0 +1,598 @@
++/*
++ * SPDX-License-Identifier: GPL-2.0+
++ * Copyright (c) 2021 Clockwork Tech LLC
++ * Copyright (c) 2021 Max Fierke <max@maxfierke.com>
++ *
++ */
++
++#include <drm/drm_modes.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++#include <linux/delay.h>
++#include <linux/of_device.h>
++#include <linux/module.h>
++#include <video/mipi_display.h>
++
++static int power_off_case = 1;
++module_param(power_off_case,int,0660);
++
++struct cwu50 {
++	struct device *dev;
++	struct drm_panel panel;
++	struct regulator *vci;
++	struct regulator *iovcc;
++	struct gpio_desc *reset_gpio;
++	enum drm_panel_orientation orientation;
++	int dsi_status; // 0: ok, 1: error
++	bool sysfs_node_created;
++};
++
++static ssize_t dsi_state_show(struct device *dev,
++		struct device_attribute *attr, char *buf)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(dev);
++	struct cwu50 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	if (!ctx->dsi_status)
++		return scnprintf(buf, PAGE_SIZE, "ok\n");
++	else
++		return scnprintf(buf, PAGE_SIZE, "error\n");
++}
++
++static DEVICE_ATTR(dsi_state, 0444, dsi_state_show, NULL);
++
++static struct attribute *dsi_state_attrs[] = {
++	&dev_attr_dsi_state.attr,
++	NULL
++};
++
++static const struct attribute_group dsi_attr_group = {
++	.attrs = dsi_state_attrs,
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock			= 61020,
++
++	.hdisplay		= 720,
++	.hsync_start	= 720    + 30,
++	.hsync_end		= 720    + 30  + 15,
++	.htotal			= 720    + 30  + 15  + 15,
++
++	.vdisplay		= 1280,
++	.vsync_start	= 1280   + 8,
++	.vsync_end		= 1280   + 8   + 2,
++	.vtotal			= 1280   + 8   + 2   + 16,
++
++	.width_mm		= 62,
++	.height_mm		= 110,
++	.type			= DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
++};
++
++static inline struct cwu50 *panel_to_cwu50(struct drm_panel *panel)
++{
++	return container_of(panel, struct cwu50, panel);
++}
++
++#define dcs_write_seq(seq...)                                       \
++({                                                                  \
++	static const u8 d[] = { seq };                                  \
++	err = mipi_dsi_dcs_write_buffer(dsi, d, ARRAY_SIZE(d));         \
++	if (err < 0)                                                    \
++		return err;                                                 \
++})
++
++static int cwu50_init_sequence(struct cwu50 *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++
++	dcs_write_seq(0xE1,0x93);
++	dcs_write_seq(0xE2,0x65);
++	dcs_write_seq(0xE3,0xF8);
++	dcs_write_seq(0x70,0x20);
++	dcs_write_seq(0x71,0x13);
++	dcs_write_seq(0x72,0x06);
++	dcs_write_seq(0x75,0x03);
++	dcs_write_seq(0xE0,0x01);
++	dcs_write_seq(0x00,0x00);
++	dcs_write_seq(0x01,0x47);//VCOM0x47
++	dcs_write_seq(0x03,0x00);
++	dcs_write_seq(0x04,0x4D);
++	dcs_write_seq(0x0C,0x64);
++	dcs_write_seq(0x17,0x00);
++	dcs_write_seq(0x18,0xBF);
++	dcs_write_seq(0x19,0x00);
++	dcs_write_seq(0x1A,0x00);
++	dcs_write_seq(0x1B,0xBF);
++	dcs_write_seq(0x1C,0x00);
++	dcs_write_seq(0x1F,0x7E);
++	dcs_write_seq(0x20,0x24);
++	dcs_write_seq(0x21,0x24);
++	dcs_write_seq(0x22,0x4E);
++	dcs_write_seq(0x24,0xFE);
++	dcs_write_seq(0x37,0x09);
++	dcs_write_seq(0x38,0x04);
++	dcs_write_seq(0x3C,0x76);
++	dcs_write_seq(0x3D,0xFF);
++	dcs_write_seq(0x3E,0xFF);
++	dcs_write_seq(0x3F,0x7F);
++	dcs_write_seq(0x40,0x04);//Dot inversion type
++	dcs_write_seq(0x41,0xA0);
++	dcs_write_seq(0x44,0x11);
++	dcs_write_seq(0x55,0x02);
++	dcs_write_seq(0x56,0x01);
++	dcs_write_seq(0x57,0x49);
++	dcs_write_seq(0x58,0x09);
++	dcs_write_seq(0x59,0x2A);
++	dcs_write_seq(0x5A,0x1A);
++	dcs_write_seq(0x5B,0x1A);
++	dcs_write_seq(0x5D,0x78);
++	dcs_write_seq(0x5E,0x6E);
++	dcs_write_seq(0x5F,0x66);
++	dcs_write_seq(0x60,0x5E);
++	dcs_write_seq(0x61,0x60);
++	dcs_write_seq(0x62,0x54);
++	dcs_write_seq(0x63,0x5C);
++	dcs_write_seq(0x64,0x47);
++	dcs_write_seq(0x65,0x5F);
++	dcs_write_seq(0x66,0x5D);
++	dcs_write_seq(0x67,0x5B);
++	dcs_write_seq(0x68,0x76);
++	dcs_write_seq(0x69,0x61);
++	dcs_write_seq(0x6A,0x63);
++	dcs_write_seq(0x6B,0x50);
++	dcs_write_seq(0x6C,0x45);
++	dcs_write_seq(0x6D,0x34);
++	dcs_write_seq(0x6E,0x1C);
++	dcs_write_seq(0x6F,0x07);
++	dcs_write_seq(0x70,0x78);
++	dcs_write_seq(0x71,0x6E);
++	dcs_write_seq(0x72,0x66);
++	dcs_write_seq(0x73,0x5E);
++	dcs_write_seq(0x74,0x60);
++	dcs_write_seq(0x75,0x54);
++	dcs_write_seq(0x76,0x5C);
++	dcs_write_seq(0x77,0x47);
++	dcs_write_seq(0x78,0x5F);
++	dcs_write_seq(0x79,0x5D);
++	dcs_write_seq(0x7A,0x5B);
++	dcs_write_seq(0x7B,0x76);
++	dcs_write_seq(0x7C,0x61);
++	dcs_write_seq(0x7D,0x63);
++	dcs_write_seq(0x7E,0x50);
++	dcs_write_seq(0x7F,0x45);
++	dcs_write_seq(0x80,0x34);
++	dcs_write_seq(0x81,0x1C);
++	dcs_write_seq(0x82,0x07);
++	dcs_write_seq(0xE0,0x02);
++	dcs_write_seq(0x00,0x44);
++	dcs_write_seq(0x01,0x46);
++	dcs_write_seq(0x02,0x48);
++	dcs_write_seq(0x03,0x4A);
++	dcs_write_seq(0x04,0x40);
++	dcs_write_seq(0x05,0x42);
++	dcs_write_seq(0x06,0x1F);
++	dcs_write_seq(0x07,0x1F);
++	dcs_write_seq(0x08,0x1F);
++	dcs_write_seq(0x09,0x1F);
++	dcs_write_seq(0x0A,0x1F);
++	dcs_write_seq(0x0B,0x1F);
++	dcs_write_seq(0x0C,0x1F);
++	dcs_write_seq(0x0D,0x1F);
++	dcs_write_seq(0x0E,0x1F);
++	dcs_write_seq(0x0F,0x1F);
++	dcs_write_seq(0x10,0x1F);
++	dcs_write_seq(0x11,0x1F);
++	dcs_write_seq(0x12,0x1F);
++	dcs_write_seq(0x13,0x1F);
++	dcs_write_seq(0x14,0x1E);
++	dcs_write_seq(0x15,0x1F);
++	dcs_write_seq(0x16,0x45);
++	dcs_write_seq(0x17,0x47);
++	dcs_write_seq(0x18,0x49);
++	dcs_write_seq(0x19,0x4B);
++	dcs_write_seq(0x1A,0x41);
++	dcs_write_seq(0x1B,0x43);
++	dcs_write_seq(0x1C,0x1F);
++	dcs_write_seq(0x1D,0x1F);
++	dcs_write_seq(0x1E,0x1F);
++	dcs_write_seq(0x1F,0x1F);
++	dcs_write_seq(0x20,0x1F);
++	dcs_write_seq(0x21,0x1F);
++	dcs_write_seq(0x22,0x1F);
++	dcs_write_seq(0x23,0x1F);
++	dcs_write_seq(0x24,0x1F);
++	dcs_write_seq(0x25,0x1F);
++	dcs_write_seq(0x26,0x1F);
++	dcs_write_seq(0x27,0x1F);
++	dcs_write_seq(0x28,0x1F);
++	dcs_write_seq(0x29,0x1F);
++	dcs_write_seq(0x2A,0x1E);
++	dcs_write_seq(0x2B,0x1F);
++	dcs_write_seq(0x2C,0x0B);
++	dcs_write_seq(0x2D,0x09);
++	dcs_write_seq(0x2E,0x07);
++	dcs_write_seq(0x2F,0x05);
++	dcs_write_seq(0x30,0x03);
++	dcs_write_seq(0x31,0x01);
++	dcs_write_seq(0x32,0x1F);
++	dcs_write_seq(0x33,0x1F);
++	dcs_write_seq(0x34,0x1F);
++	dcs_write_seq(0x35,0x1F);
++	dcs_write_seq(0x36,0x1F);
++	dcs_write_seq(0x37,0x1F);
++	dcs_write_seq(0x38,0x1F);
++	dcs_write_seq(0x39,0x1F);
++	dcs_write_seq(0x3A,0x1F);
++	dcs_write_seq(0x3B,0x1F);
++	dcs_write_seq(0x3C,0x1F);
++	dcs_write_seq(0x3D,0x1F);
++	dcs_write_seq(0x3E,0x1F);
++	dcs_write_seq(0x3F,0x1F);
++	dcs_write_seq(0x40,0x1F);
++	dcs_write_seq(0x41,0x1E);
++	dcs_write_seq(0x42,0x0A);
++	dcs_write_seq(0x43,0x08);
++	dcs_write_seq(0x44,0x06);
++	dcs_write_seq(0x45,0x04);
++	dcs_write_seq(0x46,0x02);
++	dcs_write_seq(0x47,0x00);
++	dcs_write_seq(0x48,0x1F);
++	dcs_write_seq(0x49,0x1F);
++	dcs_write_seq(0x4A,0x1F);
++	dcs_write_seq(0x4B,0x1F);
++	dcs_write_seq(0x4C,0x1F);
++	dcs_write_seq(0x4D,0x1F);
++	dcs_write_seq(0x4E,0x1F);
++	dcs_write_seq(0x4F,0x1F);
++	dcs_write_seq(0x50,0x1F);
++	dcs_write_seq(0x51,0x1F);
++	dcs_write_seq(0x52,0x1F);
++	dcs_write_seq(0x53,0x1F);
++	dcs_write_seq(0x54,0x1F);
++	dcs_write_seq(0x55,0x1F);
++	dcs_write_seq(0x56,0x1F);
++	dcs_write_seq(0x57,0x1E);
++	dcs_write_seq(0x58,0x40);
++	dcs_write_seq(0x59,0x00);
++	dcs_write_seq(0x5A,0x00);
++	dcs_write_seq(0x5B,0x30);
++	dcs_write_seq(0x5C,0x02);
++	dcs_write_seq(0x5D,0x40);
++	dcs_write_seq(0x5E,0x01);
++	dcs_write_seq(0x5F,0x02);
++	dcs_write_seq(0x60,0x00);
++	dcs_write_seq(0x61,0x01);
++	dcs_write_seq(0x62,0x02);
++	dcs_write_seq(0x63,0x65);
++	dcs_write_seq(0x64,0x66);
++	dcs_write_seq(0x65,0x00);
++	dcs_write_seq(0x66,0x00);
++	dcs_write_seq(0x67,0x74);
++	dcs_write_seq(0x68,0x06);
++	dcs_write_seq(0x69,0x65);
++	dcs_write_seq(0x6A,0x66);
++	dcs_write_seq(0x6B,0x10);
++	dcs_write_seq(0x6C,0x00);
++	dcs_write_seq(0x6D,0x04);
++	dcs_write_seq(0x6E,0x04);
++	dcs_write_seq(0x6F,0x88);
++	dcs_write_seq(0x70,0x00);
++	dcs_write_seq(0x71,0x00);
++	dcs_write_seq(0x72,0x06);
++	dcs_write_seq(0x73,0x7B);
++	dcs_write_seq(0x74,0x00);
++	dcs_write_seq(0x75,0x87);
++	dcs_write_seq(0x76,0x00);
++	dcs_write_seq(0x77,0x5D);
++	dcs_write_seq(0x78,0x17);
++	dcs_write_seq(0x79,0x1F);
++	dcs_write_seq(0x7A,0x00);
++	dcs_write_seq(0x7B,0x00);
++	dcs_write_seq(0x7C,0x00);
++	dcs_write_seq(0x7D,0x03);
++	dcs_write_seq(0x7E,0x7B);
++	dcs_write_seq(0xE0,0x04);
++	dcs_write_seq(0x09,0x10);
++	dcs_write_seq(0xE0,0x00);
++	dcs_write_seq(0xE6,0x02);
++	dcs_write_seq(0xE7,0x02);
++	// dcs_write_seq(0x11);// SLPOUT
++	// msleep (120);
++	// dcs_write_seq(0x29);// DSPON
++	// msleep (20);
++	// dcs_write_seq(0x35,0x00);// TE
++
++	return 0;
++}
++
++static int cwu50_unprepare(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++
++	/* Power off the display using case 1 described in JD9365D.pdf chapter 9.5.3.
++	 * module's default behaviour
++	 */
++	if (1 == power_off_case) {
++		goto power_off_case1;
++	}
++
++	/* Power off the display using case 2 described in JD9365D.pdf chapter 9.5.3. */
++
++	/* tCMD_OFF >= 1ms */
++	msleep(1);
++
++	err = mipi_dsi_dcs_set_display_off(dsi);
++	if (err) {
++		dev_warn(ctx->dev, "failed to send display off command (%d)\n", err);
++		goto fallback_case1;
++	}
++
++	/* tDISOFF >= 50ms */
++	msleep(50);
++
++
++	err = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (err) {
++		dev_warn(ctx->dev, "failed to enter sleep mode (%d)\n", err);
++		goto fallback_case1;
++	}
++
++	/* tSLPIN >= 100ms */
++	msleep(100);
++
++
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1); /* assert reset */
++
++	goto disable_regulators;
++
++fallback_case1:
++	/* in case of error, fall back to case 1 */
++	dev_warn(ctx->dev, "falling back to power off case 1 using HW reset line");
++power_off_case1:
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1); /* assert reset */
++	/* tRSTOFF1 >= 120ms */
++	msleep(120);
++
++disable_regulators:
++	regulator_disable(ctx->vci);
++	regulator_disable(ctx->iovcc);
++
++	return 0;
++}
++
++static int cwu50_prepare(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++	u8 response;
++
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1); /* ensure asserted state */
++
++	/* IOVCC first, then VCI */
++	err = regulator_enable(ctx->iovcc);
++	if (err) {
++		dev_err(ctx->dev, "failed to enable iovcc (%d)\n", err);
++		goto error_finialize;
++	}
++
++	/* tPWON>= 0ms */
++
++	/* MIPI should change to LP-11 after turning on vci according to JD9365D.pdf */
++	err = regulator_enable(ctx->vci);
++	if (err) {
++		dev_err(ctx->dev, "failed to enable vci (%d)\n", err);
++		goto disable_iovcc;
++	}
++
++	/* Wait for MIPI to initialize
++	 * tRPWIRES >= 5ms
++	 * 0 <= tMIPI_ON <= tRPWIRES
++	 */
++	msleep(30);
++
++	/* MIPI should be LP-11 now */
++
++	/* tRESETL=10us */
++	/* tRESETH >= 5ms */
++	gpiod_set_value_cansleep(ctx->reset_gpio, 0); /* deassert */
++	msleep(5);
++
++	/* Exit sleep mode and power on */
++
++	err = cwu50_init_sequence(ctx);
++	if (err) {
++		dev_err(ctx->dev, "failed to send initialize sequence (%d)\n", err);
++		goto disable_vci;
++	}
++
++	/* slpout */
++	err = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (err) {
++		dev_err(ctx->dev, "failed to exit sleep mode (%d)\n", err);
++		goto disable_vci;
++	}
++
++	/* tSLPOUT 120ms */
++	msleep(120);
++
++	err = mipi_dsi_dcs_set_display_on(dsi);
++	if (err) {
++		dev_err(ctx->dev, "failed to turn display on (%d)\n", err);
++		goto disable_vci;
++	}
++	msleep(20);
++
++	/* Enabe tearing mode: send TE (tearing effect) at VBLANK */
++	/* JD9365D seems need a parameter for this command */
++	err = mipi_dsi_dcs_write_buffer(dsi, (u8[]){ 0x35, 0x00 }, 2);
++	// err = mipi_dsi_dcs_set_tear_on(dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (err < 0) {
++		dev_err(ctx->dev, "failed to enable vblank TE (%d)\n", err);
++		goto disable_vci;
++	}
++
++	err = mipi_dsi_dcs_get_power_mode(dsi, &response);
++	if (!err) {
++		/* debug, normally the command will fail */
++		dev_info(ctx->dev, "Read display power mode got: %d", response);
++	}
++
++	ctx->dsi_status = 0;  // ok
++
++	return 0;
++disable_vci:
++	regulator_disable(ctx->vci);
++disable_iovcc:
++	regulator_disable(ctx->iovcc);
++error_finialize:
++	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++	ctx->dsi_status = 1;
++	return err;
++}
++
++static int cwu50_get_modes(struct drm_panel *panel, struct drm_connector *connector)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(connector->dev, &default_mode);
++	if (!mode) {
++		dev_err(panel->dev, "bad mode or failed to add mode\n");
++		return -EINVAL;
++	}
++	drm_mode_set_name(mode);
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++
++	/* set up connector's "panel orientation" property */
++	/*
++	 * TODO: Remove once all drm drivers call
++	 * drm_connector_set_orientation_from_panel()
++	 */
++	drm_connector_set_panel_orientation(connector, ctx->orientation);
++
++	drm_mode_probed_add(connector, mode);
++
++	return 1; /* Number of modes */
++}
++
++static enum drm_panel_orientation cwu50_get_orientation(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++
++	return ctx->orientation;
++}
++
++static const struct drm_panel_funcs cwu50_drm_funcs = {
++	.unprepare = cwu50_unprepare,
++	.prepare = cwu50_prepare,
++	.get_modes = cwu50_get_modes,
++	.get_orientation = cwu50_get_orientation,
++};
++
++static int cwu50_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct cwu50 *ctx;
++	int err;
++
++	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++	ctx->dev = dev;
++
++	dsi->lanes = 4;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO |
++					  MIPI_DSI_MODE_VIDEO_BURST |
++					  MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
++
++	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(ctx->reset_gpio)) {
++		err = PTR_ERR(ctx->reset_gpio);
++		return dev_err_probe(dev, err, "Failed to request GPIO (%d)\n", err);
++	}
++
++	ctx->vci = devm_regulator_get(dev, "vci");
++	if (IS_ERR(ctx->vci)) {
++		err = PTR_ERR(ctx->vci);
++		return dev_err_probe(dev, err, "Failed to request vci regulator: %d\n", err);
++	}
++
++	ctx->iovcc = devm_regulator_get(dev, "iovcc");
++	if (IS_ERR(ctx->iovcc)) {
++		err = PTR_ERR(ctx->iovcc);
++		return dev_err_probe(dev, err, "Failed to request iovcc regulator: %d\n", err);
++	}
++
++	err = of_drm_get_panel_orientation(dev->of_node, &ctx->orientation);
++	if (err) {
++		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, err);
++		return err;
++	}
++
++	ctx->panel.prepare_prev_first = true;
++
++	drm_panel_init(&ctx->panel, dev, &cwu50_drm_funcs, DRM_MODE_CONNECTOR_DSI);
++
++	err = drm_panel_of_backlight(&ctx->panel);
++	if (err)
++		return dev_err_probe(dev, err, "Failed to get backlight\n");
++
++	drm_panel_add(&ctx->panel);
++
++	err = mipi_dsi_attach(dsi);
++	if (err < 0) {
++		dev_err(dev, "mipi_dsi_attach() failed: %d\n", err);
++		drm_panel_remove(&ctx->panel);
++		return err;
++	}
++
++	err = sysfs_create_group(&dsi->dev.kobj, &dsi_attr_group);
++	if (err < 0) {
++		dev_warn(dev, "Cannot create optional sysfs nodes: %d\n", err);
++	} else {
++		ctx->sysfs_node_created = true;
++	}
++
++	return 0;
++}
++
++static void cwu50_remove(struct mipi_dsi_device *dsi)
++{
++	struct cwu50 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	if (ctx->sysfs_node_created) {
++		sysfs_remove_group(&dsi->dev.kobj, &dsi_attr_group);
++	}
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++}
++
++static const struct of_device_id cwu50_of_match[] = {
++	{ .compatible = "clockwork,cwu50-cm3" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, cwu50_of_match);
++
++static struct mipi_dsi_driver cwu50_driver = {
++	.probe = cwu50_probe,
++	.remove = cwu50_remove,
++	.driver = {
++		.name = "panel-clockwork-cwu50-cm3",
++		.of_match_table = cwu50_of_match,
++	},
++};
++module_mipi_dsi_driver(cwu50_driver);
++
++MODULE_DESCRIPTION("ClockworkPi CWU50-CM3 panel driver");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-cwu50.c b/drivers/gpu/drm/panel/panel-cwu50.c
+new file mode 100644
+index 00000000000000..071ec237de759d
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-cwu50.c
+@@ -0,0 +1,838 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++#include <drm/drm_modes.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++#include <linux/delay.h>
++#include <linux/of_device.h>
++#include <linux/module.h>
++
++struct cwu50 {
++	struct device *dev;
++	struct drm_panel panel;
++	struct regulator *vci;
++	struct regulator *iovcc;
++	struct gpio_desc *id_gpio;
++	struct backlight_device *backlight;
++	bool prepared;
++	bool enabled;
++	bool is_new_panel;
++	enum drm_panel_orientation orientation;
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock = 61020,
++	.hdisplay = 720,
++	.hsync_start = 720 + 30,
++	.hsync_end = 720+ 30 + 15,
++	.htotal = 720 + 30 + 15 + 15,
++	.vdisplay = 1280,
++	.vsync_start = 1280 + 8,
++	.vsync_end = 1280 + 8+ 2,
++	.vtotal = 1280 + 8 + 2 + 16,
++};
++
++static inline struct cwu50 *panel_to_cwu50(struct drm_panel *panel)
++{
++	return container_of(panel, struct cwu50, panel);
++}
++
++#define dcs_write_seq(seq...)                              \
++({                                                              \
++	static const u8 d[] = { seq };                          \
++	mipi_dsi_dcs_write_buffer(dsi, d, ARRAY_SIZE(d));	 \
++})
++
++static void cwu50_init_sequence(struct cwu50 *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++
++	dcs_write_seq(0xE1,0x93);
++	dcs_write_seq(0xE2,0x65);
++	dcs_write_seq(0xE3,0xF8);
++	dcs_write_seq(0x70,0x20);
++	dcs_write_seq(0x71,0x13);
++	dcs_write_seq(0x72,0x06);
++	dcs_write_seq(0x75,0x03);
++	dcs_write_seq(0xE0,0x01);
++	dcs_write_seq(0x00,0x00);
++	dcs_write_seq(0x01,0x47);//VCOM0x47
++	dcs_write_seq(0x03,0x00);
++	dcs_write_seq(0x04,0x4D);
++	dcs_write_seq(0x0C,0x64);
++	dcs_write_seq(0x17,0x00);
++	dcs_write_seq(0x18,0xBF);
++	dcs_write_seq(0x19,0x00);
++	dcs_write_seq(0x1A,0x00);
++	dcs_write_seq(0x1B,0xBF);
++	dcs_write_seq(0x1C,0x00);
++	dcs_write_seq(0x1F,0x7E);
++	dcs_write_seq(0x20,0x24);
++	dcs_write_seq(0x21,0x24);
++	dcs_write_seq(0x22,0x4E);
++	dcs_write_seq(0x24,0xFE);
++	dcs_write_seq(0x37,0x09);
++	dcs_write_seq(0x38,0x04);
++	dcs_write_seq(0x3C,0x76);
++	dcs_write_seq(0x3D,0xFF);
++	dcs_write_seq(0x3E,0xFF);
++	dcs_write_seq(0x3F,0x7F);
++	dcs_write_seq(0x40,0x04);//Dot inversion type
++	dcs_write_seq(0x41,0xA0);
++	dcs_write_seq(0x44,0x11);
++	dcs_write_seq(0x55,0x02);
++	dcs_write_seq(0x56,0x01);
++	dcs_write_seq(0x57,0x49);
++	dcs_write_seq(0x58,0x09);
++	dcs_write_seq(0x59,0x2A);
++	dcs_write_seq(0x5A,0x1A);
++	dcs_write_seq(0x5B,0x1A);
++	dcs_write_seq(0x5D,0x78);
++	dcs_write_seq(0x5E,0x6E);
++	dcs_write_seq(0x5F,0x66);
++	dcs_write_seq(0x60,0x5E);
++	dcs_write_seq(0x61,0x60);
++	dcs_write_seq(0x62,0x54);
++	dcs_write_seq(0x63,0x5C);
++	dcs_write_seq(0x64,0x47);
++	dcs_write_seq(0x65,0x5F);
++	dcs_write_seq(0x66,0x5D);
++	dcs_write_seq(0x67,0x5B);
++	dcs_write_seq(0x68,0x76);
++	dcs_write_seq(0x69,0x61);
++	dcs_write_seq(0x6A,0x63);
++	dcs_write_seq(0x6B,0x50);
++	dcs_write_seq(0x6C,0x45);
++	dcs_write_seq(0x6D,0x34);
++	dcs_write_seq(0x6E,0x1C);
++	dcs_write_seq(0x6F,0x07);
++	dcs_write_seq(0x70,0x78);
++	dcs_write_seq(0x71,0x6E);
++	dcs_write_seq(0x72,0x66);
++	dcs_write_seq(0x73,0x5E);
++	dcs_write_seq(0x74,0x60);
++	dcs_write_seq(0x75,0x54);
++	dcs_write_seq(0x76,0x5C);
++	dcs_write_seq(0x77,0x47);
++	dcs_write_seq(0x78,0x5F);
++	dcs_write_seq(0x79,0x5D);
++	dcs_write_seq(0x7A,0x5B);
++	dcs_write_seq(0x7B,0x76);
++	dcs_write_seq(0x7C,0x61);
++	dcs_write_seq(0x7D,0x63);
++	dcs_write_seq(0x7E,0x50);
++	dcs_write_seq(0x7F,0x45);
++	dcs_write_seq(0x80,0x34);
++	dcs_write_seq(0x81,0x1C);
++	dcs_write_seq(0x82,0x07);
++	dcs_write_seq(0xE0,0x02);
++	dcs_write_seq(0x00,0x44);
++	dcs_write_seq(0x01,0x46);
++	dcs_write_seq(0x02,0x48);
++	dcs_write_seq(0x03,0x4A);
++	dcs_write_seq(0x04,0x40);
++	dcs_write_seq(0x05,0x42);
++	dcs_write_seq(0x06,0x1F);
++	dcs_write_seq(0x07,0x1F);
++	dcs_write_seq(0x08,0x1F);
++	dcs_write_seq(0x09,0x1F);
++	dcs_write_seq(0x0A,0x1F);
++	dcs_write_seq(0x0B,0x1F);
++	dcs_write_seq(0x0C,0x1F);
++	dcs_write_seq(0x0D,0x1F);
++	dcs_write_seq(0x0E,0x1F);
++	dcs_write_seq(0x0F,0x1F);
++	dcs_write_seq(0x10,0x1F);
++	dcs_write_seq(0x11,0x1F);
++	dcs_write_seq(0x12,0x1F);
++	dcs_write_seq(0x13,0x1F);
++	dcs_write_seq(0x14,0x1E);
++	dcs_write_seq(0x15,0x1F);
++	dcs_write_seq(0x16,0x45);
++	dcs_write_seq(0x17,0x47);
++	dcs_write_seq(0x18,0x49);
++	dcs_write_seq(0x19,0x4B);
++	dcs_write_seq(0x1A,0x41);
++	dcs_write_seq(0x1B,0x43);
++	dcs_write_seq(0x1C,0x1F);
++	dcs_write_seq(0x1D,0x1F);
++	dcs_write_seq(0x1E,0x1F);
++	dcs_write_seq(0x1F,0x1F);
++	dcs_write_seq(0x20,0x1F);
++	dcs_write_seq(0x21,0x1F);
++	dcs_write_seq(0x22,0x1F);
++	dcs_write_seq(0x23,0x1F);
++	dcs_write_seq(0x24,0x1F);
++	dcs_write_seq(0x25,0x1F);
++	dcs_write_seq(0x26,0x1F);
++	dcs_write_seq(0x27,0x1F);
++	dcs_write_seq(0x28,0x1F);
++	dcs_write_seq(0x29,0x1F);
++	dcs_write_seq(0x2A,0x1E);
++	dcs_write_seq(0x2B,0x1F);
++	dcs_write_seq(0x2C,0x0B);
++	dcs_write_seq(0x2D,0x09);
++	dcs_write_seq(0x2E,0x07);
++	dcs_write_seq(0x2F,0x05);
++	dcs_write_seq(0x30,0x03);
++	dcs_write_seq(0x31,0x01);
++	dcs_write_seq(0x32,0x1F);
++	dcs_write_seq(0x33,0x1F);
++	dcs_write_seq(0x34,0x1F);
++	dcs_write_seq(0x35,0x1F);
++	dcs_write_seq(0x36,0x1F);
++	dcs_write_seq(0x37,0x1F);
++	dcs_write_seq(0x38,0x1F);
++	dcs_write_seq(0x39,0x1F);
++	dcs_write_seq(0x3A,0x1F);
++	dcs_write_seq(0x3B,0x1F);
++	dcs_write_seq(0x3C,0x1F);
++	dcs_write_seq(0x3D,0x1F);
++	dcs_write_seq(0x3E,0x1F);
++	dcs_write_seq(0x3F,0x1F);
++	dcs_write_seq(0x40,0x1F);
++	dcs_write_seq(0x41,0x1E);
++	dcs_write_seq(0x42,0x0A);
++	dcs_write_seq(0x43,0x08);
++	dcs_write_seq(0x44,0x06);
++	dcs_write_seq(0x45,0x04);
++	dcs_write_seq(0x46,0x02);
++	dcs_write_seq(0x47,0x00);
++	dcs_write_seq(0x48,0x1F);
++	dcs_write_seq(0x49,0x1F);
++	dcs_write_seq(0x4A,0x1F);
++	dcs_write_seq(0x4B,0x1F);
++	dcs_write_seq(0x4C,0x1F);
++	dcs_write_seq(0x4D,0x1F);
++	dcs_write_seq(0x4E,0x1F);
++	dcs_write_seq(0x4F,0x1F);
++	dcs_write_seq(0x50,0x1F);
++	dcs_write_seq(0x51,0x1F);
++	dcs_write_seq(0x52,0x1F);
++	dcs_write_seq(0x53,0x1F);
++	dcs_write_seq(0x54,0x1F);
++	dcs_write_seq(0x55,0x1F);
++	dcs_write_seq(0x56,0x1F);
++	dcs_write_seq(0x57,0x1E);
++	dcs_write_seq(0x58,0x40);
++	dcs_write_seq(0x59,0x00);
++	dcs_write_seq(0x5A,0x00);
++	dcs_write_seq(0x5B,0x30);
++	dcs_write_seq(0x5C,0x02);
++	dcs_write_seq(0x5D,0x40);
++	dcs_write_seq(0x5E,0x01);
++	dcs_write_seq(0x5F,0x02);
++	dcs_write_seq(0x60,0x00);
++	dcs_write_seq(0x61,0x01);
++	dcs_write_seq(0x62,0x02);
++	dcs_write_seq(0x63,0x65);
++	dcs_write_seq(0x64,0x66);
++	dcs_write_seq(0x65,0x00);
++	dcs_write_seq(0x66,0x00);
++	dcs_write_seq(0x67,0x74);
++	dcs_write_seq(0x68,0x06);
++	dcs_write_seq(0x69,0x65);
++	dcs_write_seq(0x6A,0x66);
++	dcs_write_seq(0x6B,0x10);
++	dcs_write_seq(0x6C,0x00);
++	dcs_write_seq(0x6D,0x04);
++	dcs_write_seq(0x6E,0x04);
++	dcs_write_seq(0x6F,0x88);
++	dcs_write_seq(0x70,0x00);
++	dcs_write_seq(0x71,0x00);
++	dcs_write_seq(0x72,0x06);
++	dcs_write_seq(0x73,0x7B);
++	dcs_write_seq(0x74,0x00);
++	dcs_write_seq(0x75,0x87);
++	dcs_write_seq(0x76,0x00);
++	dcs_write_seq(0x77,0x5D);
++	dcs_write_seq(0x78,0x17);
++	dcs_write_seq(0x79,0x1F);
++	dcs_write_seq(0x7A,0x00);
++	dcs_write_seq(0x7B,0x00);
++	dcs_write_seq(0x7C,0x00);
++	dcs_write_seq(0x7D,0x03);
++	dcs_write_seq(0x7E,0x7B);
++	dcs_write_seq(0xE0,0x04);
++	dcs_write_seq(0x09,0x10);
++	dcs_write_seq(0xE0,0x00);
++	dcs_write_seq(0xE6,0x02);
++	dcs_write_seq(0xE7,0x02);
++}
++static int cwu50_init_sequence2(struct cwu50 *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++	dcs_write_seq(0xE0,0x00);
++
++	//--- PASSWORD	----//
++	dcs_write_seq(0xE1,0x93);
++	dcs_write_seq(0xE2,0x65);
++	dcs_write_seq(0xE3,0xF8);
++	dcs_write_seq(0x80,0x03);//03:4lane 02:3lane 01:2lane
++
++
++	//--- Page1  ----//
++	dcs_write_seq(0xE0,0x01);
++
++	//Set VCOM
++	dcs_write_seq(0x00,0x00);
++	dcs_write_seq(0x01,0x62);
++	dcs_write_seq(0x03,0x10);
++	dcs_write_seq(0x04,0x6A);
++
++	//Set Gamma Power, VGMP,VGMN,VGSP,VGSN
++	dcs_write_seq(0x17,0x00);
++	dcs_write_seq(0x18,0xDF); // VGMP=4.9V
++	dcs_write_seq(0x19,0x01); // VGSP=0.3V
++	dcs_write_seq(0x1A,0x00);
++	dcs_write_seq(0x1B,0xDF); // VGMN=-4.9V
++	dcs_write_seq(0x1C,0x01); // VGSN=0.3V
++
++	//VCL
++	dcs_write_seq(0x24,0xFE);
++
++	//Set Panel
++	dcs_write_seq(0x37,0x09);	//SS=1,BGR=1
++
++	//SET RGBCYC
++	dcs_write_seq(0x38,0x04);	//JDT=100 column inversion
++	dcs_write_seq(0x39,0x08);	//RGB_N_EQ1
++	dcs_write_seq(0x3A,0x12);	//RGB_N_EQ2
++	dcs_write_seq(0x3C,0x78);	//SET EQ3 for TE_H
++	dcs_write_seq(0x3D,0xFF);
++	dcs_write_seq(0x3E,0xFF);
++	dcs_write_seq(0x3F,0xFF);
++
++	//Set TCON
++	dcs_write_seq(0x40,0x04);	//RSO 04h=720, 05h=768, 06h=800
++	dcs_write_seq(0x41,0xA0);	//LN=640->1280 line
++	dcs_write_seq(0x42,0x7F);  //SLT=12.7us
++	dcs_write_seq(0x43,0x10);  //VFP
++	dcs_write_seq(0x44,0x17);  //VBP =24
++	dcs_write_seq(0x45,0x40);
++
++	//dcs_write_seq(0x4A,0x35);//BIST MODE 35:AUTO
++
++	//--- power voltage  ----//
++	dcs_write_seq(0x55,0x02);	//DCDCM=0011, JD5001
++	//dcs_write_seq(0x56,0x01);
++	dcs_write_seq(0x57,0x69);
++	//dcs_write_seq(0x58,0x0A);
++	dcs_write_seq(0x59,0x2A);	//VCL = -2.7V, AVEE=-5.5V
++	dcs_write_seq(0x5A,0x1A);	//VGH = +12.2V
++	dcs_write_seq(0x5B,0x1A);	//VGL = -12.2V
++
++	//--- Gamma2.2	----//	//G2.2	  //G2.5
++	dcs_write_seq(0x5D,0x7F);  //0x7F	//0x7F
++	dcs_write_seq(0x5E,0x67);  //0x67	//0x65
++	dcs_write_seq(0x5F,0x58);  //0x58	//0x55
++	dcs_write_seq(0x60,0x4B);  //0x4B	//0x47
++	dcs_write_seq(0x61,0x47);  //0x47	//0x42
++	dcs_write_seq(0x62,0x39);  //0x39	//0x32
++	dcs_write_seq(0x63,0x3D);  //0x3D	//0x36
++	dcs_write_seq(0x64,0x25);  //0x25	//0x1D
++	dcs_write_seq(0x65,0x3D);  //0x3D	//0x36
++	dcs_write_seq(0x66,0x3C);  //0x3C	//0x34
++	dcs_write_seq(0x67,0x3C);  //0x3C	//0x35
++	dcs_write_seq(0x68,0x5B);  //0x5B	//0x51
++	dcs_write_seq(0x69,0x4A);  //0x4A	//0x3D
++	dcs_write_seq(0x6A,0x50);  //0x50	//0x40
++	dcs_write_seq(0x6B,0x42);  //0x42	//0x31
++	dcs_write_seq(0x6C,0x3B);  //0x3B	//0x2C
++	dcs_write_seq(0x6D,0x2D);  //0x2D	//0x1F
++	dcs_write_seq(0x6E,0x19);  //0x19	//0x0E
++	dcs_write_seq(0x6F,0x00);  //0x00	//0x00
++	dcs_write_seq(0x70,0x7F);  //0x7F	//0x7F
++	dcs_write_seq(0x71,0x67);  //0x67	//0x65
++	dcs_write_seq(0x72,0x58);  //0x58	//0x55
++	dcs_write_seq(0x73,0x4B);  //0x4B	//0x47
++	dcs_write_seq(0x74,0x47);  //0x47	//0x42
++	dcs_write_seq(0x75,0x39);  //0x39	//0x32
++	dcs_write_seq(0x76,0x3D);  //0x3D	//0x36
++	dcs_write_seq(0x77,0x25);  //0x25	//0x1D
++	dcs_write_seq(0x78,0x3D);  //0x3D	//0x36
++	dcs_write_seq(0x79,0x3C);  //0x3C	//0x34
++	dcs_write_seq(0x7A,0x3C);  //0x3C	//0x35
++	dcs_write_seq(0x7B,0x5B);  //0x5B	//0x51
++	dcs_write_seq(0x7C,0x4A);  //0x4A	//0x3D
++	dcs_write_seq(0x7D,0x50);  //0x50	//0x40
++	dcs_write_seq(0x7E,0x42);  //0x42	//0x31
++	dcs_write_seq(0x7F,0x3B);  //0x3B	//0x2C
++	dcs_write_seq(0x80,0x2D);  //0x2D	//0x1F
++	dcs_write_seq(0x81,0x19);  //0x19	//0x0E
++	dcs_write_seq(0x82,0x00);  //0x00	//0x00
++
++
++	//Page2, for GIP
++	dcs_write_seq(0xE0,0x02);
++
++	//GIP_L Pin mapping
++	dcs_write_seq(0x00,0x5F);	//GCL
++	dcs_write_seq(0x01,0x5F);	//VSS->VGL
++	dcs_write_seq(0x02,0x44);	//CLK1->CKV0
++	dcs_write_seq(0x03,0x46);	//CKK3->CKV2
++	dcs_write_seq(0x04,0x48);	//CLK5->CKV4
++	dcs_write_seq(0x05,0x4A);	//CLK7->CKV6
++	dcs_write_seq(0x06,0x5F);	//VGL
++	dcs_write_seq(0x07,0x5F);	//VGL
++	dcs_write_seq(0x08,0x5F);	//VGL
++	dcs_write_seq(0x09,0x5F);	//NC
++	dcs_write_seq(0x0A,0x5F);	//NC
++	dcs_write_seq(0x0B,0x5F);	//NC //
++	dcs_write_seq(0x0C,0x5F);	//NC
++	dcs_write_seq(0x0D,0x5F);	//NC
++	dcs_write_seq(0x0E,0x5F);	//NC //
++	dcs_write_seq(0x0F,0x5F);	//NC
++	dcs_write_seq(0x10,0x5F);	//NC
++	dcs_write_seq(0x11,0x5F);	//NC //
++	dcs_write_seq(0x12,0x5E);	//GCH
++	dcs_write_seq(0x13,0x5E);	//VDD->VGH
++	dcs_write_seq(0x14,0x40);	//STV1
++	dcs_write_seq(0x15,0x42);	//STV3
++
++	//GIP_R Pin mapping
++	dcs_write_seq(0x16,0x5F);	//GCL
++	dcs_write_seq(0x17,0x5F);	//VSS->VGL
++	dcs_write_seq(0x18,0x45);	//CLK2->CKV1
++	dcs_write_seq(0x19,0x47);	//CKK4->CKV3
++	dcs_write_seq(0x1A,0x49);	//CLK6->CKV5
++	dcs_write_seq(0x1B,0x4B);	//CLK8->CKV7
++	dcs_write_seq(0x1C,0x5F);	//VGL
++	dcs_write_seq(0x1D,0x5F);	//VGL
++	dcs_write_seq(0x1E,0x5F);	//VGL
++	dcs_write_seq(0x1F,0x5F);	//NC
++	dcs_write_seq(0x20,0x5F);	//NC
++	dcs_write_seq(0x21,0x5F);	//NC //
++	dcs_write_seq(0x22,0x5F);	//NC
++	dcs_write_seq(0x23,0x5F);	//NC
++	dcs_write_seq(0x24,0x5F);	//NC //
++	dcs_write_seq(0x25,0x5F);	//NC
++	dcs_write_seq(0x26,0x5F);	//NC
++	dcs_write_seq(0x27,0x5F);	//NC //
++	dcs_write_seq(0x28,0x5E);	//GCH
++	dcs_write_seq(0x29,0x5E);	//VDD->VGH
++	dcs_write_seq(0x2A,0x41);	//STV2
++	dcs_write_seq(0x2B,0x43);	//STV4
++
++	//GIP_L_GS Pin mapping
++	dcs_write_seq(0x2C,0x1F);	//GCL
++	dcs_write_seq(0x2D,0x1E);	//VSS->VGH
++	dcs_write_seq(0x2E,0x0B);	//CLK1->CKV7
++	dcs_write_seq(0x2F,0x09);	//CKK3->CKV5
++	dcs_write_seq(0x30,0x07);	//CLK5->CKV3
++	dcs_write_seq(0x31,0x05);	//CLK7->CKV1
++	dcs_write_seq(0x32,0x1F);	//VGL
++	dcs_write_seq(0x33,0x1F);	//VGL
++	dcs_write_seq(0x34,0x1F);	//VGL
++	dcs_write_seq(0x35,0x1F);	//NC
++	dcs_write_seq(0x36,0x1F);	//NC
++	dcs_write_seq(0x37,0x1F);	//NC //
++	dcs_write_seq(0x38,0x1F);	//NC
++	dcs_write_seq(0x39,0x1F);	//NC
++	dcs_write_seq(0x3A,0x1F);	//NC //
++	dcs_write_seq(0x3B,0x1F);	//NC
++	dcs_write_seq(0x3C,0x1F);	//NC
++	dcs_write_seq(0x3D,0x1F);	//NC //
++	dcs_write_seq(0x3E,0x1E);	//GCH
++	dcs_write_seq(0x3F,0x1F);	//VDD->VGL
++	dcs_write_seq(0x40,0x03);	//STV1
++	dcs_write_seq(0x41,0x01);	//STV3
++
++	//GIP_R_GS Pin mapping
++	dcs_write_seq(0x42,0x1F);	//GCL
++	dcs_write_seq(0x43,0x1E);	//VSS->VGH
++	dcs_write_seq(0x44,0x0A);	//CLK2->CKV6
++	dcs_write_seq(0x45,0x08);	//CKK4->CKV4
++	dcs_write_seq(0x46,0x06);	//CLK6->CKV2
++	dcs_write_seq(0x47,0x04);	//CLK8->CKV0
++	dcs_write_seq(0x48,0x1F);	//VGL
++	dcs_write_seq(0x49,0x1F);	//VGL
++	dcs_write_seq(0x4A,0x1F);	//VGL
++	dcs_write_seq(0x4B,0x1F);	//NC
++	dcs_write_seq(0x4C,0x1F);	//NC
++	dcs_write_seq(0x4D,0x1F);	//NC //
++	dcs_write_seq(0x4E,0x1F);	//NC
++	dcs_write_seq(0x4F,0x1F);	//NC
++	dcs_write_seq(0x50,0x1F);	//NC //
++	dcs_write_seq(0x51,0x1F);	//NC
++	dcs_write_seq(0x52,0x1F);	//NC
++	dcs_write_seq(0x53,0x1F);	//NC //
++	dcs_write_seq(0x54,0x1E);	//GCH
++	dcs_write_seq(0x55,0x1F);	//VDD->VGL
++	dcs_write_seq(0x56,0x02);	//STV2
++	dcs_write_seq(0x57,0x00);	//STV4
++
++	//GIP Timing
++	dcs_write_seq(0x58,0x40);
++	dcs_write_seq(0x59,0x00);
++	dcs_write_seq(0x5A,0x00);
++	dcs_write_seq(0x5B,0x30);
++	dcs_write_seq(0x5C,0x0B); //STV_S0
++	dcs_write_seq(0x5D,0x30);
++	dcs_write_seq(0x5E,0x01);
++	dcs_write_seq(0x5F,0x02);
++	//dcs_write_seq(0x60,0x00);
++	//dcs_write_seq(0x61,0x01);
++	//dcs_write_seq(0x62,0x02);
++	dcs_write_seq(0x63,0x06);
++	dcs_write_seq(0x64,0x6A); //SETV_OFF
++	//dcs_write_seq(0x65,0x00);
++	//dcs_write_seq(0x66,0x00);
++	dcs_write_seq(0x67,0x73);
++	dcs_write_seq(0x68,0x0D); //CKV_S0
++	dcs_write_seq(0x69,0x06);
++	dcs_write_seq(0x6A,0x6A); //CKV_OFF,61(GOE=2.9)
++	dcs_write_seq(0x6B,0x10);
++	dcs_write_seq(0x6C,0x00);
++	dcs_write_seq(0x6D,0x04);
++	dcs_write_seq(0x6E,0x04);
++	dcs_write_seq(0x6F,0x88);
++	//dcs_write_seq(0x70,0x00);
++	//dcs_write_seq(0x71,0x00);
++	//dcs_write_seq(0x72,0x06);
++	//dcs_write_seq(0x73,0x7B);
++	//dcs_write_seq(0x74,0x00);
++	//dcs_write_seq(0x75,0x07);
++	//dcs_write_seq(0x76,0x00);
++	//dcs_write_seq(0x77,0x5D);
++	//dcs_write_seq(0x78,0x17);
++	//dcs_write_seq(0x79,0x1F);
++	//dcs_write_seq(0x7A,0x00);
++	//dcs_write_seq(0x7B,0x00);
++	//dcs_write_seq(0x7C,0x00);
++	//dcs_write_seq(0x7D,0x03);
++	//dcs_write_seq(0x7E,0x7B);
++
++	//Page4
++	dcs_write_seq(0xE0,0x04);
++	dcs_write_seq(0x00,0x0E);
++	dcs_write_seq(0x02,0xB3);
++	dcs_write_seq(0x09,0x60);
++	dcs_write_seq(0x0E,0x48);
++
++	//Page0
++	dcs_write_seq(0xE0,0x00);
++
++	dcs_write_seq(0x11);// SLPOUT
++	msleep (200);
++
++	dcs_write_seq(0x29);// DSiPON
++	msleep (100);
++
++
++	//--- TE----//
++	dcs_write_seq(0x35,0x00);
++
++	return 0;
++}
++
++static int cwu50_disable(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (!ctx->enabled)
++		return 0;
++
++	backlight_disable(ctx->backlight);
++
++	ctx->enabled = false;
++
++	return 0;
++}
++
++static int cwu50_unprepare(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (!ctx->prepared)
++		return 0;
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to turn display off (%d)\n", ret);
++		return ret;
++	}
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to enter sleep mode (%d)\n", ret);
++		return ret;
++	}
++	msleep(120);
++
++	if (!ctx->is_new_panel) {
++		/* Assert reset on RESX */
++		dev_info(ctx->dev, "asserting reset pin for old panel\n");
++		gpiod_set_value_cansleep(ctx->id_gpio, 1);
++		msleep(5);
++	}
++
++	ctx->prepared = false;
++
++	return 0;
++}
++
++static int cwu50_prepare(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (ctx->prepared)
++		return 0;
++
++	if (ctx->iovcc != NULL && ctx->vci != NULL) {
++		dev_info(ctx->dev, "regulator iovcc and vci defined, enabling\n");
++
++		/* IOVCC first, then VCI */
++		ret = regulator_enable(ctx->iovcc);
++		if (ret) {
++			dev_err(ctx->dev, "failed to enable iovcc (%d)\n", ret);
++			return ret;
++		}
++
++		/* tPWON>= 0ms */
++
++		/* MIPI should change to LP-11 after turning on vci according to JD9365D.pdf */
++		ret = regulator_enable(ctx->vci);
++		if (ret) {
++			dev_err(ctx->dev, "failed to enable vci (%d)\n", ret);
++			regulator_disable(ctx->iovcc);
++			return ret;
++		}
++
++		/* Wait for MIPI to initialize
++		 * tRPWIRES >= 5ms
++		 * 0 <= tMIPI_ON <= tRPWIRES
++		 */
++		msleep(5);
++	}
++
++	if (!ctx->is_new_panel) {
++		dev_info(ctx->dev, "old panel, cycling the reset pin\n");
++		/* Cycle RESX (Hardware Reset) */
++		gpiod_set_value_cansleep(ctx->id_gpio, 1);
++		msleep(10);
++		gpiod_set_value_cansleep(ctx->id_gpio, 0);
++		msleep(5);
++	}
++
++	/* Enabe tearing mode: send TE (tearing effect) at VBLANK */
++	ret = mipi_dsi_dcs_set_tear_on(dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (ret) {
++		dev_err(ctx->dev, "failed to enable vblank TE (%d)\n", ret);
++		return ret;
++	}
++	/* Exit sleep mode and power on */
++	if (ctx->is_new_panel)
++		cwu50_init_sequence2(ctx);
++	else
++		cwu50_init_sequence(ctx);
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to exit sleep mode (%d)\n", ret);
++		return ret;
++	}
++	msleep(120);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret) {
++		dev_err(ctx->dev, "failed to turn display on (%d)\n", ret);
++		return ret;
++	}
++	msleep(20);
++
++	ctx->prepared = true;
++
++	return 0;
++}
++
++static int cwu50_enable(struct drm_panel *panel)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (ctx->enabled)
++		return 0;
++
++	backlight_enable(ctx->backlight);
++
++	ctx->enabled = true;
++
++	return 0;
++}
++
++static int cwu50_get_modes(struct drm_panel *panel, struct drm_connector *connector)
++{
++	struct cwu50 *ctx = panel_to_cwu50(panel);
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(connector->dev, &default_mode);
++	if (!mode) {
++		dev_err(panel->dev, "bad mode or failed to add mode\n");
++		return -EINVAL;
++	}
++	drm_mode_set_name(mode);
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++
++	connector->display_info.width_mm = mode->width_mm;
++	connector->display_info.height_mm = mode->height_mm;
++
++	/* set up connector's "panel orientation" property */
++	drm_connector_set_panel_orientation(connector, ctx->orientation);
++
++	drm_mode_probed_add(connector, mode);
++
++	return 1; /* Number of modes */
++}
++
++static const struct drm_panel_funcs cwu50_drm_funcs = {
++	.disable = cwu50_disable,
++	.unprepare = cwu50_unprepare,
++	.prepare = cwu50_prepare,
++	.enable = cwu50_enable,
++	.get_modes = cwu50_get_modes,
++};
++
++static int cwu50_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct cwu50 *ctx;
++	int ret, err;
++
++	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++	ctx->dev = dev;
++
++	dsi->lanes = 4;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST | MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
++
++	ctx->id_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_IN);
++	if (IS_ERR(ctx->id_gpio)) {
++		ret = PTR_ERR(ctx->id_gpio);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "failed to request GPIO (%d)\n", ret);
++		return ret;
++	}
++
++	ctx->is_new_panel = gpiod_get_value_cansleep(ctx->id_gpio);
++	if (ctx->is_new_panel) {
++		dev_info(dev, "Detected new panel type\n");
++	} else {
++		dev_info(dev, "Detected old panel type\n");
++	}
++
++	/*
++	 * Switch the ID GPIO to OUTPUT for use with resetting,
++	 * only if we're using the old panel. The new panel's
++	 * ID (RESX) pin is always pulled down (or: asserted)
++	 * externally.
++	 */
++	if (!ctx->is_new_panel) {
++		dev_info(dev, "Old panel type, setting ID GPIO to OUTPUT for resetting\n");
++		ret = gpiod_direction_output(ctx->id_gpio, 0);
++
++		if (ret) {
++			dev_err(dev, "failed to set id_gpio to OUTPUT\n");
++			return ret;
++		}
++	}
++
++	/*
++	 * Request vci and iovcc regulators when they are defined
++	 * Even though these regulartors may be always-on, we still need
++	 * to ensure that the panel only becomes ready _after_ them.
++	 * This is achieved by bubbling up EPROBE_DEFER from them.
++	 */
++	ctx->vci = devm_regulator_get(dev, "vci");
++	if (IS_ERR(ctx->vci)) {
++		err = PTR_ERR(ctx->vci);
++		if (err == -EPROBE_DEFER) {
++			dev_info(dev, "vci regulator isn't ready, retry later\n");
++			return err;
++		}
++
++		dev_err(dev, "Failed to request vci regulator: %d\n", err);
++		ctx->vci = NULL;
++	}
++
++	ctx->iovcc = devm_regulator_get(dev, "iovcc");
++	if (IS_ERR(ctx->iovcc)) {
++		err = PTR_ERR(ctx->iovcc);
++		if (err == -EPROBE_DEFER) {
++			dev_info(dev, "iovcc regulator isn't ready, retry later\n");
++			return err;
++		}
++
++		dev_err(dev, "Failed to request iovcc regulator: %d\n", err);
++		ctx->iovcc = NULL;
++	}
++
++	ctx->backlight = devm_of_find_backlight(dev);
++	if (IS_ERR(ctx->backlight)) {
++		dev_err(ctx->dev, "devm_of_find_backlight");
++		return PTR_ERR(ctx->backlight);
++	}
++
++	ret = of_drm_get_panel_orientation(dev->of_node, &ctx->orientation);
++	if (ret) {
++		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
++		return ret;
++	}
++
++	ctx->panel.prepare_prev_first = true;
++
++	drm_panel_init(&ctx->panel, dev, &cwu50_drm_funcs, DRM_MODE_CONNECTOR_DSI);
++
++	drm_panel_add(&ctx->panel);
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0) {
++		dev_err(dev, "mipi_dsi_attach() failed: %d\n", ret);
++		drm_panel_remove(&ctx->panel);
++		return ret;
++	}
++
++	return 0;
++}
++
++static void cwu50_remove(struct mipi_dsi_device *dsi)
++{
++	struct cwu50 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++}
++
++static const struct of_device_id cwu50_of_match[] = {
++	{ .compatible = "cw,cwu50" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, cwu50_of_match);
++
++static struct mipi_dsi_driver cwu50_driver = {
++	.probe = cwu50_probe,
++	.remove = cwu50_remove,
++	.driver = {
++		.name = "panel-cwu50",
++		.of_match_table = cwu50_of_match,
++	},
++};
++module_mipi_dsi_driver(cwu50_driver);
++
++MODULE_DESCRIPTION("DRM Driver for cwu50 MIPI DSI panel");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/power/supply/axp20x_ac_power.c b/drivers/power/supply/axp20x_ac_power.c
+index e5733cb9e19e05..5be12e696fba66 100644
+--- a/drivers/power/supply/axp20x_ac_power.c
++++ b/drivers/power/supply/axp20x_ac_power.c
+@@ -52,6 +52,9 @@ static irqreturn_t axp20x_ac_power_irq(int irq, void *devid)
+ {
+ 	struct axp20x_ac_power *power = devid;
+ 
++	regmap_update_bits(power->regmap, AXP20X_VBUS_IPSOUT_MGMT, 0x03, 0x00);
++	regmap_update_bits(power->regmap, AXP20X_VBUS_IPSOUT_MGMT, 0x03, 0x03);
++
+ 	power_supply_changed(power->supply);
+ 
+ 	return IRQ_HANDLED;
+diff --git a/drivers/power/supply/axp20x_battery.c b/drivers/power/supply/axp20x_battery.c
+index 88fbae613e8bc3..a9437d8ccef33a 100644
+--- a/drivers/power/supply/axp20x_battery.c
++++ b/drivers/power/supply/axp20x_battery.c
+@@ -32,81 +32,83 @@
+ #include <linux/iio/consumer.h>
+ #include <linux/mfd/axp20x.h>
+ 
+-#define AXP20X_PWR_STATUS_BAT_CHARGING	BIT(2)
+-#define AXP717_PWR_STATUS_MASK		GENMASK(6, 5)
+-#define AXP717_PWR_STATUS_BAT_STANDBY	0
+-#define AXP717_PWR_STATUS_BAT_CHRG	1
+-#define AXP717_PWR_STATUS_BAT_DISCHRG	2
+-
+-#define AXP20X_PWR_OP_BATT_PRESENT	BIT(5)
+-#define AXP20X_PWR_OP_BATT_ACTIVATED	BIT(3)
+-#define AXP717_PWR_OP_BATT_PRESENT	BIT(3)
+-
+-#define AXP717_BATT_PMU_FAULT_MASK	GENMASK(2, 0)
+-#define AXP717_BATT_UVLO_2_5V		BIT(2)
+-#define AXP717_BATT_OVER_TEMP		BIT(1)
+-#define AXP717_BATT_UNDER_TEMP		BIT(0)
+-
+-#define AXP209_FG_PERCENT		GENMASK(6, 0)
+-#define AXP22X_FG_VALID			BIT(7)
+-
+-#define AXP20X_CHRG_CTRL1_ENABLE	BIT(7)
+-#define AXP20X_CHRG_CTRL1_TGT_VOLT	GENMASK(6, 5)
+-#define AXP20X_CHRG_CTRL1_TGT_4_1V	(0 << 5)
+-#define AXP20X_CHRG_CTRL1_TGT_4_15V	(1 << 5)
+-#define AXP20X_CHRG_CTRL1_TGT_4_2V	(2 << 5)
+-#define AXP20X_CHRG_CTRL1_TGT_4_36V	(3 << 5)
+-
+-#define AXP22X_CHRG_CTRL1_TGT_4_22V	(1 << 5)
+-#define AXP22X_CHRG_CTRL1_TGT_4_24V	(3 << 5)
+-
+-#define AXP717_CHRG_ENABLE		BIT(1)
+-#define AXP717_CHRG_CV_VOLT_MASK	GENMASK(2, 0)
+-#define AXP717_CHRG_CV_4_0V		0
+-#define AXP717_CHRG_CV_4_1V		1
+-#define AXP717_CHRG_CV_4_2V		2
+-#define AXP717_CHRG_CV_4_35V		3
+-#define AXP717_CHRG_CV_4_4V		4
++#define AXP20X_PWR_STATUS_BAT_CHARGING BIT(2)
++#define AXP717_PWR_STATUS_MASK GENMASK(6, 5)
++#define AXP717_PWR_STATUS_BAT_STANDBY 0
++#define AXP717_PWR_STATUS_BAT_CHRG 1
++#define AXP717_PWR_STATUS_BAT_DISCHRG 2
++
++#define AXP20X_PWR_OP_BATT_PRESENT BIT(5)
++#define AXP20X_PWR_OP_BATT_ACTIVATED BIT(3)
++#define AXP717_PWR_OP_BATT_PRESENT BIT(3)
++
++#define AXP717_BATT_PMU_FAULT_MASK GENMASK(2, 0)
++#define AXP717_BATT_UVLO_2_5V BIT(2)
++#define AXP717_BATT_OVER_TEMP BIT(1)
++#define AXP717_BATT_UNDER_TEMP BIT(0)
++
++#define AXP209_FG_PERCENT GENMASK(6, 0)
++#define AXP22X_FG_VALID BIT(7)
++
++#define AXP20X_CHRG_CTRL1_ENABLE BIT(7)
++#define AXP20X_CHRG_CTRL1_TGT_VOLT GENMASK(6, 5)
++#define AXP20X_CHRG_CTRL1_TGT_4_1V (0 << 5)
++#define AXP20X_CHRG_CTRL1_TGT_4_15V (1 << 5)
++#define AXP20X_CHRG_CTRL1_TGT_4_2V (2 << 5)
++#define AXP20X_CHRG_CTRL1_TGT_4_36V (3 << 5)
++
++#define AXP22X_CHRG_CTRL1_TGT_4_22V (1 << 5)
++#define AXP22X_CHRG_CTRL1_TGT_4_24V (3 << 5)
++
++#define AXP717_CHRG_ENABLE BIT(1)
++#define AXP717_CHRG_CV_VOLT_MASK GENMASK(2, 0)
++#define AXP717_CHRG_CV_4_0V 0
++#define AXP717_CHRG_CV_4_1V 1
++#define AXP717_CHRG_CV_4_2V 2
++#define AXP717_CHRG_CV_4_35V 3
++#define AXP717_CHRG_CV_4_4V 4
+ /* Values 5 and 6 reserved. */
+-#define AXP717_CHRG_CV_5_0V		7
++#define AXP717_CHRG_CV_5_0V 7
+ 
+-#define AXP813_CHRG_CTRL1_TGT_4_35V	(3 << 5)
++#define AXP813_CHRG_CTRL1_TGT_4_35V (3 << 5)
+ 
+-#define AXP20X_CHRG_CTRL1_TGT_CURR	GENMASK(3, 0)
+-#define AXP717_ICC_CHARGER_LIM_MASK	GENMASK(5, 0)
++#define AXP20X_CHRG_CTRL1_TGT_CURR GENMASK(3, 0)
++#define AXP717_ICC_CHARGER_LIM_MASK GENMASK(5, 0)
+ 
+-#define AXP717_ITERM_CHG_LIM_MASK	GENMASK(3, 0)
+-#define AXP717_ITERM_CC_STEP		64000
++#define AXP717_ITERM_CHG_LIM_MASK GENMASK(3, 0)
++#define AXP717_ITERM_CC_STEP 64000
+ 
+-#define AXP20X_V_OFF_MASK		GENMASK(2, 0)
+-#define AXP717_V_OFF_MASK		GENMASK(6, 4)
++#define AXP20X_V_OFF_MASK GENMASK(2, 0)
++#define AXP717_V_OFF_MASK GENMASK(6, 4)
+ 
+-#define AXP717_BAT_VMIN_MIN_UV		2600000
+-#define AXP717_BAT_VMIN_MAX_UV		3300000
+-#define AXP717_BAT_VMIN_STEP		100000
+-#define AXP717_BAT_CV_MIN_UV		4000000
+-#define AXP717_BAT_CV_MAX_UV		5000000
+-#define AXP717_BAT_CC_MIN_UA		0
+-#define AXP717_BAT_CC_MAX_UA		3008000
++#define AXP228_FULL_CAPACITY_CALIBRATE_EN BIT(5)
++#define AXP228_CAPACITY_CALIBRATE BIT(4)
++#define AXP228_CALIBRATE_MASK (BIT(4) | BIT(5))
+ 
+-#define AXP717_TS_PIN_DISABLE		BIT(4)
++#define AXP717_BAT_VMIN_MIN_UV 2600000
++#define AXP717_BAT_VMIN_MAX_UV 3300000
++#define AXP717_BAT_VMIN_STEP 100000
++#define AXP717_BAT_CV_MIN_UV 4000000
++#define AXP717_BAT_CV_MAX_UV 5000000
++#define AXP717_BAT_CC_MIN_UA 0
++#define AXP717_BAT_CC_MAX_UA 3008000
+ 
+ struct axp20x_batt_ps;
+ 
+ struct axp_data {
+-	int		ccc_scale;
+-	int		ccc_offset;
+-	unsigned int	ccc_reg;
+-	unsigned int	ccc_mask;
+-	bool		has_fg_valid;
+-	const struct	power_supply_desc *bat_ps_desc;
+-	int	(*get_max_voltage)(struct axp20x_batt_ps *batt, int *val);
+-	int	(*set_max_voltage)(struct axp20x_batt_ps *batt, int val);
+-	int	(*cfg_iio_chan)(struct platform_device *pdev,
+-				struct axp20x_batt_ps *axp_batt);
+-	void	(*set_bat_info)(struct platform_device *pdev,
+-				struct axp20x_batt_ps *axp_batt,
+-				struct power_supply_battery_info *info);
++	int ccc_scale;
++	int ccc_offset;
++	unsigned int ccc_reg;
++	unsigned int ccc_mask;
++	bool has_fg_valid;
++	const struct power_supply_desc *bat_ps_desc;
++	int (*get_max_voltage)(struct axp20x_batt_ps *batt, int *val);
++	int (*set_max_voltage)(struct axp20x_batt_ps *batt, int val);
++	int (*cfg_iio_chan)(struct platform_device *pdev,
++			    struct axp20x_batt_ps *axp_batt);
++	void (*set_bat_info)(struct platform_device *pdev,
++			     struct axp20x_batt_ps *axp_batt,
++			     struct power_supply_battery_info *info);
+ };
+ 
+ struct axp20x_batt_ps {
+@@ -118,8 +120,10 @@ struct axp20x_batt_ps {
+ 	struct iio_channel *batt_v;
+ 	/* Maximum constant charge current */
+ 	unsigned int max_ccc;
+-	const struct axp_data	*data;
+-	bool ts_disable;
++	int energy_full_design;
++	int current_now;
++	int voltage_now;
++	const struct axp_data *data;
+ };
+ 
+ static int axp20x_battery_get_max_voltage(struct axp20x_batt_ps *axp20x_batt,
+@@ -268,7 +272,7 @@ static int axp717_get_constant_charge_current(struct axp20x_batt_ps *axp,
+ 		return ret;
+ 
+ 	*val = FIELD_GET(AXP717_ICC_CHARGER_LIM_MASK, *val) *
+-		axp->data->ccc_scale;
++	       axp->data->ccc_scale;
+ 
+ 	return 0;
+ }
+@@ -358,9 +362,11 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
+ 			return ret;
+ 
+ 		if (reg & AXP20X_PWR_STATUS_BAT_CHARGING) {
+-			ret = iio_read_channel_processed(axp20x_batt->batt_chrg_i, &val->intval);
++			ret = iio_read_channel_processed(
++				axp20x_batt->batt_chrg_i, &val->intval);
+ 		} else {
+-			ret = iio_read_channel_processed(axp20x_batt->batt_dischrg_i, &val1);
++			ret = iio_read_channel_processed(
++				axp20x_batt->batt_dischrg_i, &val1);
+ 			val->intval = -val1;
+ 		}
+ 		if (ret)
+@@ -368,6 +374,8 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
+ 
+ 		/* IIO framework gives mA but Power Supply framework gives uA */
+ 		val->intval *= 1000;
++		axp20x_batt->current_now = val->intval;
++
+ 		break;
+ 
+ 	case POWER_SUPPLY_PROP_CAPACITY:
+@@ -416,6 +424,63 @@ static int axp20x_battery_get_prop(struct power_supply *psy,
+ 
+ 		/* IIO framework gives mV but Power Supply framework gives uV */
+ 		val->intval *= 1000;
++		axp20x_batt->current_now = val->intval;
++
++		break;
++
++	case POWER_SUPPLY_PROP_ENERGY_FULL:
++	case POWER_SUPPLY_PROP_ENERGY_NOW:
++	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
++		/* When no battery is present, return 0 */
++		ret = regmap_read(axp20x_batt->regmap, AXP20X_PWR_OP_MODE,
++				  &reg);
++		if (ret)
++			return ret;
++
++		if (!(reg & AXP20X_PWR_OP_BATT_PRESENT)) {
++			val->intval = 0;
++			return 0;
++		}
++
++		if (psp == POWER_SUPPLY_PROP_ENERGY_FULL) {
++			// TODO
++			val->intval = axp20x_batt->energy_full_design;
++			return 0;
++		}
++
++		if (psp == POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN) {
++			val->intval = axp20x_batt->energy_full_design;
++			return 0;
++		}
++
++		ret = regmap_read(axp20x_batt->regmap, AXP20X_FG_RES, &reg);
++		if (ret)
++			return ret;
++
++		if (axp20x_batt->data->has_fg_valid && !(reg & AXP22X_FG_VALID))
++			return -EINVAL;
++
++		val1 = reg & AXP209_FG_PERCENT;
++		val1 = max(min(val1, 100), 0);
++		val->intval =
++			(val1 *
++			 ((long long int)axp20x_batt->energy_full_design)) /
++			100;
++		break;
++
++	case POWER_SUPPLY_PROP_CALIBRATE:
++		// report both calibrate enable flag and calibration status
++		ret = regmap_read(axp20x_batt->regmap, AXP20X_CC_CTRL, &reg);
++		if (ret)
++			return ret;
++		val1 = reg & AXP228_CALIBRATE_MASK;
++		val->intval = val1;
++		break;
++
++	case POWER_SUPPLY_PROP_POWER_NOW:
++		val->intval = (axp20x_batt->voltage_now / 10000) *
++			      axp20x_batt->current_now;
++		val->intval = val->intval / 100; // uW
+ 		break;
+ 
+ 	default:
+@@ -474,8 +539,7 @@ static int axp717_battery_get_prop(struct power_supply *psy,
+ 	 * listed as POR.
+ 	 */
+ 	case POWER_SUPPLY_PROP_HEALTH:
+-		ret = regmap_read(axp20x_batt->regmap, AXP717_PMU_FAULT,
+-				  &reg);
++		ret = regmap_read(axp20x_batt->regmap, AXP717_PMU_FAULT, &reg);
+ 		if (ret)
+ 			return ret;
+ 
+@@ -523,7 +587,8 @@ static int axp717_battery_get_prop(struct power_supply *psy,
+ 		 * observation it's assumed to be somewhere around
+ 		 * 450ma. I will leave the value raw for now.
+ 		 */
+-		ret = iio_read_channel_processed(axp20x_batt->batt_chrg_i, &val->intval);
++		ret = iio_read_channel_processed(axp20x_batt->batt_chrg_i,
++						 &val->intval);
+ 		if (ret)
+ 			return ret;
+ 		/* IIO framework gives mA but Power Supply framework gives uA */
+@@ -539,8 +604,8 @@ static int axp717_battery_get_prop(struct power_supply *psy,
+ 		if (!FIELD_GET(AXP717_PWR_OP_BATT_PRESENT, reg))
+ 			return -ENODEV;
+ 
+-		ret = regmap_read(axp20x_batt->regmap,
+-				  AXP717_BATT_PERCENT_DATA, &reg);
++		ret = regmap_read(axp20x_batt->regmap, AXP717_BATT_PERCENT_DATA,
++				  &reg);
+ 		if (ret)
+ 			return ret;
+ 
+@@ -556,13 +621,13 @@ static int axp717_battery_get_prop(struct power_supply *psy,
+ 							  &val->intval);
+ 
+ 	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
+-		ret = regmap_read(axp20x_batt->regmap,
+-				  AXP717_VSYS_V_POWEROFF, &reg);
++		ret = regmap_read(axp20x_batt->regmap, AXP717_VSYS_V_POWEROFF,
++				  &reg);
+ 		if (ret)
+ 			return ret;
+ 
+-		val->intval = AXP717_BAT_VMIN_MIN_UV + AXP717_BAT_VMIN_STEP *
+-			(reg & AXP717_V_OFF_MASK);
++		val->intval = AXP717_BAT_VMIN_MIN_UV +
++			      AXP717_BAT_VMIN_STEP * (reg & AXP717_V_OFF_MASK);
+ 		return 0;
+ 
+ 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+@@ -576,12 +641,13 @@ static int axp717_battery_get_prop(struct power_supply *psy,
+ 		return 0;
+ 
+ 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
+-		ret = regmap_read(axp20x_batt->regmap,
+-				  AXP717_ITERM_CHG_SET, &reg);
++		ret = regmap_read(axp20x_batt->regmap, AXP717_ITERM_CHG_SET,
++				  &reg);
+ 		if (ret)
+ 			return ret;
+ 
+-		val->intval = (reg & AXP717_ITERM_CHG_LIM_MASK) * AXP717_ITERM_CC_STEP;
++		val->intval = (reg & AXP717_ITERM_CHG_LIM_MASK) *
++			      AXP717_ITERM_CC_STEP;
+ 		return 0;
+ 
+ 	default:
+@@ -669,8 +735,7 @@ static int axp717_battery_set_max_voltage(struct axp20x_batt_ps *axp20x_batt,
+ 		return -EINVAL;
+ 	}
+ 
+-	return regmap_update_bits(axp20x_batt->regmap,
+-				  AXP717_CV_CHG_SET,
++	return regmap_update_bits(axp20x_batt->regmap, AXP717_CV_CHG_SET,
+ 				  AXP717_CHRG_CV_VOLT_MASK, val);
+ }
+ 
+@@ -681,7 +746,7 @@ static int axp20x_set_constant_charge_current(struct axp20x_batt_ps *axp_batt,
+ 		return -EINVAL;
+ 
+ 	charge_current = (charge_current - axp_batt->data->ccc_offset) /
+-		axp_batt->data->ccc_scale;
++			 axp_batt->data->ccc_scale;
+ 
+ 	if (charge_current > AXP20X_CHRG_CTRL1_TGT_CURR || charge_current < 0)
+ 		return -EINVAL;
+@@ -701,8 +766,7 @@ static int axp717_set_constant_charge_current(struct axp20x_batt_ps *axp,
+ 	if (charge_current > AXP717_BAT_CC_MAX_UA || charge_current < 0)
+ 		return -EINVAL;
+ 
+-	val = (charge_current - axp->data->ccc_offset) /
+-		axp->data->ccc_scale;
++	val = (charge_current - axp->data->ccc_offset) / axp->data->ccc_scale;
+ 
+ 	return regmap_update_bits(axp->regmap, AXP717_ICC_CHG_SET,
+ 				  AXP717_ICC_CHARGER_LIM_MASK, val);
+@@ -713,18 +777,19 @@ static int axp20x_set_max_constant_charge_current(struct axp20x_batt_ps *axp,
+ {
+ 	bool lower_max = false;
+ 
+-	charge_current = (charge_current - axp->data->ccc_offset) /
+-		axp->data->ccc_scale;
++	charge_current =
++		(charge_current - axp->data->ccc_offset) / axp->data->ccc_scale;
+ 
+ 	if (charge_current > AXP20X_CHRG_CTRL1_TGT_CURR || charge_current < 0)
+ 		return -EINVAL;
+ 
+-	charge_current = charge_current * axp->data->ccc_scale +
+-		axp->data->ccc_offset;
++	charge_current =
++		charge_current * axp->data->ccc_scale + axp->data->ccc_offset;
+ 
+ 	if (charge_current > axp->max_ccc)
+-		dev_warn(axp->dev,
+-			 "Setting max constant charge current higher than previously defined. Note that increasing the constant charge current may damage your battery.\n");
++		dev_warn(
++			axp->dev,
++			"Setting max constant charge current higher than previously defined. Note that increasing the constant charge current may damage your battery.\n");
+ 	else
+ 		lower_max = true;
+ 
+@@ -755,13 +820,13 @@ static int axp20x_set_voltage_min_design(struct axp20x_batt_ps *axp_batt,
+ static int axp717_set_voltage_min_design(struct axp20x_batt_ps *axp_batt,
+ 					 int min_voltage)
+ {
+-	int val1 = (min_voltage - AXP717_BAT_VMIN_MIN_UV) / AXP717_BAT_VMIN_STEP;
++	int val1 =
++		(min_voltage - AXP717_BAT_VMIN_MIN_UV) / AXP717_BAT_VMIN_STEP;
+ 
+ 	if (val1 < 0 || val1 > AXP717_V_OFF_MASK)
+ 		return -EINVAL;
+ 
+-	return regmap_update_bits(axp_batt->regmap,
+-				  AXP717_VSYS_V_POWEROFF,
++	return regmap_update_bits(axp_batt->regmap, AXP717_VSYS_V_POWEROFF,
+ 				  AXP717_V_OFF_MASK, val1);
+ }
+ 
+@@ -770,14 +835,26 @@ static int axp20x_battery_set_prop(struct power_supply *psy,
+ 				   const union power_supply_propval *val)
+ {
+ 	struct axp20x_batt_ps *axp20x_batt = power_supply_get_drvdata(psy);
++	int val1;
+ 
+ 	switch (psp) {
+ 	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
+ 		return axp20x_set_voltage_min_design(axp20x_batt, val->intval);
+ 
+ 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+-		return axp20x_batt->data->set_max_voltage(axp20x_batt, val->intval);
+-
++		return axp20x_batt->data->set_max_voltage(axp20x_batt,
++							  val->intval);
++	case POWER_SUPPLY_PROP_CALIBRATE:
++		if (val->intval) {
++			// enable calibrate
++			val1 = AXP228_FULL_CAPACITY_CALIBRATE_EN |
++			       AXP228_CAPACITY_CALIBRATE;
++		} else {
++			// disable calibrate
++			val1 = 0;
++		}
++		return regmap_update_bits(axp20x_batt->regmap, AXP20X_CC_CTRL,
++					  AXP228_CALIBRATE_MASK, val1);
+ 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+ 		return axp20x_set_constant_charge_current(axp20x_batt,
+ 							  val->intval);
+@@ -787,13 +864,16 @@ static int axp20x_battery_set_prop(struct power_supply *psy,
+ 	case POWER_SUPPLY_PROP_STATUS:
+ 		switch (val->intval) {
+ 		case POWER_SUPPLY_STATUS_CHARGING:
+-			return regmap_update_bits(axp20x_batt->regmap, AXP20X_CHRG_CTRL1,
+-				AXP20X_CHRG_CTRL1_ENABLE, AXP20X_CHRG_CTRL1_ENABLE);
++			return regmap_update_bits(axp20x_batt->regmap,
++						  AXP20X_CHRG_CTRL1,
++						  AXP20X_CHRG_CTRL1_ENABLE,
++						  AXP20X_CHRG_CTRL1_ENABLE);
+ 
+ 		case POWER_SUPPLY_STATUS_DISCHARGING:
+ 		case POWER_SUPPLY_STATUS_NOT_CHARGING:
+-			return regmap_update_bits(axp20x_batt->regmap, AXP20X_CHRG_CTRL1,
+-				AXP20X_CHRG_CTRL1_ENABLE, 0);
++			return regmap_update_bits(axp20x_batt->regmap,
++						  AXP20X_CHRG_CTRL1,
++						  AXP20X_CHRG_CTRL1_ENABLE, 0);
+ 		}
+ 		fallthrough;
+ 	default:
+@@ -812,7 +892,8 @@ static int axp717_battery_set_prop(struct power_supply *psy,
+ 		return axp717_set_voltage_min_design(axp20x_batt, val->intval);
+ 
+ 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+-		return axp20x_batt->data->set_max_voltage(axp20x_batt, val->intval);
++		return axp20x_batt->data->set_max_voltage(axp20x_batt,
++							  val->intval);
+ 
+ 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
+ 		return axp717_set_constant_charge_current(axp20x_batt,
+@@ -849,6 +930,11 @@ static enum power_supply_property axp20x_battery_props[] = {
+ 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+ 	POWER_SUPPLY_PROP_VOLTAGE_MIN,
+ 	POWER_SUPPLY_PROP_CAPACITY,
++	POWER_SUPPLY_PROP_ENERGY_FULL,
++	POWER_SUPPLY_PROP_ENERGY_NOW,
++	POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
++	POWER_SUPPLY_PROP_CALIBRATE,
++	POWER_SUPPLY_PROP_POWER_NOW,
+ };
+ 
+ static enum power_supply_property axp717_battery_props[] = {
+@@ -872,7 +958,8 @@ static int axp20x_battery_prop_writeable(struct power_supply *psy,
+ 	       psp == POWER_SUPPLY_PROP_VOLTAGE_MIN ||
+ 	       psp == POWER_SUPPLY_PROP_VOLTAGE_MAX ||
+ 	       psp == POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT ||
+-	       psp == POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX;
++	       psp == POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX ||
++	       psp == POWER_SUPPLY_PROP_CALIBRATE;
+ }
+ 
+ static int axp717_battery_prop_writeable(struct power_supply *psy,
+@@ -914,16 +1001,15 @@ static int axp209_bat_cfg_iio_channels(struct platform_device *pdev,
+ 		return PTR_ERR(axp_batt->batt_v);
+ 	}
+ 
+-	axp_batt->batt_chrg_i = devm_iio_channel_get(&pdev->dev,
+-							"batt_chrg_i");
++	axp_batt->batt_chrg_i = devm_iio_channel_get(&pdev->dev, "batt_chrg_i");
+ 	if (IS_ERR(axp_batt->batt_chrg_i)) {
+ 		if (PTR_ERR(axp_batt->batt_chrg_i) == -ENODEV)
+ 			return -EPROBE_DEFER;
+ 		return PTR_ERR(axp_batt->batt_chrg_i);
+ 	}
+ 
+-	axp_batt->batt_dischrg_i = devm_iio_channel_get(&pdev->dev,
+-							   "batt_dischrg_i");
++	axp_batt->batt_dischrg_i =
++		devm_iio_channel_get(&pdev->dev, "batt_dischrg_i");
+ 	if (IS_ERR(axp_batt->batt_dischrg_i)) {
+ 		if (PTR_ERR(axp_batt->batt_dischrg_i) == -ENODEV)
+ 			return -EPROBE_DEFER;
+@@ -943,8 +1029,7 @@ static int axp717_bat_cfg_iio_channels(struct platform_device *pdev,
+ 		return PTR_ERR(axp_batt->batt_v);
+ 	}
+ 
+-	axp_batt->batt_chrg_i = devm_iio_channel_get(&pdev->dev,
+-							"batt_chrg_i");
++	axp_batt->batt_chrg_i = devm_iio_channel_get(&pdev->dev, "batt_chrg_i");
+ 	if (IS_ERR(axp_batt->batt_chrg_i)) {
+ 		if (PTR_ERR(axp_batt->batt_chrg_i) == -ENODEV)
+ 			return -EPROBE_DEFER;
+@@ -962,8 +1047,7 @@ static void axp209_set_battery_info(struct platform_device *pdev,
+ 	int ccc = info->constant_charge_current_max_ua;
+ 
+ 	if (vmin > 0 && axp20x_set_voltage_min_design(axp_batt, vmin))
+-		dev_err(&pdev->dev,
+-			"couldn't set voltage_min_design\n");
++		dev_err(&pdev->dev, "couldn't set voltage_min_design\n");
+ 
+ 	/* Set max to unverified value to be able to set CCC */
+ 	axp_batt->max_ccc = ccc;
+@@ -986,38 +1070,17 @@ static void axp717_set_battery_info(struct platform_device *pdev,
+ 	int ccc = info->constant_charge_current_max_ua;
+ 	int val;
+ 
+-	axp_batt->ts_disable = (device_property_read_bool(axp_batt->dev,
+-							  "x-powers,no-thermistor"));
+-
+-	/*
+-	 * Under rare conditions an incorrectly programmed efuse for
+-	 * the temp sensor on the PMIC may trigger a fault condition.
+-	 * Allow users to hard-code if the ts pin is not used to work
+-	 * around this problem. Note that this requires the battery
+-	 * be correctly defined in the device tree with a monitored
+-	 * battery node.
+-	 */
+-	if (axp_batt->ts_disable) {
+-		regmap_update_bits(axp_batt->regmap,
+-				   AXP717_TS_PIN_CFG,
+-				   AXP717_TS_PIN_DISABLE,
+-				   AXP717_TS_PIN_DISABLE);
+-	}
+-
+ 	if (vmin > 0 && axp717_set_voltage_min_design(axp_batt, vmin))
+-		dev_err(&pdev->dev,
+-			"couldn't set voltage_min_design\n");
++		dev_err(&pdev->dev, "couldn't set voltage_min_design\n");
+ 
+ 	if (vmax > 0 && axp717_battery_set_max_voltage(axp_batt, vmax))
+-		dev_err(&pdev->dev,
+-			"couldn't set voltage_max_design\n");
++		dev_err(&pdev->dev, "couldn't set voltage_max_design\n");
+ 
+ 	axp717_get_constant_charge_current(axp_batt, &val);
+ 	axp_batt->max_ccc = ccc;
+ 	if (ccc <= 0 || axp717_set_constant_charge_current(axp_batt, ccc)) {
+ 		dev_err(&pdev->dev,
+-			"couldn't set ccc from DT: current ccc is %d\n",
+-			val);
++			"couldn't set ccc from DT: current ccc is %d\n", val);
+ 	}
+ }
+ 
+@@ -1075,16 +1138,20 @@ static const struct of_device_id axp20x_battery_ps_id[] = {
+ 	{
+ 		.compatible = "x-powers,axp209-battery-power-supply",
+ 		.data = (void *)&axp209_data,
+-	}, {
++	},
++	{
+ 		.compatible = "x-powers,axp221-battery-power-supply",
+ 		.data = (void *)&axp221_data,
+-	}, {
++	},
++	{
+ 		.compatible = "x-powers,axp717-battery-power-supply",
+ 		.data = (void *)&axp717_data,
+-	}, {
++	},
++	{
+ 		.compatible = "x-powers,axp813-battery-power-supply",
+ 		.data = (void *)&axp813_data,
+-	}, { /* sentinel */ },
++	},
++	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, axp20x_battery_ps_id);
+ 
+@@ -1099,8 +1166,8 @@ static int axp20x_power_probe(struct platform_device *pdev)
+ 	if (!of_device_is_available(pdev->dev.of_node))
+ 		return -ENODEV;
+ 
+-	axp20x_batt = devm_kzalloc(&pdev->dev, sizeof(*axp20x_batt),
+-				   GFP_KERNEL);
++	axp20x_batt =
++		devm_kzalloc(&pdev->dev, sizeof(*axp20x_batt), GFP_KERNEL);
+ 	if (!axp20x_batt)
+ 		return -ENOMEM;
+ 
+@@ -1118,9 +1185,8 @@ static int axp20x_power_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	axp20x_batt->batt = devm_power_supply_register(&pdev->dev,
+-						       axp20x_batt->data->bat_ps_desc,
+-						       &psy_cfg);
++	axp20x_batt->batt = devm_power_supply_register(
++		&pdev->dev, axp20x_batt->data->bat_ps_desc, &psy_cfg);
+ 	if (IS_ERR(axp20x_batt->batt)) {
+ 		dev_err(&pdev->dev, "failed to register power supply: %ld\n",
+ 			PTR_ERR(axp20x_batt->batt));
+@@ -1130,6 +1196,29 @@ static int axp20x_power_probe(struct platform_device *pdev)
+ 	if (!power_supply_get_battery_info(axp20x_batt->batt, &info)) {
+ 		axp20x_batt->data->set_bat_info(pdev, axp20x_batt, info);
+ 		power_supply_put_battery_info(axp20x_batt->batt, info);
++		axp20x_batt->energy_full_design = info->energy_full_design_uwh;
++
++		int cfd = info->charge_full_design_uah;
++
++		// tell pmic about our battery
++		if (cfd) {
++			// [14:8], [7:0], cfd = Value * 1.456mAh
++			cfd = cfd / 1456;
++			regmap_update_bits(axp20x_batt->regmap,
++					   AXP288_FG_DES_CAP0_REG, 0xff,
++					   cfd & 0xff);
++			regmap_update_bits(axp20x_batt->regmap,
++					   AXP288_FG_DES_CAP1_REG, 0xff,
++					   BIT(7) | ((cfd >> 8) & 0xff));
++		} else {
++			dev_warn(axp20x_batt->dev,
++				 "charge full design is not set");
++		}
++	} else {
++		axp20x_batt->energy_full_design = 8000000;
++		dev_warn(axp20x_batt->dev,
++			 "energy full design is not set, default to %d\n",
++			 axp20x_batt->energy_full_design);
+ 	}
+ 
+ 	/*
+@@ -1138,6 +1227,12 @@ static int axp20x_power_probe(struct platform_device *pdev)
+ 	 */
+ 	axp20x_get_constant_charge_current(axp20x_batt, &axp20x_batt->max_ccc);
+ 
++	regmap_update_bits(axp20x_batt->regmap, AXP20X_VBUS_IPSOUT_MGMT, 0x03, 0x03);
++	regmap_update_bits(axp20x_batt->regmap, AXP20X_OFF_CTRL, 0x08, 0x08);
++	regmap_update_bits(axp20x_batt->regmap, AXP20X_CHRG_CTRL2, 0x30, 0x20);
++	regmap_update_bits(axp20x_batt->regmap, AXP20X_PEK_KEY, 0x0f, 0x0b);
++	regmap_update_bits(axp20x_batt->regmap, AXP20X_GPIO0_CTRL, 0x07, 0x00);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/video/backlight/Kconfig b/drivers/video/backlight/Kconfig
+index d0951c7f375ac8..35a78702f5f7c2 100644
+--- a/drivers/video/backlight/Kconfig
++++ b/drivers/video/backlight/Kconfig
+@@ -497,6 +497,12 @@ config BACKLIGHT_LED
+ 	  If you have a LCD backlight adjustable by LED class driver, say Y
+ 	  to enable this driver.
+ 
++config BACKLIGHT_OCP8178
++	tristate "OCP8178 Backlight Driver"
++	depends on GPIOLIB
++	help
++	  If you have an OCP8178, say Y to enable the backlight driver.
++ 
+ endif # BACKLIGHT_CLASS_DEVICE
+ 
+ endmenu
+diff --git a/drivers/video/backlight/Makefile b/drivers/video/backlight/Makefile
+index 631227dfc1aab5..cf92b73f5c77f4 100644
+--- a/drivers/video/backlight/Makefile
++++ b/drivers/video/backlight/Makefile
+@@ -61,3 +61,4 @@ obj-$(CONFIG_BACKLIGHT_WM831X)		+= wm831x_bl.o
+ obj-$(CONFIG_BACKLIGHT_ARCXCNN) 	+= arcxcnn_bl.o
+ obj-$(CONFIG_BACKLIGHT_RAVE_SP)		+= rave-sp-backlight.o
+ obj-$(CONFIG_BACKLIGHT_LED)		+= led_bl.o
++obj-$(CONFIG_BACKLIGHT_OCP8178)		+= ocp8178_bl.o
+diff --git a/drivers/video/backlight/ocp8178_bl.c b/drivers/video/backlight/ocp8178_bl.c
+new file mode 100644
+index 00000000000000..a9fb9682adbfb0
+--- /dev/null
++++ b/drivers/video/backlight/ocp8178_bl.c
+@@ -0,0 +1,275 @@
++/*
++ * ocp8178_bl.c - ocp8178 backlight driver
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/backlight.h>
++#include <linux/err.h>
++#include <linux/fb.h>
++#include <linux/gpio.h> /* Only for legacy support */
++#include <linux/gpio/consumer.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_gpio.h>
++#include <linux/platform_data/gpio_backlight.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/delay.h>
++#include <linux/timer.h>
++#include <linux/poll.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/sched.h>
++#include <linux/interrupt.h>
++#include <linux/irq.h>
++#include <linux/io.h>
++#include <linux/clk.h>
++
++struct ocp8178_backlight {
++	struct device *dev;
++	struct device *fbdev;
++
++	struct gpio_desc *gpiod;
++	int def_value;
++	int current_value;
++};
++
++#define DETECT_DELAY 200
++#define DETECT_TIME 500
++#define DETECT_WINDOW_TIME 1000
++#define START_TIME 10
++#define END_TIME 10
++#define SHUTDOWN_TIME 3000
++#define LOW_BIT_HIGH_TIME 10
++#define LOW_BIT_LOW_TIME 50
++#define HIGH_BIT_HIGH_TIME 50
++#define HIGH_BIT_LOW_TIME 10
++#define MAX_BRIGHTNESS_VALUE 9
++
++static void entry_1wire_mode(struct ocp8178_backlight *gbl)
++{
++	unsigned long flags = 0;
++	local_irq_save(flags);
++	gpiod_set_value(gbl->gpiod, 0);
++	mdelay(SHUTDOWN_TIME/1000);
++	gpiod_set_value(gbl->gpiod, 1);
++	udelay(DETECT_DELAY);
++	gpiod_set_value(gbl->gpiod, 0);
++	udelay(DETECT_TIME);
++	gpiod_set_value(gbl->gpiod, 1);
++	udelay(DETECT_WINDOW_TIME);
++	local_irq_restore(flags);
++}
++
++static inline void write_bit(struct ocp8178_backlight *gbl, int bit)
++{
++	if (bit) {
++		gpiod_set_value(gbl->gpiod, 0);
++		udelay(HIGH_BIT_LOW_TIME);
++		gpiod_set_value(gbl->gpiod, 1);
++		udelay(HIGH_BIT_HIGH_TIME);
++	} else {
++		gpiod_set_value(gbl->gpiod, 0);
++		udelay(LOW_BIT_LOW_TIME);
++		gpiod_set_value(gbl->gpiod, 1);
++		udelay(LOW_BIT_HIGH_TIME);
++	}
++}
++
++static void write_byte(struct ocp8178_backlight *gbl, int byte)
++{
++	unsigned long flags = 0;
++	unsigned char data = 0x72;
++	int i;
++
++	local_irq_save(flags);
++
++	gpiod_set_value(gbl->gpiod, 1);
++	udelay(START_TIME);
++	for(i = 0; i < 8; i++) {
++		if(data & 0x80) {
++			write_bit(gbl, 1);
++		} else {
++			write_bit(gbl, 0);
++		}
++		data <<= 1;
++	}
++	gpiod_set_value(gbl->gpiod, 0);
++	udelay(END_TIME);
++
++	data = byte & 0x1f;
++
++	gpiod_set_value(gbl->gpiod, 1);
++	udelay(START_TIME);
++	for(i = 0; i < 8; i++) {
++		if(data & 0x80) {
++			write_bit(gbl, 1);
++		} else {
++			write_bit(gbl, 0);
++		}
++		data <<= 1;
++	}
++	gpiod_set_value(gbl->gpiod, 0);
++	udelay(END_TIME);
++	gpiod_set_value(gbl->gpiod, 1);
++
++	local_irq_restore(flags);
++}
++
++unsigned char ocp8178_bl_table[MAX_BRIGHTNESS_VALUE+1] = {0, 1, 4, 8, 12, 16, 20, 24, 28, 31};
++
++static int ocp8178_update_status(struct backlight_device *bl)
++{
++	struct ocp8178_backlight *gbl = bl_get_data(bl);
++	int brightness = bl->props.brightness, i;
++
++	if (bl->props.power != FB_BLANK_UNBLANK ||
++	    bl->props.state & (BL_CORE_SUSPENDED | BL_CORE_FBBLANK))
++		brightness = 0;
++
++	if(brightness > MAX_BRIGHTNESS_VALUE)
++		brightness = MAX_BRIGHTNESS_VALUE;
++
++	for(i = 0; i < 2; i++) {
++		entry_1wire_mode(gbl);
++		write_byte(gbl, ocp8178_bl_table[brightness]);
++	}
++	gbl->current_value = brightness;
++
++	return 0;
++}
++
++static int ocp8178_get_brightness(struct backlight_device *bl)
++{
++	struct ocp8178_backlight *gbl = bl_get_data(bl);
++	return gbl->current_value;
++}
++
++static bool ocp8178_controls_device(struct backlight_device *bl, struct device *display_dev)
++{
++	struct ocp8178_backlight *gbl = bl_get_data(bl);
++	return !gbl->fbdev || gbl->fbdev == display_dev;
++}
++
++static const struct backlight_ops ocp8178_backlight_ops = {
++	.options = BL_CORE_SUSPENDRESUME,
++	.update_status = ocp8178_update_status,
++	.get_brightness = ocp8178_get_brightness,
++	.controls_device = ocp8178_controls_device,
++};
++
++static int ocp8178_probe_dt(struct platform_device *pdev,
++				   struct ocp8178_backlight *gbl)
++{
++	struct device *dev = &pdev->dev;
++	struct device_node *np = dev->of_node;
++	enum gpiod_flags flags;
++	int ret = 0;
++	u32 value32;
++
++	of_property_read_u32(np, "default-brightness", &value32);
++	if(value32 > MAX_BRIGHTNESS_VALUE)
++		gbl->def_value = MAX_BRIGHTNESS_VALUE;
++	else
++		gbl->def_value = value32;
++	flags = gbl->def_value ? GPIOD_OUT_HIGH : GPIOD_OUT_LOW;
++
++	gbl->gpiod = devm_gpiod_get(dev, "backlight-control", flags);
++	if (IS_ERR(gbl->gpiod)) {
++		ret = PTR_ERR(gbl->gpiod);
++
++		if (ret != -EPROBE_DEFER) {
++			dev_err(dev,
++				"Error: The gpios parameter is missing or invalid.\n");
++		}
++	}
++
++	return ret;
++}
++
++static struct backlight_device *backlight;
++
++static int ocp8178_probe(struct platform_device *pdev)
++{
++	struct backlight_properties props;
++	struct backlight_device *bl;
++	struct ocp8178_backlight *gbl;
++	struct device_node *np = pdev->dev.of_node;
++	int ret;
++
++	if ( !np) {
++		dev_err(&pdev->dev,
++			"failed to find platform data or device tree node.\n");
++		return -ENODEV;
++	}
++
++	gbl = devm_kzalloc(&pdev->dev, sizeof(*gbl), GFP_KERNEL);
++	if (gbl == NULL)
++		return -ENOMEM;
++
++	gbl->dev = &pdev->dev;
++
++	ret = ocp8178_probe_dt(pdev, gbl);
++	if (ret)
++		return ret;
++
++	gbl->current_value = gbl->def_value;
++
++	memset(&props, 0, sizeof(props));
++	props.type = BACKLIGHT_RAW;
++	props.max_brightness = MAX_BRIGHTNESS_VALUE;
++	bl = devm_backlight_device_register(&pdev->dev, dev_name(&pdev->dev),
++					&pdev->dev, gbl, &ocp8178_backlight_ops,
++					&props);
++	if (IS_ERR(bl)) {
++		dev_err(&pdev->dev, "failed to register backlight\n");
++		return PTR_ERR(bl);
++	}
++
++//	entry_1wire_mode(gbl);
++
++	bl->props.brightness = gbl->def_value;
++	backlight_update_status(bl);
++
++	platform_set_drvdata(pdev, bl);
++
++	backlight = bl;
++	return 0;
++}
++
++static int ocp8178_suspend(struct platform_device *pdev, pm_message_t state)
++{
++	return 0;
++}
++
++static int ocp8178_resume(struct platform_device *pdev)
++{
++	return 0;
++}
++
++static struct of_device_id ocp8178_of_match[] = {
++	{ .compatible = "ocp8178-backlight" },
++	{ /* sentinel */ }
++};
++
++MODULE_DEVICE_TABLE(of, ocp8178_of_match);
++
++static struct platform_driver ocp8178_driver = {
++	.driver		= {
++		.name		= "ocp8178-backlight",
++		.of_match_table = of_match_ptr(ocp8178_of_match),
++	},
++	.probe		= ocp8178_probe,
++	.suspend		= ocp8178_suspend,
++	.resume		= ocp8178_resume,
++};
++
++module_platform_driver(ocp8178_driver);
++
++MODULE_DESCRIPTION("OCP8178 Driver");
++MODULE_LICENSE("GPL");
