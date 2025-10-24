@@ -60,19 +60,19 @@ if [ ! -d "$ROOTFS" ]; then
    mkdir -p "$ROOTFS"
 fi
 
-mount "${LOOP_DEVICE}p2" "$ROOTFS"
+sudo mount "${LOOP_DEVICE}p2" "$ROOTFS"
 
 if [ ! -d "$ROOTFS/boot/firmware" ]; then
    mkdir -p "$ROOTFS/boot/firmware"
 fi
 
-mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
+sudo mount "${LOOP_DEVICE}p1" "$ROOTFS/boot/firmware"
 
 
-mount --bind /dev "$ROOTFS/dev"
-mount --bind /dev/pts "$ROOTFS/dev/pts"
-mount --bind /proc "$ROOTFS/proc"
-mount --bind /sys "$ROOTFS/sys"
+sudo mount --bind /dev "$ROOTFS/dev"
+sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
+sudo mount --bind /proc "$ROOTFS/proc"
+sudo mount --bind /sys "$ROOTFS/sys"
 
 # For non-image-based distributions, complete debootstrap setup
 if [[ "$SUITE" != "popos" ]]; then
@@ -86,10 +86,10 @@ if [[ "$SUITE" != "popos" ]]; then
 
     # Bind mount system directories
     echo "Binding system directories..."
-    mount --bind /proc "$ROOTFS/proc"
-    mount --bind /sys "$ROOTFS/sys"
-    mount --bind /dev "$ROOTFS/dev"
-    mount --bind /dev/pts "$ROOTFS/dev/pts"
+sudo mount --bind /proc "$ROOTFS/proc"
+sudo mount --bind /sys "$ROOTFS/sys"
+sudo mount --bind /dev "$ROOTFS/dev"
+sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
 fi
 
 # Backup and configure DNS resolution

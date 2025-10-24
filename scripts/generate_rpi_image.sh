@@ -226,7 +226,7 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
 
 # Mount partitions
 TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
-mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
+sudo mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
 
 # Bind mount system directories for chroot
 bind_mount_system "$TEMP_MOUNT"

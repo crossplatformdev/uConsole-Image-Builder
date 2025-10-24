@@ -55,16 +55,16 @@ fi
 
 # Ensure mounts are active
 if ! mountpoint -q "$ROOTFS/proc"; then
-    mount --bind /proc "$ROOTFS/proc"
+sudo mount --bind /proc "$ROOTFS/proc"
 fi
 if ! mountpoint -q "$ROOTFS/sys"; then
-    mount --bind /sys "$ROOTFS/sys"
+sudo mount --bind /sys "$ROOTFS/sys"
 fi
 if ! mountpoint -q "$ROOTFS/dev"; then
-    mount --bind /dev "$ROOTFS/dev"
+sudo mount --bind /dev "$ROOTFS/dev"
 fi
 if ! mountpoint -q "$ROOTFS/dev/pts"; then
-    mount --bind /dev/pts "$ROOTFS/dev/pts"
+sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
 fi
 
 # Create uconsole user
@@ -345,10 +345,10 @@ fi
 
 # Unmount system directories
 echo "Unmounting system directories..."
-umount "$ROOTFS/dev/pts" || true
-umount "$ROOTFS/dev" || true
-umount "$ROOTFS/proc" || true
-umount "$ROOTFS/sys" || true
+sudo umount "$ROOTFS/dev/pts" || true
+sudo umount "$ROOTFS/dev" || true
+sudo umount "$ROOTFS/proc" || true
+sudo umount "$ROOTFS/sys" || true
 
 echo "================================================"
 echo "$SUITE setup complete!"

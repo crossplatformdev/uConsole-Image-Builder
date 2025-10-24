@@ -67,15 +67,15 @@ losetup -D
 losetup /dev/loop777 -P ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img
 
 mkdir rootfs
-mount /dev/loop777p2 rootfs    
+sudo mount /dev/loop777p2 rootfs    
 mkdir rootfs/boot/firmware
-mount /dev/loop777p1 rootfs/boot/firmware
+sudo mount /dev/loop777p1 rootfs/boot/firmware
 
 
-mount --bind /dev rootfs/dev
-mount --bind /dev/pts rootfs/dev/pts
-mount --bind /proc rootfs/proc
-mount --bind /sys rootfs/sys
+sudo mount --bind /dev rootfs/dev
+sudo mount --bind /dev/pts rootfs/dev/pts
+sudo mount --bind /proc rootfs/proc
+sudo mount --bind /sys rootfs/sys
 
 mv rootfs/etc/resolv.conf rootfs/etc/resolv.conf.bak
 cp /etc/resolv.conf rootfs/etc/resolv.conf
@@ -191,12 +191,12 @@ mv rootfs/etc/resolv.conf.bak rootfs/etc/resolv.conf
 rm rootfs/root/.bash_history
 
 #Unmount the image
-umount rootfs/dev/pts
-umount rootfs/dev
-umount rootfs/proc
-umount rootfs/sys
-umount rootfs/boot/firmware
-umount rootfs
+sudo umount rootfs/dev/pts
+sudo umount rootfs/dev
+sudo umount rootfs/proc
+sudo umount rootfs/sys
+sudo umount rootfs/boot/firmware
+sudo umount rootfs
 
 rmdir rootfs
 
