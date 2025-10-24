@@ -120,6 +120,7 @@ The kernel build process:
 - `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
 - `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
 - `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)
+- `KDEB_CHANGELOG_DIST`: Debian changelog distribution (default: `stable`)
 
 **Docker Build Benefits:**
 - **Reproducible**: Same build environment every time
