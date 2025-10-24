@@ -96,7 +96,7 @@ chroot rootfs /bin/bash -c "apt purge -y --allow-change-held-packages linux-imag
 #echo "#Ubuntu noble main repository, needed for gcc-13" >> rootfs/etc/apt/sources.list
 #echo "deb http://ports.ubuntu.com/ubuntu-ports/ noble main restricted" >> rootfs/etc/apt/sources.list
 
-chroot rootfs /bin/bash -c "apt update && apt install -y linux-tools-common"
+chroot rootfs /bin/bash -c "sudo apt update && sudo apt install -y linux-tools-common"
 
 chroot rootfs /bin/bash -c "cd /usr/local/src/ClockworkPi-linux &&  dpkg -i *.deb"
 chroot rootfs /bin/bash -c "apt-mark hold linux-image-6.9.12-v8-raspi linux-headers-6.9.12-v8-raspi linux-libc-dev"

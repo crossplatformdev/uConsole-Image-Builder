@@ -57,7 +57,7 @@ echo "Build directory: $BUILD_DIR"
 # Install build dependencies
 echo "Installing kernel build dependencies..."
 if command -v apt-get &> /dev/null; then
-    apt-get update
+    sudo apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential \
         bc \

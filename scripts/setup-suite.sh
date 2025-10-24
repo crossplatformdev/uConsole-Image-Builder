@@ -253,8 +253,8 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
     chroot "$ROOTFS" /bin/bash -c "apt-get update"
     chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
     chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-        dpkg -i linux-*.deb || true && \
-        apt-get install -f -y"
+        sudo dpkg -i linux-*.deb || true && \
+        sudo apt-get install -f -y"
     
     # Clean up kernel source
     echo "Cleaning up kernel build artifacts..."

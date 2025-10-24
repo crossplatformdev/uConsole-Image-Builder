@@ -251,9 +251,9 @@ case "$KERNEL_MODE" in
         
         echo "Installing kernel packages in chroot..."
         chroot "$TEMP_MOUNT" /bin/bash -c "
-            apt-get update
-            apt-get install -y initramfs-tools
-            dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
+            sudo apt-get update
+            sudo apt-get install -y initramfs-tools
+            dpkg -i /tmp/kernel-debs/*.deb || sudo apt-get install -f -y
             rm -rf /tmp/kernel-debs
         "
         ;;
