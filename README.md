@@ -216,75 +216,76 @@ This allows you to update just the kernel without reflashing the entire image.
 
 ## CI/CD
 
-This repository includes automated GitHub Actions workflows that build and publish uConsole images.
+This repository includes an automated GitHub Actions workflow that builds and publishes uConsole images.
 
-### Image Build Workflow (New!)
+### Build and Release Workflow
 
-The **Build uConsole Images** workflow (`.github/workflows/image-build.yml`) creates complete bootable images:
-
-**Triggers:**
-- **Manual dispatch**: Build on-demand via Actions tab
-- **Pull requests**: Automatically test image generation when relevant files change
-
-**Manual Build Options:**
-1. Go to **Actions** → **Build uConsole Images** → **Run workflow**
-2. Select distribution suite: `jammy`, `focal`, `bookworm`, `bullseye`, `trixie`, or `all`
-3. Choose kernel mode: `prebuilt`, `build`, or `none`
-4. Choose compression: `xz`, `gzip`, or `none`
-
-**Outputs:**
-- Complete bootable .img.xz files (or .img.gz)
-- SHA256 checksums
-- Kernel .deb packages (if kernel_mode=build)
-- Artifacts retained for 30 days
-
-**Supported Suites:**
-- Ubuntu: jammy (22.04), focal (20.04)
-- Debian: bookworm (12), bullseye (11), trixie (13/testing)
-
-### Release Workflow (New!)
-
-The **Release uConsole Images** workflow (`.github/workflows/release.yml`) creates GitHub releases with attached artifacts:
+The **Build and Release uConsole Images** workflow (`.github/workflows/build-and-release.yml`) is a unified workflow that:
 
 **Triggers:**
-- **Git tags**: Push a tag starting with `v*` or `release-*`
+- **Git tags**: Push a tag starting with `v*` or `release-*` to automatically build and create a release
   ```bash
   git tag -a v1.0.0 -m "Release v1.0.0"
   git push origin v1.0.0
   ```
-- **Manual dispatch**: Create a release on-demand
+- **Manual dispatch**: Build on-demand via Actions tab with customizable options
+
+**Manual Build Options:**
+1. Go to **Actions** → **Build and Release uConsole Images** → **Run workflow**
+2. Select distribution suite: `all`, `jammy`, `focal`, `bookworm`, `bullseye`, or `trixie`
+3. Choose kernel mode:
+   - `prebuilt`: Uses ClockworkPi repository packages (fast)
+   - `build`: Builds kernel from source with patches (slow, ~2-4 hours)
+4. Enable "Create release" to automatically create a GitHub release
+
+**Workflow Jobs:**
+
+1. **Build Kernel Packages** (when kernel_mode=build):
+   - Clones Raspberry Pi kernel source
+   - Applies ClockworkPi patches
+   - Builds .deb packages for distribution
+   - Generates kernel source information (KERNEL_INFO.md)
+
+2. **Build Images**:
+   - Creates bootable .img.xz files for each selected SUITE using rpi-image-gen
+   - Installs kernel (prebuilt from repo OR custom-built .debs)
+   - Generates SHA256 checksums
+   - Uploads artifacts (retained for 30 days)
+
+3. **Create Release** (on tag push or manual with create_release=true):
+   - Creates GitHub release with tag
+   - Attaches all artifacts:
+     - Bootable .img.xz files for each distribution
+     - Kernel .deb packages
+     - Kernel source information
+     - SHA256 checksums
+   - Includes comprehensive installation instructions
 
 **Release Contents:**
-- Kernel .deb packages (linux-image, linux-headers, linux-libc-dev)
-- Bootable images for jammy, bookworm, and trixie (.img.xz)
-- SHA256 checksums for all files
-- Installation instructions
-- Build metadata
+- **Images**: uconsole-{suite}-arm64.img.xz for jammy, bookworm, trixie
+- **Kernel packages**: linux-image-*.deb, linux-headers-*.deb, linux-libc-dev-*.deb
+- **Documentation**: KERNEL_INFO.md with kernel source details
+- **Checksums**: SHA256 for all files
 
-**Example Release Process:**
+**Example: Create a Release**
 ```bash
 # Tag current commit
-git tag -a release-20251023 -m "October 2025 release"
-git push origin release-20251023
+git tag -a release-20251024 -m "October 2025 release"
+git push origin release-20251024
 
-# Workflow will automatically:
-# 1. Build kernel packages from source
-# 2. Generate images for 3 distributions
-# 3. Create GitHub release with all files attached
+# Workflow automatically:
+# 1. Builds kernel packages from source
+# 2. Generates images for jammy, bookworm, and trixie
+# 3. Creates GitHub release with all files attached
 ```
 
-### Automated Daily Builds (Rootfs)
-
-The legacy **Build Distro Image (Unified)** workflow continues to build rootfs tarballs:
-- **Pop!_OS 22.04** (based on Ubuntu 22.04 jammy) - tagged as `popos-YYYYMMDD`
-- **Debian 13 (trixie)** - tagged as `trixie-YYYYMMDD`
-- **Debian 12 (bookworm)** - tagged as `bookworm-YYYYMMDD`
-- **Ubuntu 22.04 (jammy)** - tagged as `jammy-YYYYMMDD`
-
-Builds run automatically:
-- **Daily at 02:00 UTC** via scheduled cron (builds all distributions)
-- **On push to main** when relevant scripts or workflows change (builds all distributions)
-- **Manually** via workflow_dispatch (builds selected distribution)
+**Example: Test Image Build (Manual)**
+```
+Actions → Build and Release uConsole Images → Run workflow
+  - Suite: jammy
+  - Kernel mode: prebuilt
+  - Create release: false
+```
 
 ### Environment Variables
 
@@ -358,34 +359,30 @@ The build system supports these key environment variables:
 Build artifacts are available in multiple ways:
 
 1. **From workflow runs**: Go to Actions → Select a workflow run → Scroll to Artifacts section
-2. **From git tags**: Rootfs builds create dated tags (e.g., `jammy-20251022`)
-3. **From releases**: Kernel .debs and complete images attached to tagged releases
+   - Image artifacts: `uconsole-{suite}-image` (contains .img.xz and .sha256)
+   - Kernel artifacts: `kernel-debs` (contains .deb packages and KERNEL_INFO.md)
+2. **From releases**: Complete images and kernel .debs attached to GitHub releases
 
 ### Workflow Architecture
 
-**Build Distro Image (Unified)** (`.github/workflows/build-distro.yaml`):
-- Accepts `suite` and `recompile_kernel` inputs via workflow_dispatch
-- Uses matrix strategy to build all distributions on scheduled/push events
-- Sets up QEMU for ARM64 cross-compilation
-- Runs debootstrap to create base rootfs
-- Applies suite-specific customizations via `scripts/setup-suite.sh`
-- Handles kernel compilation or prebuilt image selection based on `RECOMPILE_KERNEL`
-- Creates and uploads tarball artifacts
-- Tags successful builds with date-stamped tags
-
-**Build uConsole Images** (`.github/workflows/image-build.yml`):
-- On-demand or PR-triggered complete image generation
-- Matrix builds for multiple suites
-- Generates bootable .img.xz files
-- Optional kernel compilation from source
-- Uploads images and kernel .debs as artifacts
-
-**Release uConsole Images** (`.github/workflows/release.yml`):
-- Triggered by version tags or manual dispatch
-- Builds kernel packages from source
-- Generates images for key distributions
-- Creates GitHub releases with all artifacts attached
-- Includes comprehensive installation instructions
+**Build and Release uConsole Images** (`.github/workflows/build-and-release.yml`):
+- Unified workflow that handles both image building and releases
+- **build-kernel job**: Builds kernel .deb packages from source (when kernel_mode=build)
+  - Installs kernel build dependencies
+  - Clones and builds Raspberry Pi kernel with ClockworkPi patches
+  - Generates kernel source metadata
+  - Uploads kernel .deb packages as artifacts
+- **build-images job**: Creates bootable images for selected distributions
+  - Sets up QEMU for ARM64 cross-compilation
+  - Uses rpi-image-gen to create base bootable Raspberry Pi images
+  - Installs kernel (prebuilt from ClockworkPi repo OR custom-built .debs)
+  - Generates compressed .img.xz files
+  - Creates SHA256 checksums
+  - Uploads image artifacts
+- **create-release job**: Publishes GitHub releases (when triggered by tags or manual dispatch)
+  - Downloads all artifacts (images and kernel packages)
+  - Creates GitHub release with comprehensive documentation
+  - Attaches all artifacts to the release
 
 ## rpi-image-gen Integration
 
@@ -472,11 +469,9 @@ uConsole-Image-Builder/
 ├── artifacts/
 │   └── kernel-debs/            # Kernel .deb packages output directory
 ├── .github/workflows/
-│   ├── image-build.yml         # Image generation workflow
-│   ├── release.yml             # Release with kernel .debs
-│   └── build-distro.yaml       # Daily rootfs builds
-├── CHANGES.md                  # Changelog
-└── README.md                   # This file
+│   └── build-and-release.yml    # Unified build and release workflow
+├── CHANGES.md                   # Changelog
+└── README.md                    # This file
 ```
 
 ## Contributing

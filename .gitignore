@@ -33,3 +33,6 @@ rpi-image-gen/deploy/
 
 # Loop device temporary mounts
 temp_mount/
+
+# Old/backup workflows
+.github/workflows/old-workflows/

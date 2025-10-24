@@ -4,6 +4,42 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ## [Unreleased]
 
+### Changed - Workflow Simplification
+
+- **Unified Build and Release Workflow**: Simplified from 5 separate workflows to 1 comprehensive workflow
+  - Removed workflows:
+    - `build-and-release.yml` (old version - rootfs only)
+    - `build-distro.yaml` (daily rootfs builds with tagging)
+    - `build-image.yml` (reusable workflow - unused)
+    - `image-build.yml` (on-demand image generation)
+    - `release.yml` (old release workflow)
+  - New unified workflow: `.github/workflows/build-and-release.yml`
+    - Combines functionality of all previous workflows
+    - Builds complete bootable images (not just rootfs tarballs)
+    - Supports both prebuilt and build-from-source kernel modes
+    - Automatically creates GitHub releases with all artifacts
+    - Triggers on git tags (`v*`, `release-*`) or manual dispatch
+    - Single source of truth for CI/CD
+
+- **Workflow Features**:
+  - **build-kernel job**: Builds kernel .deb packages from source (when kernel_mode=build)
+    - Creates KERNEL_INFO.md with kernel source details
+    - Outputs packages to artifacts/kernel-debs/
+  - **build-images job**: Creates bootable images for selected distributions
+    - Uses rpi-image-gen for image generation
+    - Installs kernel (prebuilt from ClockworkPi repo OR custom-built .debs)
+    - Generates compressed .img.xz files with SHA256 checksums
+    - Matrix builds for jammy, bookworm, and trixie
+  - **create-release job**: Publishes GitHub releases
+    - Attaches all images and kernel packages
+    - Includes comprehensive installation instructions
+    - Only runs on tag push or when manually enabled
+
+- **Updated Documentation**:
+  - README.md: Rewritten CI/CD section to reflect unified workflow
+  - IMPLEMENTATION.md: Updated with workflow simplification details
+  - Project structure documentation updated
+
 ### Added - rpi-image-gen Integration
 
 - **rpi-image-gen Submodule**: Added rpi-image-gen (v2.0.0-rc.1-43-g09b6114) as a git submodule for Raspberry Pi image generation
