@@ -13,9 +13,18 @@
 #   KERNEL_LOCALVERSION - Local version string (default: -uconsole)
 #   APPLY_PATCH - Whether to apply ak-rex patch (default: true)
 #   PATCH_FILE - Path to ak-rex patch file (default: patches/ak-rex.patch)
+#   USE_DOCKER - Use Docker for build (default: false)
 #
 
 set -e
+
+# Check if Docker mode is requested
+USE_DOCKER="${USE_DOCKER:-false}"
+if [ "$USE_DOCKER" = "true" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo "Docker mode enabled - delegating to build_kernel_docker.sh"
+    exec "$SCRIPT_DIR/build_kernel_docker.sh" "$@"
+fi
 
 # Configuration
 KERNEL_REPO="${KERNEL_REPO:-https://github.com/raspberrypi/linux.git}"

@@ -118,6 +118,11 @@ tar -czf uconsole-popos-arm64.tar.gz rootfs-jammy-arm64
 - Root privileges (sudo)
 - Packages: `debootstrap`, `qemu-user-static`, `binfmt-support`
 - For kernel compilation: Additional build tools (automatically installed when RECOMPILE_KERNEL=true)
+- **OR use Docker for kernel building** (recommended):
+  - Only requires Docker installed on the host
+  - Set `USE_DOCKER=true` when calling kernel build scripts
+  - All build dependencies managed in container
+  - Provides reproducible build environment
 
 ## Notes
 
@@ -125,3 +130,4 @@ tar -czf uconsole-popos-arm64.tar.gz rootfs-jammy-arm64
 - The user has passwordless sudo enabled
 - When RECOMPILE_KERNEL=false, kernel packages can be installed from the configured repository
 - When RECOMPILE_KERNEL=true, kernel compilation adds significant build time (1-2 hours)
+- **Docker builds**: Use `USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh` for containerized builds

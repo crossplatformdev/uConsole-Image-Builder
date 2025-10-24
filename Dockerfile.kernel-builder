@@ -1,0 +1,38 @@
+# Dockerfile for building ClockworkPi uConsole kernel
+# This creates a reproducible build environment for kernel compilation
+
+FROM ubuntu:22.04
+
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install kernel build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    bc \
+    bison \
+    flex \
+    libssl-dev \
+    libncurses-dev \
+    libelf-dev \
+    kmod \
+    cpio \
+    rsync \
+    git \
+    fakeroot \
+    dpkg-dev \
+    debhelper \
+    kernel-wedge \
+    wget \
+    crossbuild-essential-arm64 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user for building (optional, can build as root)
+# RUN useradd -m -u 1000 -s /bin/bash builder
+
+# Set working directory
+WORKDIR /build
+
+# Default command shows usage
+CMD ["echo", "Usage: docker run -v /path/to/output:/output kernel-builder /build/build_in_container.sh"]

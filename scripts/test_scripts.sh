@@ -189,6 +189,39 @@ cd "$REPO_ROOT"
 test_skip "generate_rpi_image.sh SUITE variable test (requires root to fully test)"
 
 echo ""
+echo "8. Docker Build Tests"
+echo "============================="
+
+cd "$REPO_ROOT"
+
+# Test Docker build scripts exist and are executable
+if [ -f "scripts/test_docker_build.sh" ] && [ -x "scripts/test_docker_build.sh" ]; then
+    test_pass "Docker integration test script exists"
+else
+    test_fail "Docker integration test script missing or not executable"
+fi
+
+if [ -f "Dockerfile.kernel-builder" ]; then
+    test_pass "Dockerfile.kernel-builder exists"
+else
+    test_fail "Dockerfile.kernel-builder missing"
+fi
+
+if [ -f "scripts/build_kernel_docker.sh" ] && [ -x "scripts/build_kernel_docker.sh" ]; then
+    test_pass "build_kernel_docker.sh exists and is executable"
+else
+    test_fail "build_kernel_docker.sh missing or not executable"
+fi
+
+if [ -f "scripts/build_kernel_in_container.sh" ] && [ -x "scripts/build_kernel_in_container.sh" ]; then
+    test_pass "build_kernel_in_container.sh exists and is executable"
+else
+    test_fail "build_kernel_in_container.sh missing or not executable"
+fi
+
+test_skip "Full Docker build test (run scripts/test_docker_build.sh separately)"
+
+echo ""
 echo "======================================"
 echo "Test Summary"
 echo "======================================"

@@ -52,30 +52,12 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Install kernel build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            bc \
-            kmod \
-            cpio \
-            flex \
-            bison \
-            libncurses5-dev \
-            libelf-dev \
-            libssl-dev \
-            fakeroot \
-            dpkg-dev \
-            debhelper \
-            rsync \
-            git \
-            wget \
-            ca-certificates
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       
-      - name: Build ClockworkPi kernel
+      - name: Build ClockworkPi kernel using Docker
         run: |
-          sudo ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
+          USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
       
       - name: Get kernel source info
         id: kernel_info
