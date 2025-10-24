@@ -104,7 +104,7 @@ if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     echo "Creating working copy of kernel source..."
     
     # Use rsync to copy the source excluding .git to avoid submodule path issues
-    rsync -a --exclude='.git' "$REPO_ROOT/linux/" linux/
+    rsync -a "$REPO_ROOT/linux/" linux/
     
     cd linux
     
