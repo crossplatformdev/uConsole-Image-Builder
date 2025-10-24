@@ -84,7 +84,23 @@ USE_DOCKER=true \
 KERNEL_LOCALVERSION=-custom \
 USE_DOCKER=true \
 ./scripts/build_clockworkpi_kernel.sh
+
+# Set Debian changelog distribution
+KDEB_CHANGELOG_DIST=bookworm \
+USE_DOCKER=true \
+./scripts/build_clockworkpi_kernel.sh
 ```
+
+**Available Environment Variables:**
+- `KERNEL_REPO`: Kernel repository URL (default: `https://github.com/raspberrypi/linux.git`)
+- `KERNEL_BRANCH`: Branch to build (default: `rpi-6.12.y`)
+- `KERNEL_LOCALVERSION`: Version suffix (default: `-raspi`)
+- `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
+- `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
+- `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)
+- `KDEB_CHANGELOG_DIST`: Debian changelog distribution (default: `stable`)
+- `DOCKER_IMAGE`: Docker image name (default: `uconsole-kernel-builder`)
+- `NO_CACHE`: Build Docker image without cache (`true`/`false`, default: `false`)
 
 ## Docker Implementation Details
 

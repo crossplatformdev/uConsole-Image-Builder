@@ -13,6 +13,7 @@
 #   KERNEL_LOCALVERSION - Local version string (default: -raspi)
 #   APPLY_PATCH - Whether to apply ak-rex patch (default: true)
 #   PATCH_FILE - Path to ak-rex patch file (default: patches/ak-rex.patch)
+#   KDEB_CHANGELOG_DIST - Debian changelog distribution (default: stable)
 #   DOCKER_IMAGE - Docker image name (default: uconsole-kernel-builder)
 #   NO_CACHE - Build Docker image without cache (default: false)
 #
@@ -24,6 +25,7 @@ KERNEL_REPO="${KERNEL_REPO:-https://github.com/raspberrypi/linux.git}"
 KERNEL_BRANCH="${KERNEL_BRANCH:-rpi-6.12.y}"
 KERNEL_LOCALVERSION="${KERNEL_LOCALVERSION:--raspi}"
 APPLY_PATCH="${APPLY_PATCH:-true}"
+KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}"
 OUTPUT_DIR="${1:-artifacts/kernel-debs}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -38,6 +40,7 @@ echo "Repository: $KERNEL_REPO"
 echo "Branch: $KERNEL_BRANCH"
 echo "Local Version: $KERNEL_LOCALVERSION"
 echo "Apply Patch: $APPLY_PATCH"
+echo "Changelog Distribution: $KDEB_CHANGELOG_DIST"
 echo "Output Directory: $OUTPUT_DIR"
 echo "Docker Image: $DOCKER_IMAGE"
 echo "================================================"
@@ -100,6 +103,7 @@ docker run --rm \
     -e KERNEL_LOCALVERSION="$KERNEL_LOCALVERSION" \
     -e APPLY_PATCH="$APPLY_PATCH" \
     -e PATCH_FILE="$CONTAINER_PATCH_PATH" \
+    -e KDEB_CHANGELOG_DIST="$KDEB_CHANGELOG_DIST" \
     "$DOCKER_IMAGE" \
     bash /build/build_kernel_in_container.sh
 
