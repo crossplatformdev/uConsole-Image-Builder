@@ -163,17 +163,26 @@ ls -lh /tmp/test-kernel-native/*.deb
 
 ## GitHub Actions Integration
 
-The CI workflow automatically uses Docker for kernel builds:
+The CI workflow automatically uses Docker for kernel builds. Here's the relevant workflow excerpt:
 
 ```yaml
-# Excerpt from .github/workflows/build-and-release.yml
-steps:
-  - name: Set up Docker Buildx
-    uses: docker/setup-buildx-action@v3
-  
-  - name: Build ClockworkPi kernel using Docker
-    run: |
-      USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
+# .github/workflows/build-and-release.yml
+jobs:
+  build-kernel:
+    name: Build Kernel Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build ClockworkPi kernel using Docker
+        run: |
+          USE_DOCKER=true ./scripts/build_clockworkpi_kernel.sh artifacts/kernel-debs
 ```
 
 Benefits for CI:
@@ -241,15 +250,16 @@ Build a custom Docker image with additional tools:
 # Dockerfile.custom
 FROM ubuntu:22.04
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install standard kernel build tools
 RUN apt-get update && apt-get install -y \
     build-essential bc bison flex libssl-dev \
     libncurses-dev libelf-dev kmod cpio rsync git \
     fakeroot dpkg-dev debhelper kernel-wedge wget \
-    crossbuild-essential-arm64 ca-certificates
-
-# Add your custom tools
-RUN apt-get install -y your-custom-tools
+    crossbuild-essential-arm64 ca-certificates \
+    your-custom-tools \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 ```
