@@ -29,17 +29,26 @@ echo "================================================"
 # Build directory inside container
 cd /build
 
-# Clone kernel source
-echo "Cloning kernel source..."
+# Use the mounted linux source
+echo "Using mounted linux source..."
+if [ ! -d "linux-source" ]; then
+    echo "ERROR: Linux source not found at /build/linux-source"
+    echo "This should have been mounted by the Docker host script"
+    exit 1
+fi
+
+# Create a working copy since the mount is read-only
+echo "Creating working copy of kernel source..."
 if [ -d "linux" ]; then
     echo "Removing existing linux directory..."
     rm -rf linux
 fi
 
-git clone --depth=1 --branch "${KERNEL_BRANCH}" "${KERNEL_REPO}" linux
+# Copy the linux source to a writable location
+cp -r linux-source linux
 cd linux
 
-echo "Kernel source cloned ($(git describe --always))"
+echo "Kernel source ready ($(git describe --always 2>/dev/null || echo 'no git info'))"
 
 # Apply ak-rex patch if enabled
 if [ "${APPLY_PATCH}" = "true" ]; then

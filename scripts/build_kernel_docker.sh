@@ -65,6 +65,15 @@ OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd)
 
 echo "Output directory: $OUTPUT_DIR"
 
+# Check if linux submodule exists
+if [ ! -d "$REPO_ROOT/linux" ] || [ ! -e "$REPO_ROOT/linux/.git" ]; then
+    echo "ERROR: Linux submodule not found at $REPO_ROOT/linux"
+    echo "Please initialize the submodule: git submodule update --init linux"
+    exit 1
+fi
+
+echo "Linux submodule found, will mount into container"
+
 # Build Docker image
 echo ""
 echo "Building Docker image..."
@@ -96,6 +105,7 @@ echo ""
 
 docker run --rm \
     -v "$OUTPUT_DIR:/output" \
+    -v "$REPO_ROOT/linux:/build/linux-source:ro" \
     -v "$SCRIPT_DIR/build_kernel_in_container.sh:/build/build_kernel_in_container.sh:ro" \
     $PATCH_MOUNT \
     -e KERNEL_REPO="$KERNEL_REPO" \

@@ -113,19 +113,9 @@ if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     
     echo "Kernel source ready from submodule"
 else
-    echo "WARNING: Linux submodule not found at $REPO_ROOT/linux"
-    echo "Falling back to cloning from $KERNEL_REPO"
-    echo "To use the embedded linux folder, run: git submodule update --init linux"
-    
-    if [ -d "linux" ]; then
-        echo "Removing existing linux directory..."
-        rm -rf linux
-    fi
-    
-    git clone --depth=1 --branch "$KERNEL_BRANCH" "$KERNEL_REPO" linux
-    cd linux
-    
-    echo "Kernel source cloned ($(git describe --always 2>/dev/null || echo 'no git info'))"
+    echo "ERROR: Linux submodule not found at $REPO_ROOT/linux"
+    echo "Please initialize the submodule: git submodule update --init linux"
+    exit 1
 fi
 
 # Apply ak-rex patch if enabled

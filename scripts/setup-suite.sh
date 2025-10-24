@@ -189,12 +189,9 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
         
         echo "Kernel source copied from submodule"
     else
-        echo "WARNING: Linux submodule not found, falling back to git clone"
-        echo "To use the embedded linux folder, run: git submodule update --init linux"
-        
-        # Clone kernel source in chroot (fallback)
-        chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-            git clone --depth=1 --branch rpi-6.12.y https://github.com/raspberrypi/linux.git kernel-source"
+        echo "ERROR: Linux submodule not found"
+        echo "Please initialize the submodule: git submodule update --init linux"
+        exit 1
     fi
     
     # Build kernel debs

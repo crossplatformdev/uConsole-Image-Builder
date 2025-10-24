@@ -13,18 +13,31 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
-# This script requires git operations for ak-rex cherry-picking,
-# so we always clone. However, we check if submodule exists to inform the user.
+# Use the linux submodule if available, otherwise error
 if [ ! -d linux ]; then
   if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
-    echo "Note: Linux submodule detected in repository"
-    echo "This script requires git operations, so cloning fresh copy..."
+    echo "Using linux submodule from repository..."
+    echo "Copying kernel source to build directory..."
+    
+    # Copy the entire submodule including .git to preserve git operations capability
+    cp -r "$REPO_ROOT/linux" .
+    
+    cd linux
+    
+    # Ensure we're on the correct branch
+    git checkout -f "$BRANCH" || {
+      echo "ERROR: Branch $BRANCH not found in linux submodule"
+      echo "The submodule may need to be updated"
+      exit 1
+    }
+  else
+    echo "ERROR: Linux submodule not found at $REPO_ROOT/linux"
+    echo "Please initialize the submodule: git submodule update --init linux"
+    exit 1
   fi
-  
-  echo "Cloning kernel source from $RPI_REMOTE..."
-  git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
+else
+  cd linux
 fi
-cd linux
 
 # Ensure we have the branch
 git fetch origin "$BRANCH" --depth=1
