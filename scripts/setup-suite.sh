@@ -194,7 +194,7 @@ if [[ "$RECOMPILE_KERNEL" == "true" ]]; then
         
         # Clone kernel source in chroot (fallback)
         chroot "$ROOTFS" /bin/bash -c "cd /tmp && \
-            git clone --depth=1 --branch rpi-6.12.y https://github.com/crossplatformdev/linux.git kernel-source"
+            git clone --depth=1 --branch rpi-6.12.y https://github.com/raspberrypi/linux.git kernel-source"
     fi
     
     # Build kernel debs

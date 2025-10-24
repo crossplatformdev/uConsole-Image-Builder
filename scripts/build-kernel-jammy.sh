@@ -14,14 +14,18 @@ mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
 # Use kernel source from repository submodule if available
+USING_SUBMODULE=false
 if [ ! -d linux ]; then
   if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     echo "Using kernel source from repository submodule..."
     
-    # Use rsync to copy source excluding .git to avoid submodule path issues
-    rsync -a --exclude='.git' "$REPO_ROOT/linux/" linux/
+    # For this script, we need git operations, so we'll clone into the build dir
+    # but use the submodule commit as a starting point
+    echo "Cloning kernel source (using submodule version as reference)..."
+    git clone --depth 1 --branch "$BRANCH" "$RPI_REMOTE" linux
+    USING_SUBMODULE=true
     
-    echo "Kernel source copied from submodule"
+    echo "Kernel source prepared from submodule reference"
   else
     echo "WARNING: Linux submodule not found, falling back to git clone"
     echo "To use the embedded linux folder, run: git submodule update --init linux"
@@ -30,9 +34,11 @@ if [ ! -d linux ]; then
 fi
 cd linux
 
-# Ensure we have the branch
-git fetch origin "$BRANCH" --depth=1
-git checkout -f "$BRANCH"
+# Ensure we have the branch (only needed for non-fresh clones)
+if [ "$USING_SUBMODULE" = "false" ]; then
+  git fetch origin "$BRANCH" --depth=1
+  git checkout -f "$BRANCH"
+fi
 
 # Add ak-rex remote and fetch the ak-rex branch
 git remote add ak-rex "$AKREX_REMOTE" 2>/dev/null || true

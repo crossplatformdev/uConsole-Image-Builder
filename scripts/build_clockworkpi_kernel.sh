@@ -113,7 +113,7 @@ else
     git clone --depth=1 --branch "$KERNEL_BRANCH" "$KERNEL_REPO" linux
     cd linux
     
-    echo "Kernel source cloned ($(git describe --always))"
+    echo "Kernel source cloned ($(git describe --always 2>/dev/null || echo 'no git info'))"
 fi
 
 # Apply ak-rex patch if enabled
