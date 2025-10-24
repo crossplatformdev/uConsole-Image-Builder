@@ -26,20 +26,6 @@ jobs:
         with:
           platforms: arm64
       
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y debootstrap qemu-user-static binfmt-support
-      
-      - name: Determine debootstrap suite
-        id: suite_info
-        run: |
-            echo "debootstrap_suite=${{ matrix.suite }}" >> $GITHUB_OUTPUT
-
-      - name: Build rootfs for ${{ matrix.suite }}
-        run: |
-          SUITE=${{ steps.suite_info.outputs.debootstrap_suite }} ARCH=arm64 ./scripts/build-image.sh build-output
-      
       - name: Apply ${{ matrix.suite }} customizations
         run: |
           SUITE=${{ matrix.suite }} RECOMPILE_KERNEL=false ./scripts/setup-suite.sh build-output

@@ -78,45 +78,6 @@ sudo mount --bind /sys "$ROOTFS/sys"
 sudo mv "$ROOTFS/etc/resolv.conf" "$ROOTFS/etc/resolv.conf.bak" || true
 sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
-# Configure apt sources (skip for image-based distributions)
-if [[ "$SUITE" != "popos" ]]; then
-    echo "Configuring apt sources for $SUITE..."
-    if [[ "$SUITE" == "jammy" ]]; then
-        cat > "$ROOTFS/etc/apt/sources.list" << EOF
-deb http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse
-deb http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse
-deb http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse
-EOF
-    elif [[ "$SUITE" == "bookworm" ]]; then
-        cat > "$ROOTFS/etc/apt/sources.list" << EOF
-deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-EOF
-    else
-        cat > "$ROOTFS/etc/apt/sources.list" << EOF
-deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware
-deb http://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware
-deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
-EOF
-    fi
-
-    # Install minimal packages in chroot
-    echo "Installing minimal packages in chroot..."
-    chroot "$ROOTFS" /bin/bash -c "apt-get update"
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        systemd \
-        systemd-sysv \
-        udev \
-        sudo \
-        locales \
-        wget \
-        ca-certificates \
-        aptitude \
-        tasksel \
-        gnupg"
-fi 
-
 # Configure locale
 echo "Configuring locale..."
 chroot "$ROOTFS" /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen"
