@@ -116,7 +116,7 @@ The kernel build process:
 **Environment Variables for Kernel Build:**
 - `KERNEL_REPO`: Kernel repository URL (default: `https://github.com/raspberrypi/linux.git`)
 - `KERNEL_BRANCH`: Branch to build (default: `rpi-6.12.y`)
-- `KERNEL_LOCALVERSION`: Version suffix (default: `-uconsole`)
+- `KERNEL_LOCALVERSION`: Version suffix (default: `-raspi`)
 - `APPLY_PATCH`: Apply ak-rex patch (`true`/`false`, default: `true`)
 - `PATCH_FILE`: Path to patch file (default: `patches/ak-rex.patch`)
 - `USE_DOCKER`: Use Docker for build (`true`/`false`, default: `false`)

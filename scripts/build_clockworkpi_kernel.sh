@@ -10,7 +10,7 @@
 # Environment Variables:
 #   KERNEL_REPO - Kernel git repository URL (default: https://github.com/raspberrypi/linux.git)
 #   KERNEL_BRANCH - Kernel branch to build (default: rpi-6.12.y)
-#   KERNEL_LOCALVERSION - Local version string (default: -uconsole)
+#   KERNEL_LOCALVERSION - Local version string (default: -raspi)
 #   APPLY_PATCH - Whether to apply ak-rex patch (default: true)
 #   PATCH_FILE - Path to ak-rex patch file (default: patches/ak-rex.patch)
 #   USE_DOCKER - Use Docker for build (default: false)
