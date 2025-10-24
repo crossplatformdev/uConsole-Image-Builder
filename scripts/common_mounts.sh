@@ -36,7 +36,7 @@ setup_loop_device() {
     
     # Find next available loop device and set it up
     LOOP_DEVICE=$(losetup -f)
-    losetup -P "$LOOP_DEVICE" "$image_file"
+    sudo losetup -P "$LOOP_DEVICE" "$image_file"
     
     # Wait for partition devices to appear
     sleep 2
@@ -199,7 +199,7 @@ cleanup_mounts() {
     # Detach loop device
     if [ -n "$LOOP_DEVICE" ]; then
         echo "Detaching loop device..."
-        losetup -d "$LOOP_DEVICE" 2>/dev/null || true
+        sudo losetup -d "$LOOP_DEVICE" 2>/dev/null || true
         LOOP_DEVICE=""
     fi
     

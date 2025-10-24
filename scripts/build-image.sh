@@ -50,7 +50,7 @@ wget "$IMAGE_LINK"
 unxz "$IMAGE_NAME"
 
 #Mount the image
-losetup -D
+sudo losetup -D
 
 # Derive IMAGE_NAME_WITHOUT_XZ by removing .xz extension
 IMAGE_NAME_WITHOUT_XZ="${IMAGE_NAME%.xz}"
