@@ -144,13 +144,7 @@ echo "Using $(nproc) parallel jobs"
 
 # Build using bindeb-pkg target (creates binary .deb packages only)
 # This is faster than deb-pkg which also creates source packages
-LOCALVERSION="$KERNEL_LOCALVERSION" \
-    fakeroot make -j$(nproc) \
-    ARCH=arm64 \
-    CROSS_COMPILE=aarch64-linux-gnu- \
-    LOCALVERSION="-raspi" \               
-    CONFIG_LOCALVERSION="-raspi" \
-    deb-pkg
+make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="-raspi" deb-pkg
 
 
 # Move .deb files to output directory
