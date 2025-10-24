@@ -152,27 +152,27 @@ else
     # Generate YAML config following rpi-image-gen best practices
     # Reference: https://github.com/raspberrypi/rpi-image-gen/blob/main/layer/LAYER_BEST_PRACTICES
     cat > "$CONFIG_FILE" << EOF
-    info:
-      name: ${IMAGE_NAME}
-      description: "Image for ${SUITE} with ClockworkPi kernel integration"
-    mmdebstrap:
-      mode: unshare
-      suite: ${BASE_LAYER}
-      target: ${IMAGE_NAME}.tar
-      variant: apt
+info:
+  name: ${IMAGE_NAME}
+  description: "Image for ${SUITE} with ClockworkPi kernel integration"
+mmdebstrap:
+  mode: unshare
+  suite: ${BASE_LAYER}
+  target: ${IMAGE_NAME}.tar
+  variant: apt
 
-    device:
-      layer: rpi-cm4
+device:
+  layer: rpi-cm4
 
-    image:
-      layer: image-rpios
-      boot_part_size: 512M
-      root_part_size: ${ROOTFS_SIZE}M
-      name: ${IMAGE_NAME}
+image:
+  layer: image-rpios
+  boot_part_size: 512M
+  root_part_size: ${ROOTFS_SIZE}M
+  name: ${IMAGE_NAME}
 
-    layer:
-      base: bookworm-minbase
-    EOF
+layer:
+  base: bookworm-minbase
+EOF
     
     echo "Generated rpi-image-gen config:"
     cat "$CONFIG_FILE"
@@ -224,60 +224,60 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
     # Setup loop device for the image
     setup_loop_device "$IMAGE_FILE"
 
-# Mount partitions
-TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
-sudo mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
+    # Mount partitions
+    TEMP_MOUNT="$OUTPUT_DIR/temp_mount"
+    mount_partitions "$LOOP_DEVICE" "$TEMP_MOUNT" 1 2
 
-# Bind mount system directories for chroot
-bind_mount_system "$TEMP_MOUNT"
+    # Bind mount system directories for chroot
+    bind_mount_system "$TEMP_MOUNT"
 
-# Setup QEMU for cross-architecture chroot
-setup_qemu_chroot "$TEMP_MOUNT" "aarch64"
+    # Setup QEMU for cross-architecture chroot
+    setup_qemu_chroot "$TEMP_MOUNT" "aarch64"
 
-# Install kernel based on mode
-case "$KERNEL_MODE" in
-    prebuilt)
-        echo "Installing prebuilt ClockworkPi kernel..."
-        "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$TEMP_MOUNT" "$SUITE"
-        ;;
-    build)
-        echo "Building ClockworkPi kernel from source..."
-        KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
-        "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
-        
-        # Copy debs to mounted image and install
-        mkdir -p "$TEMP_MOUNT/tmp/kernel-debs"
-        cp "$KERNEL_DEBS"/*.deb "$TEMP_MOUNT/tmp/kernel-debs/"
-        
-        echo "Installing kernel packages in chroot..."
-        chroot "$TEMP_MOUNT" /bin/bash -c "
-            sudo apt-get update
-            sudo apt-get install -y initramfs-tools
-            dpkg -i /tmp/kernel-debs/*.deb || sudo apt-get install -f -y
-            rm -rf /tmp/kernel-debs
-        "
-        ;;
-    none)
-        echo "Skipping kernel installation (KERNEL_MODE=none)"
-        ;;
-    *)
-        echo "ERROR: Invalid KERNEL_MODE '$KERNEL_MODE'" >&2
-        echo "Valid modes: prebuilt, build, none" >&2
-        exit 1
-        ;;
-esac
+    # Install kernel based on mode
+    case "$KERNEL_MODE" in
+        prebuilt)
+            echo "Installing prebuilt ClockworkPi kernel..."
+            "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$TEMP_MOUNT" "$SUITE"
+            ;;
+        build)
+            echo "Building ClockworkPi kernel from source..."
+            KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
+            "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
+            
+            # Copy debs to mounted image and install
+            mkdir -p "$TEMP_MOUNT/tmp/kernel-debs"
+            cp "$KERNEL_DEBS"/*.deb "$TEMP_MOUNT/tmp/kernel-debs/"
+            
+            echo "Installing kernel packages in chroot..."
+            chroot "$TEMP_MOUNT" /bin/bash -c "
+                sudo apt-get update
+                sudo apt-get install -y initramfs-tools
+                dpkg -i /tmp/kernel-debs/*.deb || sudo apt-get install -f -y
+                rm -rf /tmp/kernel-debs
+            "
+            ;;
+        none)
+            echo "Skipping kernel installation (KERNEL_MODE=none)"
+            ;;
+        *)
+            echo "ERROR: Invalid KERNEL_MODE '$KERNEL_MODE'" >&2
+            echo "Valid modes: prebuilt, build, none" >&2
+            exit 1
+            ;;
+    esac
 
-# Apply any additional customizations if setup-suite.sh exists
-if [ -x "$SCRIPT_DIR/setup-suite.sh" ]; then
-    echo "Applying suite-specific customizations..."
-    # Note: setup-suite.sh expects a rootfs directory, so we pass our mount point
-    # We need to make sure it doesn't try to mount again since we already mounted
-    SUITE="$SUITE" RECOMPILE_KERNEL="false" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR" || {
-        echo "WARNING: setup-suite.sh failed or not applicable"
-    }
-fi
+    # Apply any additional customizations if setup-suite.sh exists
+    if [ -x "$SCRIPT_DIR/setup-suite.sh" ]; then
+        echo "Applying suite-specific customizations..."
+        # Note: setup-suite.sh expects a rootfs directory, so we pass our mount point
+        # We need to make sure it doesn't try to mount again since we already mounted
+        SUITE="$SUITE" RECOMPILE_KERNEL="false" "$SCRIPT_DIR/setup-suite.sh" "$OUTPUT_DIR" || {
+            echo "WARNING: setup-suite.sh failed or not applicable"
+        }
+    fi
 
-# Sync and cleanup
+    # Sync and cleanup
     sync
     cleanup_mounts
 fi

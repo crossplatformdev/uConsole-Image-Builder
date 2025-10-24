@@ -6,6 +6,11 @@ set -e
 # Supports RECOMPILE_KERNEL toggle to either build kernel from source or use prebuilt                    #
 ############################################################################################################
 
+# Get script directory and source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common_mounts.sh"
+source "$SCRIPT_DIR/common_clockworkpi.sh"
+
 # Parse arguments or use environment variables
 if [ $# -ge 1 ]; then
     OUTDIR="$1"
@@ -55,16 +60,16 @@ fi
 
 # Ensure mounts are active
 if ! mountpoint -q "$ROOTFS/proc"; then
-sudo mount --bind /proc "$ROOTFS/proc"
+    sudo mount --bind /proc "$ROOTFS/proc"
 fi
 if ! mountpoint -q "$ROOTFS/sys"; then
-sudo mount --bind /sys "$ROOTFS/sys"
+    sudo mount --bind /sys "$ROOTFS/sys"
 fi
 if ! mountpoint -q "$ROOTFS/dev"; then
-sudo mount --bind /dev "$ROOTFS/dev"
+    sudo mount --bind /dev "$ROOTFS/dev"
 fi
 if ! mountpoint -q "$ROOTFS/dev/pts"; then
-sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
+    sudo mount --bind /dev/pts "$ROOTFS/dev/pts"
 fi
 
 # Create uconsole user
@@ -79,103 +84,37 @@ sudo chroot "$ROOTFS" /bin/bash -c "chmod 0440 /etc/sudoers.d/uconsole"
 # Install runtime packages based on suite
 echo "Installing runtime packages for $SUITE..."
 
+# Common packages for all suites
+COMMON_PACKAGES="network-manager wpasupplicant wireless-tools bluez bluez-tools \
+                 python3 python3-pip build-essential git vim nano htop curl \
+                 net-tools alsa-utils pulseaudio"
+
 if [[ "$SUITE" == "trixie" ]] || [[ "$SUITE" == "bookworm" ]]; then
-    # Debian trixie/bookworm packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
+    # Debian trixie/bookworm packages (Debian-specific firmware)
+    sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        $COMMON_PACKAGES \
         firmware-linux \
         firmware-linux-nonfree \
         firmware-misc-nonfree \
         firmware-realtek \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
         ssh \
-        curl \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
         linux-image-arm64"
-elif [[ "$SUITE" == "popos" ]]; then
-    # Pop!_OS specific packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        python3-lgpio \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
-        gnome-terminal \
-        dbus"
-elif [[ "$SUITE" == "jammy" ]]; then
-    # Jammy specific packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        python3-lgpio \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio \
-        gnome-terminal \
-        dbus"        
 else
-    # Ubuntu jammy packages
-    chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        network-manager \
-        wpasupplicant \
-        wireless-tools \
-        linux-firmware \
-        bluez \
-        bluez-tools \
-        python3 \
-        python3-pip \
-        build-essential \
-        git \
-        vim \
-        nano \
-        htop \
-        openssh-server \
-        curl \
-        wget \
-        net-tools \
-        alsa-utils \
-        pulseaudio"
+    # Ubuntu/Pop!_OS packages (Ubuntu-specific packages)
+    UBUNTU_PACKAGES="$COMMON_PACKAGES linux-firmware openssh-server wget"
+    
+    if [[ "$SUITE" == "popos" ]] || [[ "$SUITE" == "jammy" ]]; then
+        # Pop!_OS and Jammy specific packages
+        sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            $UBUNTU_PACKAGES \
+            python3-lgpio \
+            gnome-terminal \
+            dbus"
+    else
+        # Other Ubuntu variants (fallback)
+        sudo chroot "$ROOTFS" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            $UBUNTU_PACKAGES"
+    fi
 fi
 
 # Install additional utilities common to all
@@ -266,28 +205,8 @@ else
     echo "Using prebuilt kernel from clockworkpi/apt"
     echo "================================================"
 
-    # Add uconsole-ubuntu-apt repository
-    echo "Adding uconsole-ubuntu-apt repository..."
-    chroot "$ROOTFS" /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
-    chroot "$ROOTFS" /bin/bash -c "echo \"deb https://raw.githubusercontent.com/clockworkpi/apt/main/debian/ stable main\" | sudo tee  /etc/apt/sources.list.d/clockworkpi.list"
-    
-   
-    # Determine which prebuilt image to use
-    if [[ "$SUITE" == "popos" ]]; then
-        # TODO: POPOS
-        chroot "$ROOTFS" /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main\" | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
-   
-        PREBUILT_IMAGE="uconsole-cm4"
-        echo "Using uConsole CM4 image for Pop!_OS"
-    else
-        # TODO: Debian or Jammy
-        chroot "$ROOTFS" /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main\" | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
-   
-        PREBUILT_IMAGE="generic-${SUITE}"
-        echo "Using generic prebuilt image for $SUITE"
-    fi
-         
-    chroot "$ROOTFS" /bin/bash -c "apt-get update"
+    # Setup ClockworkPi repository using common function
+    setup_clockworkpi_repository "$ROOTFS" "bookworm"
     chroot "$ROOTFS" /bin/bash -c "apt-get install -y initramfs-tools"
     chroot "$ROOTFS" /bin/bash -c "apt-get install -y uconsole-kernel-cm4-rpi clockworkpi-audio clockworkpi-cm-firmware"
     
