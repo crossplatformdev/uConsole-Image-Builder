@@ -104,12 +104,20 @@ if [ -d "$REPO_ROOT/linux" ] && [ -e "$REPO_ROOT/linux/.git" ]; then
     echo "Creating working copy of kernel source..."
     
     # Use rsync to copy the source excluding .git to avoid submodule path issues
-    # Then initialize as a fresh git repo if we need git operations
     rsync -a --exclude='.git' "$REPO_ROOT/linux/" linux/
     
-    # If we need git operations, we can work with the source as-is
-    # or initialize a new repo. For build purposes, we don't need git history.
     cd linux
+    
+    # Initialize as a git repository (required for make deb-pkg)
+    # The kernel build system requires a git repository to create source packages
+    if [ ! -d .git ]; then
+        echo "Initializing git repository for kernel build..."
+        git init
+        git config user.email "build@uconsole-image-builder"
+        git config user.name "uConsole Image Builder"
+        git add .
+        git commit -m "Initial commit from linux submodule" --quiet
+    fi
     
     echo "Kernel source ready from submodule"
 else
