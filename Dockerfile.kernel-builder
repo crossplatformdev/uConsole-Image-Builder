@@ -13,18 +13,17 @@ RUN echo "Updated APT sources:"
 ##APPEND APT SOURCES FOR AMD64 AND ARM64##
 RUN rm -rf /etc/apt/sources.list.d/ubuntu.sources
 RUN rm -rf /etc/apt/sources.list
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" > /etc/apt/sources.list
-RUN echo "deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" > /etc/apt/sources.list
-RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" > /etc/apt/sources.list
-RUN echo "deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" > /etc/apt/sources.list
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" >> /etc/apt/sources.list
+RUN echo "deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" >> /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" >> /etc/apt/sources.list
+RUN echo "deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" >> /etc/apt/sources.list
 
 RUN dpkg --add-architecture arm64
 
 #Ensure the Docker image has necessary packages installed
 RUN apt update
-RUN apt search linux-image-unsigned-*
-# Install kernel build dependencies on docker container for architecture arm64
-RUN apt build-dep -y linux 
+RUN apt search linux-image-unsigned
+RUN apt upgrade -y
 
 # Install kernel build dependencies on docker container for architecture arm64
 RUN apt install -y \
@@ -49,6 +48,8 @@ RUN apt install -y \
     gcc-aarch64-linux-gnu
 
 
+# Install kernel build dependencies on docker container for architecture arm64
+RUN apt build-dep -y linux linux-image-unsigned-6.8.0-31-generic linux-image-unsigned-6.8.0-31-lowlatency
 
 # Create a non-root user for building (optional, can build as root)
 # RUN useradd -m -u 1000 -s /bin/bash builder
