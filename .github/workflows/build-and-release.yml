@@ -29,7 +29,7 @@ on:
         options:
           - prebuilt
           - build
-        default: build
+        default: prebuilt
       create_release:
         description: 'Create a GitHub release'
         required: true
