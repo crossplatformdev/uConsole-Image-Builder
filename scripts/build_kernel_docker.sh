@@ -142,6 +142,13 @@ if docker run --rm \
     echo "Found $DEB_FILES .deb package(s):"
     ls -lh "$OUTPUT_DIR"/*.deb
     echo ""
+    
+    # Fix permissions if running as root
+    if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+        echo "Fixing file ownership for user $SUDO_USER..."
+        chown -R "$SUDO_USER:$SUDO_USER" "$OUTPUT_DIR"
+    fi
+    
     echo "Done!"
     exit 0
 else

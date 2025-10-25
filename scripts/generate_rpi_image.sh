@@ -205,6 +205,21 @@ EOF
     # rpi-image-gen handles podman unshare internally when needed
     echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
     ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" 
+    
+    # Find the generated image file
+    # rpi-image-gen typically outputs to the build directory with the name specified in config
+    echo "Looking for generated image in $BUILD_DIR..."
+    IMAGE_FILE=$(find "$BUILD_DIR" -name "${IMAGE_NAME}.img" -o -name "*.img" | head -n 1)
+    
+    if [ -z "$IMAGE_FILE" ] || [ ! -f "$IMAGE_FILE" ]; then
+        echo "ERROR: rpi-image-gen did not create an image file" >&2
+        echo "Expected image: ${IMAGE_NAME}.img" >&2
+        echo "Contents of build directory:" >&2
+        ls -laR "$BUILD_DIR" >&2
+        exit 1
+    fi
+    
+    echo "Found generated image: $IMAGE_FILE"
 fi
 
 # Check if we need to customize the image (only if using manual fallback or custom kernel)
@@ -241,9 +256,19 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
             "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$TEMP_MOUNT" "$SUITE"
             ;;
         build)
-            echo "Building ClockworkPi kernel from source..."
+            echo "Installing ClockworkPi kernel from pre-built packages..."
             KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
-            "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
+            
+            # Check if kernel debs exist
+            if [ ! -d "$KERNEL_DEBS" ] || [ -z "$(ls -A "$KERNEL_DEBS"/*.deb 2>/dev/null)" ]; then
+                echo "ERROR: Kernel .deb packages not found in $KERNEL_DEBS" >&2
+                echo "KERNEL_MODE=build requires pre-built kernel packages from build-kernel job" >&2
+                ls -la "$KERNEL_DEBS" >&2 || true
+                exit 1
+            fi
+            
+            echo "Found kernel packages:"
+            ls -lh "$KERNEL_DEBS"/*.deb
             
             # Copy debs to mounted image and install
             mkdir -p "$TEMP_MOUNT/tmp/kernel-debs"
@@ -251,9 +276,9 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
             
             echo "Installing kernel packages in chroot..."
             chroot "$TEMP_MOUNT" /bin/bash -c "
-                sudo apt-get update
-                sudo apt-get install -y initramfs-tools
-                dpkg -i /tmp/kernel-debs/*.deb || sudo apt-get install -f -y
+                apt-get update
+                apt-get install -y initramfs-tools
+                dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
                 rm -rf /tmp/kernel-debs
             "
             ;;
