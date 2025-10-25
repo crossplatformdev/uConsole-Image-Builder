@@ -11,12 +11,16 @@ RUN echo "Updated APT sources:"
 # Add arm64 architecture for cross-compilation
 
 ##APPEND APT SOURCES FOR AMD64 AND ARM64##
-RUN rm -rf /etc/apt/sources.list.d/ubuntu.sources
-RUN rm -rf /etc/apt/sources.list
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" >> /etc/apt/sources.list
-RUN echo "deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" >> /etc/apt/sources.list
-RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" >> /etc/apt/sources.list
-RUN echo "deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" >> /etc/apt/sources.list
+RUN cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu-src.sources
+RUN sed -i '/^#/!s|^deb |deb [arch=amd64] |' /etc/apt/sources.list.d/ubuntu.sources
+RUN sed -i '/^#/!s|^deb |deb-src [arch=amd64] |' /etc/apt/sources.list.d/ubuntu-src.sources
+
+RUN echo "Types: deb deb-src [arch=arm64] \
+URIs: http://ports.ubuntu.com/ubuntu-ports \
+Suites: noble noble-updates noble-backports \
+Components: main restricted universe multiverse \
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg \
+" >> /etc/apt/sources.list.d/cross.sources
 
 RUN dpkg --add-architecture arm64
 
