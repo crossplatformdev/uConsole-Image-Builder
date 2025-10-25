@@ -12,6 +12,8 @@ RUN echo "Updated APT sources:"
 
 ##APPEND APT SOURCES FOR AMD64 AFTER 'Signed-By: .*'##
 RUN sed -i '/^Signed-By:/a Architectures: amd64 \n' /etc/apt/sources.list.d/ubuntu.sources
+# Replace 'Types: deb' by 'Types:deb deb-src' to add source repositories
+RUN sed -i 's/Types: deb/Types: deb deb-src/g' /etc/apt/sources.list.d/ubuntu.sources
 RUN cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu-src.sources
 RUN cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/cross.sources
 # Append 'Architectures: arm64' to the new cross sources list
@@ -20,8 +22,8 @@ RUN cat /etc/apt/sources.list.d/ubuntu.sources
 
 #REPLACE URIS FOR ARM64##
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://ports.ubuntu.com/ubuntu-ports/|g' /etc/apt/sources.list.d/cross.sources
+RUN sed -i 's|http://security.ubuntu.com/ubuntu/|http://ports.ubuntu.com/ubuntu-ports/|g' /etc/apt/sources.list.d/cross.sources
 RUN sed -i 's/amd64/arm64/g' /etc/apt/sources.list.d/cross.sources
-
 RUN cat /etc/apt/sources.list.d/cross.sources
 
 RUN dpkg --add-architecture arm64
@@ -32,14 +34,14 @@ RUN apt search linux-image-unsigned
 RUN apt upgrade -y
 
 # Install kernel build dependencies on docker container for architecture arm64
-RUN apt install -y \
+RUN apt-get install -y \
     build-essential \
     bc \
     bison \
     flex \
-    libssl-dev \
-    libncurses-dev \
-    libelf-dev \
+    libssl-dev:amd64 libssl-dev:arm64 \
+    libncurses-dev:amd64 libncurses-dev:arm64 \
+    libelf-dev:amd64 libelf-dev:arm64 \
     kmod \
     cpio \
     rsync \
@@ -51,15 +53,15 @@ RUN apt install -y \
     crossbuild-essential-arm64 \
     crossbuild-essential-amd64 \
     bzip2 \
-    zlib1g-dev \
-    libssl3t64 \
+    zlib1g-dev:amd64 zlib1g-dev:arm64 \
+    libssl3t64:amd64 libssl3t64:arm64 \
     perl \
-    libc6 \
-    libzstd1 \
+    libc6:amd64 libc6:arm64 \
+    libzstd1:amd64 libzstd1:arm64 \
     gcc-14 \
     g++-14 \
     gcc-14-aarch64-linux-gnu \
-    g++-14-aarch64-linux-gnu 
+    g++-14-aarch64-linux-gnu
 
 
 # Install kernel build dependencies on docker container for architecture arm64
