@@ -22,9 +22,9 @@ RUN dpkg --add-architecture arm64
 
 #Ensure the Docker image has necessary packages installed
 RUN apt update
-
+RUN apt search linux-image-unsigned-*
 # Install kernel build dependencies on docker container for architecture arm64
-RUN apt build-dep -y linux linux-image-*-generic
+RUN apt build-dep -y linux 
 
 # Install kernel build dependencies on docker container for architecture arm64
 RUN apt install -y \
