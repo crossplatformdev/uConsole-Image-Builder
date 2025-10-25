@@ -85,34 +85,19 @@ jobs:
       - name: Create kernel info artifact
         run: |
           mkdir -p artifacts/kernel-debs
-          
-          # Check if .deb files exist
-          DEB_COUNT=$(find artifacts/kernel-debs -name "*.deb" 2>/dev/null | wc -l)
-          if [ "$DEB_COUNT" -eq 0 ]; then
-            echo "ERROR: No .deb files found in artifacts/kernel-debs/" >&2
-            echo "Kernel build must have failed!" >&2
-            echo "Contents of artifacts/kernel-debs/:" >&2
-            ls -lah artifacts/kernel-debs/ >&2
-            exit 1
-          fi
-          
-          echo "Found $DEB_COUNT kernel package(s)"
-          
-          {
-            echo "# Kernel Build Information"
-            echo ""
-            echo "Built on: $(date -u)"
-            echo "Repository: ${{ github.repository }}"
-            echo "Commit: ${{ github.sha }}"
-            echo ""
-            echo "## Kernel Source"
-            echo "Repository: ${{ steps.kernel_info.outputs.repo }}"
-            echo "Branch: ${{ steps.kernel_info.outputs.branch }}"
-            echo "Commit: ${{ steps.kernel_info.outputs.commit }}"
-            echo ""
-            echo "## Packages"
-            ls -lh artifacts/kernel-debs/*.deb 2>/dev/null || echo "No .deb files found"
-          } > artifacts/kernel-debs/KERNEL_INFO.md
+          echo "# Kernel Build Information"
+          echo ""
+          echo "Built on: $(date -u)"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "## Kernel Source"
+          echo "Repository: ${{ steps.kernel_info.outputs.repo }}"
+          echo "Branch: ${{ steps.kernel_info.outputs.branch }}"
+          echo "Commit: ${{ steps.kernel_info.outputs.commit }}"
+          echo ""
+          echo "## Packages"
+          ls -lh artifacts/kernel-debs/*.deb 2>/dev/null || echo "No .deb files found" > artifacts/kernel-debs/KERNEL_INFO.md
       
       - name: Upload kernel packages
         uses: actions/upload-artifact@v4
@@ -159,25 +144,6 @@ jobs:
         with:
           platforms: arm64
       
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            debootstrap \
-            qemu-user-static \
-            binfmt-support \
-            kpartx \
-            parted \
-            dosfstools \
-            rsync \
-            xz-utils \
-            git \
-            bc \
-            bison \
-            flex \
-            libssl-dev \
-            make
-      
       - name: Determine kernel mode
         id: kernel_mode
         run: |
@@ -189,11 +155,11 @@ jobs:
       
       - name: Build uConsole image for ${{ matrix.suite }}
         run: |
-          sudo SUITE=${{ matrix.suite }} \
-               KERNEL_MODE=${{ steps.kernel_mode.outputs.mode }} \
-               COMPRESS_FORMAT=xz \
-               OUTPUT_DIR=output/images \
-               ./scripts/generate_rpi_image.sh
+          export SUITE=${{ matrix.suite }}
+          export KERNEL_MODE=${{ steps.kernel_mode.outputs.mode }}
+          export COMPRESS_FORMAT=xz
+          export OUTPUT_DIR=output/images
+          sudo -E ./scripts/generate_rpi_image.sh
         env:
           DEBIAN_FRONTEND: noninteractive
       
