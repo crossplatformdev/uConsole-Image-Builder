@@ -10,17 +10,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN echo "Updated APT sources:"
 # Add arm64 architecture for cross-compilation
 
-##APPEND APT SOURCES FOR AMD64 AND ARM64##
+##APPEND APT SOURCES FOR AMD64 AFTER 'Signed-By: .*'##
+RUN sed -i '/^Signed-By:/a Architectures: amd64 \n' /etc/apt/sources.list.d/ubuntu.sources
 RUN cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu-src.sources
-RUN sed -i '/^#/!s|^deb |deb [arch=amd64] |' /etc/apt/sources.list.d/ubuntu.sources
-RUN sed -i '/^#/!s|^deb |deb-src [arch=amd64] |' /etc/apt/sources.list.d/ubuntu-src.sources
+RUN cp /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/cross.sources
+# Append 'Architectures: arm64' to the new cross sources list
 
-RUN echo "Types: deb deb-src [arch=arm64] \
-URIs: http://ports.ubuntu.com/ubuntu-ports \
-Suites: noble noble-updates noble-backports \
-Components: main restricted universe multiverse \
-Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg \
-" >> /etc/apt/sources.list.d/cross.sources
+RUN cat /etc/apt/sources.list.d/ubuntu.sources
+
+#REPLACE URIS FOR ARM64##
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://ports.ubuntu.com/ubuntu-ports/|g' /etc/apt/sources.list.d/cross.sources
+RUN sed -i 's/amd64/arm64/g' /etc/apt/sources.list.d/cross.sources
+
+RUN cat /etc/apt/sources.list.d/cross.sources
 
 RUN dpkg --add-architecture arm64
 
