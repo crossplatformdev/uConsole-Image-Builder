@@ -103,7 +103,13 @@ echo "Starting kernel build in Docker container..."
 echo "This may take 1-2 hours depending on your system..."
 echo ""
 
-docker run --rm \
+echo "Running Docker container with volume mounts:"
+echo "  Output: $OUTPUT_DIR -> /output"
+echo "  Linux source: $REPO_ROOT/linux -> /build/linux-source"
+echo ""
+
+# Run kernel build in container and capture exit code
+if docker run --rm \
     -v "$OUTPUT_DIR:/output" \
     -v "$REPO_ROOT/linux:/build/linux-source:ro" \
     -v "$SCRIPT_DIR/build_kernel_in_container.sh:/build/build_kernel_in_container.sh:ro" \
@@ -115,16 +121,37 @@ docker run --rm \
     -e PATCH_FILE="$CONTAINER_PATCH_PATH" \
     -e KDEB_CHANGELOG_DIST="$KDEB_CHANGELOG_DIST" \
     "$DOCKER_IMAGE" \
-    bash /build/build_kernel_in_container.sh
-
-echo ""
-echo "================================================"
-echo "Docker kernel build complete!"
-echo "================================================"
-echo "Output directory: $OUTPUT_DIR"
-echo ""
-ls -lh "$OUTPUT_DIR"/*.deb 2>/dev/null || echo "Warning: No .deb files found in output directory"
-echo ""
-echo "Done!"
-
-exit 0
+    bash /build/build_kernel_in_container.sh; then
+    
+    echo ""
+    echo "================================================"
+    echo "Docker kernel build complete!"
+    echo "================================================"
+    echo "Output directory: $OUTPUT_DIR"
+    echo ""
+    
+    # Verify .deb files were created
+    DEB_FILES=$(find "$OUTPUT_DIR" -name "*.deb" 2>/dev/null | wc -l)
+    if [ "$DEB_FILES" -eq 0 ]; then
+        echo "ERROR: No .deb files found in output directory!" >&2
+        echo "Build may have failed silently." >&2
+        ls -lah "$OUTPUT_DIR" >&2
+        exit 1
+    fi
+    
+    echo "Found $DEB_FILES .deb package(s):"
+    ls -lh "$OUTPUT_DIR"/*.deb
+    echo ""
+    echo "Done!"
+    exit 0
+else
+    DOCKER_EXIT_CODE=$?
+    echo ""
+    echo "================================================"
+    echo "ERROR: Docker kernel build failed!"
+    echo "================================================"
+    echo "Docker exit code: $DOCKER_EXIT_CODE" >&2
+    echo "Output directory contents:" >&2
+    ls -lah "$OUTPUT_DIR" >&2
+    exit $DOCKER_EXIT_CODE
+fi

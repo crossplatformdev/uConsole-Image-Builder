@@ -285,7 +285,20 @@ fi
 # Compress image if requested
 FINAL_IMAGE="$OUTPUT_DIR/${IMAGE_NAME}.img"
 if [ "$IMAGE_FILE" != "$FINAL_IMAGE" ]; then
+    if [ ! -f "$IMAGE_FILE" ]; then
+        echo "ERROR: Image file not found: $IMAGE_FILE" >&2
+        echo "Build may have failed silently" >&2
+        ls -lah "$OUTPUT_DIR" >&2
+        exit 1
+    fi
     mv "$IMAGE_FILE" "$FINAL_IMAGE"
+fi
+
+if [ ! -f "$FINAL_IMAGE" ]; then
+    echo "ERROR: Final image file not found: $FINAL_IMAGE" >&2
+    echo "Contents of output directory:" >&2
+    ls -lah "$OUTPUT_DIR" >&2
+    exit 1
 fi
 
 if [ "$COMPRESS_FORMAT" = "xz" ]; then
@@ -296,6 +309,14 @@ elif [ "$COMPRESS_FORMAT" = "gzip" ]; then
     echo "Compressing image with gzip..."
     gzip -9 "$FINAL_IMAGE"
     FINAL_IMAGE="${FINAL_IMAGE}.gz"
+fi
+
+# Verify final image exists
+if [ ! -f "$FINAL_IMAGE" ]; then
+    echo "ERROR: Final compressed image not found: $FINAL_IMAGE" >&2
+    echo "Contents of output directory:" >&2
+    ls -lah "$OUTPUT_DIR" >&2
+    exit 1
 fi
 
 echo ""
