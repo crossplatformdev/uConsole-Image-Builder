@@ -1,13 +1,33 @@
 # Dockerfile for building ClockworkPi uConsole kernel
 # This creates a reproducible build environment for kernel compilation
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install kernel build dependencies
-RUN apt-get update && apt-get install -y \
+RUN echo "Updated APT sources:"
+# Add arm64 architecture for cross-compilation
+
+##APPEND APT SOURCES FOR AMD64 AND ARM64##
+RUN rm -rf /etc/apt/sources.list.d/ubuntu.sources
+RUN rm -rf /etc/apt/sources.list
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" > /etc/apt/sources.list
+RUN echo "deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe" > /etc/apt/sources.list
+RUN echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" > /etc/apt/sources.list
+RUN echo "deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" > /etc/apt/sources.list
+
+RUN dpkg --add-architecture arm64
+
+#Ensure the Docker image has necessary packages installed
+RUN apt update
+
+# Install kernel build dependencies on docker container for architecture arm64
+RUN apt build-dep -y linux linux-image-unsigned-6.8.0-55-generic
+
+# Install kernel build dependencies on docker container for architecture arm64
+RUN apt install -y \
     build-essential \
     bc \
     bison \
@@ -23,10 +43,12 @@ RUN apt-get update && apt-get install -y \
     dpkg-dev \
     debhelper \
     kernel-wedge \
-    wget \
     crossbuild-essential-arm64 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    crossbuild-essential-amd64 \
+    g++-aarch64-linux-gnu \
+    gcc-aarch64-linux-gnu
+
+
 
 # Create a non-root user for building (optional, can build as root)
 # RUN useradd -m -u 1000 -s /bin/bash builder
@@ -35,4 +57,4 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /build
 
 # Default command shows usage
-CMD ["echo", "Usage: docker run -v /path/to/output:/output kernel-builder /build/build_in_container.sh"]
+CMD ["echo", "Usage: docker run -v /path/to/output:/output kernel-builder /build/build_kernel_in_container.sh"]
