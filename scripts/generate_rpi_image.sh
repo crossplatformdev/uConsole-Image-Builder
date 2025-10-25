@@ -210,7 +210,10 @@ EOF
     # rpi-image-gen typically outputs to the build directory with the name specified in config
     echo "Looking for generated image in $BUILD_DIR..."
     
-    # First try exact match, then try any .img file in the build directory (not recursive)
+    # First try exact match, then try any .img file in the build directory
+    # Using maxdepth 2 to avoid finding unintended nested/temporary files while still
+    # allowing for one level of subdirectories. If rpi-image-gen changes its output
+    # structure, the ls -laR in the error message will help diagnose the issue.
     IMAGE_FILE=$(find "$BUILD_DIR" -maxdepth 2 -name "${IMAGE_NAME}.img" -type f | head -n 1)
     if [ -z "$IMAGE_FILE" ]; then
         # Fallback: look for any .img file
