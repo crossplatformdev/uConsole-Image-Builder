@@ -143,10 +143,14 @@ jobs:
       
       - name: Build uConsole image for ${{ matrix.suite }}
         run: |
-          sudo SUITE=${{ matrix.suite }} KERNEL_MODE=${{ steps.kernel_mode.outputs.mode }} COMPRESS_FORMAT=xz OUTPUT_DIR=output/images ./scripts/generate_rpi_image.sh
+          export SUITE=${{ matrix.suite }}
+          export KERNEL_MODE=${{ steps.kernel_mode.outputs.mode }}
+          export COMPRESS_FORMAT=xz
+          export OUTPUT_DIR=output/images
+          sudo -E ./scripts/generate_rpi_image.sh
         env:
           DEBIAN_FRONTEND: noninteractive
-      
+            
       - name: Generate checksums
         run: |
           cd output/images
