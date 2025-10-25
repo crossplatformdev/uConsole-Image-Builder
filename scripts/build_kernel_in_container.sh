@@ -33,66 +33,6 @@ APT_SOURCES_CONTENT=$(cat /etc/apt/sources.list)
 echo "Current APT sources:"
 echo "$APT_SOURCES_CONTENT"
 
-# Append arm64 architecture to sources if not already present
-cat << EOF >> /etc/apt/sources.list
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe
-deb-src [arch=amd64] http://archive.ubuntu.com/ubuntu noble main universe
-deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
-deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
-EOF
-
-echo "Updated APT sources:"
-cat /etc/apt/sources.list
-
-# Add arm64 architecture for cross-compilation
-dpkg --add-architecture arm64
-
-#Ensure the Docker image has necessary packages installed
-apt update
-
-apt search linux-image-unsigned
-
-# Install kernel build dependencies on docker container for architecture arm64
-apt build-dep -y linux linux-raspi linux-raspi-6.8.0-1041
-
-# Install kernel build dependencies on docker container for architecture arm64   
-apt install -y \
-    build-essential \
-    bc \
-    bison \
-    flex \
-    libssl-dev \
-    libncurses-dev \
-    libelf-dev \
-    kmod \
-    cpio \
-    rsync \
-    git \
-    fakeroot \
-    dpkg-dev \
-    debhelper \
-    kernel-wedge \
-    crossbuild-essential-arm64 \
-    crossbuild-essential-amd64 \
-    g++-aarch64-linux-gnu \
-    gcc-aarch64-linux-gnu
-
-apt install -y \
-    build-essential:arm64 \
-    bc:arm64 \
-    bison:arm64 \
-    flex:arm64 \
-    libssl-dev:arm64 \
-    libncurses-dev:arm64 \
-    libelf-dev:arm64 \
-    kmod:arm64 \
-    cpio:arm64 \
-    rsync:arm64 \
-    git:arm64 \
-    fakeroot:arm64 \
-    dpkg-dev:arm64 \
-    debhelper:arm64 \
-
 # Use the mounted linux source
 echo "Using mounted linux source..."
 if [ ! -d "linux-source" ]; then
