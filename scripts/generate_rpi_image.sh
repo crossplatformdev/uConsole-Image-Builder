@@ -205,6 +205,30 @@ EOF
     # rpi-image-gen handles podman unshare internally when needed
     echo "Running: ./rpi-image-gen build -c $CONFIG_FILE -B $BUILD_DIR"
     ./rpi-image-gen build -c "$CONFIG_FILE" -B "$BUILD_DIR" 
+    
+    # Find the generated image file
+    # rpi-image-gen typically outputs to the build directory with the name specified in config
+    echo "Looking for generated image in $BUILD_DIR..."
+    
+    # First try exact match, then try any .img file in the build directory
+    # Using maxdepth 2 to avoid finding unintended nested/temporary files while still
+    # allowing for one level of subdirectories. If rpi-image-gen changes its output
+    # structure, the ls -laR in the error message will help diagnose the issue.
+    IMAGE_FILE=$(find "$BUILD_DIR" -maxdepth 2 -name "${IMAGE_NAME}.img" -type f | head -n 1)
+    if [ -z "$IMAGE_FILE" ]; then
+        # Fallback: look for any .img file
+        IMAGE_FILE=$(find "$BUILD_DIR" -maxdepth 2 -name "*.img" -type f | head -n 1)
+    fi
+    
+    if [ -z "$IMAGE_FILE" ] || [ ! -f "$IMAGE_FILE" ]; then
+        echo "ERROR: rpi-image-gen did not create an image file" >&2
+        echo "Expected image: ${IMAGE_NAME}.img" >&2
+        echo "Contents of build directory:" >&2
+        ls -laR "$BUILD_DIR" >&2
+        exit 1
+    fi
+    
+    echo "Found generated image: $IMAGE_FILE"
 fi
 
 # Check if we need to customize the image (only if using manual fallback or custom kernel)
@@ -241,9 +265,21 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
             "$SCRIPT_DIR/install_clockworkpi_kernel.sh" "$TEMP_MOUNT" "$SUITE"
             ;;
         build)
-            echo "Building ClockworkPi kernel from source..."
+            echo "Installing ClockworkPi kernel from pre-built packages..."
             KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
-            "$SCRIPT_DIR/build_clockworkpi_kernel.sh" "$KERNEL_DEBS"
+            
+            # Verify that pre-built kernel packages exist
+            # (These should have been created by the build-kernel workflow job)
+            if [ ! -d "$KERNEL_DEBS" ] || [ -z "$(ls -A "$KERNEL_DEBS"/*.deb 2>/dev/null)" ]; then
+                echo "ERROR: Kernel .deb packages not found in $KERNEL_DEBS" >&2
+                echo "When KERNEL_MODE=build, this script expects pre-built kernel packages" >&2
+                echo "from the build-kernel workflow job to be available in artifacts/kernel-debs/" >&2
+                ls -la "$KERNEL_DEBS" >&2 || true
+                exit 1
+            fi
+            
+            echo "Found kernel packages:"
+            ls -lh "$KERNEL_DEBS"/*.deb
             
             # Copy debs to mounted image and install
             mkdir -p "$TEMP_MOUNT/tmp/kernel-debs"
@@ -251,9 +287,9 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
             
             echo "Installing kernel packages in chroot..."
             chroot "$TEMP_MOUNT" /bin/bash -c "
-                sudo apt-get update
-                sudo apt-get install -y initramfs-tools
-                dpkg -i /tmp/kernel-debs/*.deb || sudo apt-get install -f -y
+                apt-get update
+                apt-get install -y initramfs-tools
+                dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
                 rm -rf /tmp/kernel-debs
             "
             ;;
@@ -285,7 +321,20 @@ fi
 # Compress image if requested
 FINAL_IMAGE="$OUTPUT_DIR/${IMAGE_NAME}.img"
 if [ "$IMAGE_FILE" != "$FINAL_IMAGE" ]; then
+    if [ ! -f "$IMAGE_FILE" ]; then
+        echo "ERROR: Image file not found: $IMAGE_FILE" >&2
+        echo "Build may have failed silently" >&2
+        ls -lah "$OUTPUT_DIR" >&2
+        exit 1
+    fi
     mv "$IMAGE_FILE" "$FINAL_IMAGE"
+fi
+
+if [ ! -f "$FINAL_IMAGE" ]; then
+    echo "ERROR: Final image file not found: $FINAL_IMAGE" >&2
+    echo "Contents of output directory:" >&2
+    ls -lah "$OUTPUT_DIR" >&2
+    exit 1
 fi
 
 if [ "$COMPRESS_FORMAT" = "xz" ]; then
@@ -296,6 +345,14 @@ elif [ "$COMPRESS_FORMAT" = "gzip" ]; then
     echo "Compressing image with gzip..."
     gzip -9 "$FINAL_IMAGE"
     FINAL_IMAGE="${FINAL_IMAGE}.gz"
+fi
+
+# Verify final image exists
+if [ ! -f "$FINAL_IMAGE" ]; then
+    echo "ERROR: Final compressed image not found: $FINAL_IMAGE" >&2
+    echo "Contents of output directory:" >&2
+    ls -lah "$OUTPUT_DIR" >&2
+    exit 1
 fi
 
 echo ""

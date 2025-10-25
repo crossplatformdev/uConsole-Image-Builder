@@ -59,6 +59,18 @@ jobs:
         run: |
           sudo ./scripts/build_kernel_docker.sh artifacts/kernel-debs
       
+      - name: Verify kernel build output
+        run: |
+          echo "Checking kernel build artifacts..."
+          echo "Contents of artifacts directory:"
+          ls -laR artifacts/ || echo "artifacts/ directory not found"
+          echo ""
+          echo "Checking for .deb files:"
+          find artifacts/ -name "*.deb" -ls || echo "No .deb files found"
+          echo ""
+          echo "Disk space usage:"
+          df -h
+      
       - name: Get kernel source info
         id: kernel_info
         run: |
@@ -73,6 +85,19 @@ jobs:
       - name: Create kernel info artifact
         run: |
           mkdir -p artifacts/kernel-debs
+          
+          # Check if .deb files exist
+          DEB_COUNT=$(find artifacts/kernel-debs -name "*.deb" 2>/dev/null | wc -l)
+          if [ "$DEB_COUNT" -eq 0 ]; then
+            echo "ERROR: No .deb files found in artifacts/kernel-debs/" >&2
+            echo "Kernel build must have failed!" >&2
+            echo "Contents of artifacts/kernel-debs/:" >&2
+            ls -lah artifacts/kernel-debs/ >&2
+            exit 1
+          fi
+          
+          echo "Found $DEB_COUNT kernel package(s)"
+          
           {
             echo "# Kernel Build Information"
             echo ""
@@ -172,8 +197,28 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
       
+      - name: Verify image build output
+        run: |
+          echo "Checking image build artifacts..."
+          echo "Contents of output directory:"
+          ls -laR output/ || echo "output/ directory not found"
+          echo ""
+          echo "Checking for image files:"
+          find output/ -name "*.img*" -ls || echo "No image files found"
+          echo ""
+          echo "Disk space usage:"
+          df -h
+      
       - name: Generate checksums
         run: |
+          # Verify image files exist
+          if [ ! -d output/images ] || [ -z "$(ls -A output/images/uconsole-${{ matrix.suite }}-*.img.xz 2>/dev/null)" ]; then
+            echo "ERROR: No image files found in output/images/" >&2
+            echo "Contents of output directory:" >&2
+            ls -laR output/ >&2 || echo "output/ directory not found" >&2
+            exit 1
+          fi
+          
           cd output/images
           sha256sum uconsole-${{ matrix.suite }}-*.img.xz > uconsole-${{ matrix.suite }}-arm64.sha256
           cat uconsole-${{ matrix.suite }}-arm64.sha256

@@ -16,6 +16,9 @@
 
 set -e
 
+# Exit on any error and print the command that failed
+trap 'echo "ERROR: Command failed at line $LINENO: $BASH_COMMAND" >&2' ERR
+
 echo "================================================"
 echo "Building Kernel Inside Container"
 echo "================================================"
@@ -100,10 +103,30 @@ make bcm2711_defconfig ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION=
 echo "Building kernel packages (this will take a while)..."
 echo "Using $(nproc) parallel jobs"
 
-
-# Build using bindeb-pkg target (creates binary .deb packages only)
+# Build using deb-pkg target (creates binary .deb packages)
 # Set KDEB_CHANGELOG_DIST to specify the distribution in debian/changelog
-make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="${KERNEL_LOCALVERSION}" KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}"
+# Capture both stdout and stderr, and check for build errors
+BUILD_LOG="/tmp/kernel-build.log"
+echo "Build output will be logged to $BUILD_LOG"
+
+if ! make deb-pkg -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- LOCALVERSION="${KERNEL_LOCALVERSION}" KDEB_CHANGELOG_DIST="${KDEB_CHANGELOG_DIST:-stable}" 2>&1 | tee "$BUILD_LOG"; then
+    echo "================================================" >&2
+    echo "ERROR: Kernel build failed!" >&2
+    echo "================================================" >&2
+    echo "Last 50 lines of build log:" >&2
+    tail -n 50 "$BUILD_LOG" >&2
+    exit 1
+fi
+
+# Check if build actually produced packages
+if ! ls /build/*.deb 1> /dev/null 2>&1; then
+    echo "================================================" >&2
+    echo "ERROR: Kernel build completed but no .deb packages were created!" >&2
+    echo "================================================" >&2
+    echo "Contents of /build directory:" >&2
+    ls -lah /build/ >&2
+    exit 1
+fi
 
 # Move .deb files to output directory
 echo "Collecting kernel packages..."
