@@ -209,7 +209,13 @@ EOF
     # Find the generated image file
     # rpi-image-gen typically outputs to the build directory with the name specified in config
     echo "Looking for generated image in $BUILD_DIR..."
-    IMAGE_FILE=$(find "$BUILD_DIR" -name "${IMAGE_NAME}.img" -o -name "*.img" | head -n 1)
+    
+    # First try exact match, then try any .img file in the build directory (not recursive)
+    IMAGE_FILE=$(find "$BUILD_DIR" -maxdepth 2 -name "${IMAGE_NAME}.img" -type f | head -n 1)
+    if [ -z "$IMAGE_FILE" ]; then
+        # Fallback: look for any .img file
+        IMAGE_FILE=$(find "$BUILD_DIR" -maxdepth 2 -name "*.img" -type f | head -n 1)
+    fi
     
     if [ -z "$IMAGE_FILE" ] || [ ! -f "$IMAGE_FILE" ]; then
         echo "ERROR: rpi-image-gen did not create an image file" >&2
@@ -259,10 +265,12 @@ if [ -n "${MANUAL_IMAGE:-}" ] || [ "$KERNEL_MODE" != "none" ]; then
             echo "Installing ClockworkPi kernel from pre-built packages..."
             KERNEL_DEBS="$REPO_ROOT/artifacts/kernel-debs"
             
-            # Check if kernel debs exist
+            # Verify that pre-built kernel packages exist
+            # (These should have been created by the build-kernel workflow job)
             if [ ! -d "$KERNEL_DEBS" ] || [ -z "$(ls -A "$KERNEL_DEBS"/*.deb 2>/dev/null)" ]; then
                 echo "ERROR: Kernel .deb packages not found in $KERNEL_DEBS" >&2
-                echo "KERNEL_MODE=build requires pre-built kernel packages from build-kernel job" >&2
+                echo "When KERNEL_MODE=build, this script expects pre-built kernel packages" >&2
+                echo "from the build-kernel workflow job to be available in artifacts/kernel-debs/" >&2
                 ls -la "$KERNEL_DEBS" >&2 || true
                 exit 1
             fi
