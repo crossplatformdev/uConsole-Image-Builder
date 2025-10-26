@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kernel-patch
-          path: "./linux/$safe"
+          path: "./linux/rpi-6.12.y...ak-rex_ClockworkPi-linux_rpi-6.12.y.diff"
 
   build-image:
     needs: prepare-kernel
@@ -135,8 +135,7 @@ jobs:
       - name: Customize image
         run: |
           cd rpi-image-gen
-          OUTPUT=$IGconf_image_outputdir
-          IMAGE_PATH=$(find $(realpath $OUTPUT -name "*.img" | head -n 1)
+          IMAGE_PATH=$(find $IGconf_image_outputdir -name "*.img" | head -n 1)
           LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
           MOUNT_POINT=/mnt/uconsole-image
           sudo mkdir -p $MOUNT_POINT
