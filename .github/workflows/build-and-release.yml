@@ -159,9 +159,10 @@ jobs:
             wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz
             unxz ubuntu-jammy-raspi.img.xz
             IMAGE_PATH=./ubuntu-jammy-raspi.img
-            LOOP_DEVICE=/dev/loop42
-            MOUNT_POINT=./rootfs
           fi
+
+          LOOP_DEVICE=$(sudo losetup -f)
+          MOUNT_POINT=./rootfs
 
           echo "=====> IMAGE PATH: $IMAGE_PATH"
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
@@ -170,7 +171,8 @@ jobs:
 
           # Create loop device and mount partitions
           sudo losetup -D  # Clear existing loop devices
-          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH" --partscan
+
+          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH"
           
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
