@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        distro: [bookworm, trixie, jammy]
+        distro: [bookworm, trixie, jammy, popos]
     steps:
       - name: Set up QEMU user-mode emulation
         uses: docker/setup-qemu-action@v2
@@ -161,6 +161,13 @@ jobs:
             IMAGE_PATH=./ubuntu-jammy-raspi.img
           fi
 
+          if [ "${{ matrix.distro }}" == "popos" ]; then
+            IMAGE_PATH=https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
+            wget $IMAGE_PATH -O pop-os_22.04_arm64_raspi_4.img.xz
+            unxz pop-os_22.04_arm64_raspi_4.img.xz
+            IMAGE_PATH=./pop-os_22.04_arm64_raspi_4.img
+          fi
+
           LOOP_DEVICE=$(sudo losetup -f)
           MOUNT_POINT=./rootfs
 
@@ -183,8 +190,8 @@ jobs:
           sudo mount --bind /sys $MOUNT_POINT/sys
 
           # Set DNS resolvers
-          echo "nameserver 8.8.8.8" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
-          echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
+          echo "nameserver 8.8.8.8" | sudo cat >> $MOUNT_POINT/etc/resolv.conf.bak
+          echo "nameserver 8.8.4.4" | sudo cat >> $MOUNT_POINT/etc/resolv.conf.bak
 
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
