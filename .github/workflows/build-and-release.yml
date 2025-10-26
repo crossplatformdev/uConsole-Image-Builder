@@ -118,6 +118,11 @@ jobs:
 
       - name: Clone rpi-image-gen
         run: |
+          # If matrix.distro is jammy, exit early as rpi-image-gen does not support it
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            echo "Skipping rpi-image-gen setup for jammy"
+            exit 0
+          fi
           git clone https://github.com/raspberrypi/rpi-image-gen.git
           cd rpi-image-gen
           sudo ./install_deps.sh
