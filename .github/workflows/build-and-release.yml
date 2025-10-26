@@ -155,9 +155,9 @@ jobs:
           
           # Unmount if already mounted
           MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p1)
-          if mountpoint -q $MNT; then sudo umount $MNT; fi
+          if mountpoint -q $MNT; then sudo umount -l $MNT; fi
           MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p2)
-          if mountpoint -q $MNT; then sudo umount $MNT; fi
+          if mountpoint -q $MNT; then sudo umount -l $MNT; fi
           
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
