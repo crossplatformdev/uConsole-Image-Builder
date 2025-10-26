@@ -37,7 +37,6 @@ jobs:
 
       - name: Download and apply patch        
         run: |
-          set -euo pipefail
           export URL="https://example.com/path/ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
           export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
