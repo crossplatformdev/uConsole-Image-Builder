@@ -190,6 +190,7 @@ jobs:
           sudo mount --bind /sys $MOUNT_POINT/sys
 
           # Set DNS resolvers
+          sudo touch $MOUNT_POINT/etc/resolv.conf
           echo "nameserver 8.8.8.8" | sudo tee $MOUNT_POINT/etc/resolv.conf
           echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
 
