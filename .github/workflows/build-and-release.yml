@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        distro: [bookworm, bullseye]
+        distro: [bookworm, trixie]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
