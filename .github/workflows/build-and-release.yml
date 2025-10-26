@@ -125,6 +125,10 @@ jobs:
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
           
           # Install packages in chroot
+          sudo chroot $MOUNT_POINT /bin/bash -c "for key in 6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 54404762BBB6E853 BDE6D2B9216EC7A8; do
+                                                    gpg --keyserver keyserver.ubuntu.com --recv-keys $key
+                                                    gpg --export $key | sudo tee /etc/apt/trusted.gpg.d/$key.gpg > /dev/null
+                                                done"
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware"
           
           if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
