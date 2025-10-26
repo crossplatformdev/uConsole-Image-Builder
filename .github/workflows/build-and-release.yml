@@ -134,7 +134,6 @@ jobs:
       - name: Customize image
         id: customize
         run: |        
-          set -euo pipefail
           cd rpi-image-gen
           
           IMAGE_PATH=$(find "./work/image-deb12-arm64-min/deb12-arm64-min.img" "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" 2>/dev/null | head -n 1)
