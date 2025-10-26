@@ -190,8 +190,8 @@ jobs:
           sudo mount --bind /sys $MOUNT_POINT/sys
 
           # Set DNS resolvers
-          echo "nameserver 8.8.8.8" | sudo cat >> $MOUNT_POINT/etc/resolv.conf.bak
-          echo "nameserver 8.8.4.4" | sudo cat >> $MOUNT_POINT/etc/resolv.conf.bak
+          echo "nameserver 8.8.8.8" | sudo tee $MOUNT_POINT/etc/resolv.conf
+          echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
 
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
