@@ -152,13 +152,12 @@ jobs:
 
           sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
-
           
-          # Busca el punto de montaje asociado
+          # Unmount if already mounted
           MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p1)
-          mountpoint -q $MNT && umount $MNT
+          if mountpoint -q $MNT; then sudo umount $MNT; fi
           MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p2)
-          mountpoint -q $MNT && umount $MNT
+          if mountpoint -q $MNT; then sudo umount $MNT; fi
           
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
