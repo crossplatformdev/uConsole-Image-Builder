@@ -152,10 +152,14 @@ jobs:
 
           sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
-          
+
+          # Busca el punto de montaje asociado
+          MNT=$(lsblk -no MOUNTPOINT "$LOOP_DEVICE")
+          sudo umount "$MNT"
+
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
-          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
           
           # Add ClockworkPi repository
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
@@ -170,7 +174,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
           
-          sudo umount $MOUNT_POINT/boot
+          sudo umount $MOUNT_POINT/boot/firmware
           sudo umount $MOUNT_POINT
           sudo losetup -d $LOOP_DEVICE
           
