@@ -168,6 +168,12 @@ jobs:
           sudo mount --bind /proc $MOUNT_POINT/proc
           sudo mount --bind /sys $MOUNT_POINT/sys
 
+          # Backup original resolv.conf and set DNS
+          sudo cp $MOUNT_POINT/etc/resolv.conf $MOUNT_POINT/etc/resolv.conf.bak
+
+          echo "nameserver 8.8.8.8" | sudo tee $MOUNT_POINT/etc/resolv.conf
+          echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
+
           # Add ClockworkPi repository
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
           
@@ -180,6 +186,15 @@ jobs:
             sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
+          
+          # Restore original resolv.conf
+          sudo mv $MOUNT_POINT/etc/resolv.conf.bak $MOUNT_POINT/etc/resolv.conf
+          
+          # Clean up
+          sudo umount $MOUNT_POINT/dev/pts
+          sudo umount $MOUNT_POINT/dev
+          sudo umount $MOUNT_POINT/proc
+          sudo umount $MOUNT_POINT/sys
           
           sudo umount $MOUNT_POINT/boot/firmware
           sudo umount $MOUNT_POINT
