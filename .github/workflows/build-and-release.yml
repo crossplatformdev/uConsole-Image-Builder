@@ -25,6 +25,7 @@ jobs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
       - name: Checkout repository
+        if: env.KERNEL_MODE == 'build'
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -35,14 +36,18 @@ jobs:
           sudo apt update
           sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
           sudo apt -y install crossbuild-essential-arm64
-          
+                    
+          cd linux
+
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
           export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          
           echo "Downloading $URL -> $safe"
-          wget -q -O "$safe" "$URL"          
-                    
-          cd linux
+          wget -q -O "$safe" "$URL"
+
+          export PATCH_ABSOLUTE_PATH=`pwd`/"$safe"
+          
           export KERNEL=kernel8
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -60,10 +65,11 @@ jobs:
             ./*.deb
             
       - name: Upload patch
+        if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: kernel-patch
-          path: ./rpi-6.12.y...ak-rex_ClockworkPi-linux_rpi-6.12.y.diff
+          path: $PATCH_ABSOLUTE_PATH
 
   build-image:
     needs: prepare-kernel
@@ -133,11 +139,20 @@ jobs:
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
       - name: Customize image
-        run: |
+        run: |        
           cd rpi-image-gen
           IMAGE_PATH=$(find $IGconf_image_outputdir -name "*.img" | head -n 1)
+          
           LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
           MOUNT_POINT=/mnt/uconsole-image
+
+          echo "=====> IMAGE PATH: $IMAGE_PATH"
+          echo "=====> LOOP DEVICE: $LOOP_DEVICE"
+          echo "=====> MOUNT POINT: $MOUNT_POINT"
+
+          apt install -y kpartx 
+          sudo kpartx -a -v $IMAGE_PATH          
+          
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
