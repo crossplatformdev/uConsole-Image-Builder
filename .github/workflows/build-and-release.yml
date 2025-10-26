@@ -153,9 +153,9 @@ jobs:
           sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
           
-          sudo mkdir -p $MOUNT_POINT
-          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
-          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
+          #sudo mkdir -p $MOUNT_POINT
+          #sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          #sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
           
           # Add ClockworkPi repository
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
