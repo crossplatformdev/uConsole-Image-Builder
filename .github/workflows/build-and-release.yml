@@ -67,7 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kernel-patch
-          path: rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
+          path: "$safe"
 
   build-image:
     needs: prepare-kernel
@@ -134,7 +134,7 @@ jobs:
       - name: Build base image
         run: |
           cd rpi-image-gen
-          sudo ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
+          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
       - name: Customize image
         run: |
