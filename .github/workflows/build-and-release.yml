@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        distro: [bookworm, trixie]
+        distro: [bookworm, trixie, jammy]
     steps:
       - name: Set up QEMU user-mode emulation
         uses: docker/setup-qemu-action@v2
@@ -139,17 +139,27 @@ jobs:
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
       - name: Customize image
-        run: |        
+        run: |
+          # If matrix.distro is bookworm, use deb12-arm64-min.img
+          # If matrix.distro is trixie, use deb13-arm64-min.img
+          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
           cd rpi-image-gen
-          
-          # If matrix.distro is bookworm, 
-          if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
-          else
-            IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
+          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
+            # If matrix.distro is bookworm, 
+            if [ "${{ matrix.distro }}" == "bookworm" ]; then
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
+            else
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
+            fi
           fi
-          LOOP_DEVICE=/dev/loop42
-          MOUNT_POINT=./rootfs
+          
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+            wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz
+            IMAGE_PATH=./ubuntu-jammy-raspi.img
+            LOOP_DEVICE=/dev/loop42
+            MOUNT_POINT=./rootfs
+          fi
 
           echo "=====> IMAGE PATH: $IMAGE_PATH"
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
@@ -168,10 +178,8 @@ jobs:
           sudo mount --bind /proc $MOUNT_POINT/proc
           sudo mount --bind /sys $MOUNT_POINT/sys
 
-          # Backup original resolv.conf and set DNS
-          sudo cp $MOUNT_POINT/etc/resolv.conf $MOUNT_POINT/etc/resolv.conf.bak
-
-          echo "nameserver 8.8.8.8" | sudo tee $MOUNT_POINT/etc/resolv.conf
+          # Set DNS resolvers
+          echo "nameserver 8.8.8.8" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
           echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
 
           # Add ClockworkPi repository
@@ -186,6 +194,9 @@ jobs:
             sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
+
+          # Set LOCALE to en_US.UTF-8
+          sudo chroot $MOUNT_POINT /bin/bash -c "tzselect noninteractive && echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
           
           # Restore original resolv.conf
           sudo mv $MOUNT_POINT/etc/resolv.conf.bak $MOUNT_POINT/etc/resolv.conf
@@ -203,7 +214,7 @@ jobs:
           # Compress image
           xz -9 -T0 "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
-
+      
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
