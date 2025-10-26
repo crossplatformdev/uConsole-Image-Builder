@@ -144,7 +144,7 @@ jobs:
           IMAGE_PATH=$(find "./work/image-deb12-arm64-min/deb12-arm64-min.img" -name "*.img" | head -n 1 || find "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" | head -n 1)
           
           LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
-          MOUNT_POINT=/mnt/uconsole-image
+          MOUNT_POINT=./mnt/uconsole-image
 
           echo "=====> IMAGE PATH: $IMAGE_PATH"
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
@@ -153,9 +153,9 @@ jobs:
           sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
           
-          #sudo mkdir -p $MOUNT_POINT
-          #sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
-          #sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
           
           # Add ClockworkPi repository
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
