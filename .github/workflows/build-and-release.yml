@@ -192,6 +192,7 @@ jobs:
           sleep 5  # Wait for mounts to stabilize
 
           # Configure DNS resolvers
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
 
@@ -218,6 +219,9 @@ jobs:
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "tzselect noninteractive && echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
           
+          # Restore original resolv.conf
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf"
+
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
           sudo umount $MOUNT_POINT/dev
