@@ -198,11 +198,11 @@ jobs:
 
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
-          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | cat > /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
           else
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
           fi
 
           
