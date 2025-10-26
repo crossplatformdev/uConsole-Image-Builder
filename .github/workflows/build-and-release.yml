@@ -150,7 +150,7 @@ jobs:
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
-          apt install -y kpartx 
+          sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
           
           sudo mkdir -p $MOUNT_POINT
