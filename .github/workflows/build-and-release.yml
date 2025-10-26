@@ -87,6 +87,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-user-static binfmt-support
+          # ensure update-binfmts exists and qemu-aarch64 interpreter is enabled
           if command -v update-binfmts >/dev/null 2>&1; then
             sudo update-binfmts --enable qemu-aarch64 || true
           fi
@@ -96,15 +97,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gnupg ca-certificates debian-archive-keyring
 
+          # Ensure Debian archive keys are present
           sudo apt-get install -y --reinstall debian-archive-keyring || true
 
+          # Add any additional public keys reported in the logs so apt can verify repos
           KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 54404762BBB6E853 BDE6D2B9216EC7A8"
           for key in $KEYS; do
+            # Try HKPS first, fallback to hkp
             gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
               || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+            # Export and dearmor into apt trusted dir
             gpg --batch --export "$key" | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/${key}.gpg
           done
 
+          # Sanity update (should succeed now)
           sudo apt-get update
           
       - name: Checkout repository
@@ -119,6 +125,7 @@ jobs:
           sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
           sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
 
+
       - name: Download kernel artifacts
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
@@ -132,161 +139,49 @@ jobs:
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
       - name: Customize image
-        id: customize
         run: |        
           cd rpi-image-gen
-          
-          IMAGE_PATH=$(find "./work/image-deb12-arm64-min/deb12-arm64-min.img" "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" 2>/dev/null | head -n 1)
-          
-          if [ -z "$IMAGE_PATH" ]; then
-            echo "Error: Image file not found"
-            exit 1
-          fi
-          
-          MOUNT_POINT=/mnt/uconsole-image
-          
-          echo "IMAGE_PATH=$IMAGE_PATH" >> $GITHUB_OUTPUT
-          echo "MOUNT_POINT=$MOUNT_POINT" >> $GITHUB_OUTPUT
-          
+          IMAGE_PATH=$(find "$IGconf_deploy_dir" -name "*.img" | head -n 1 || find "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" | head -n 1)
+          LOOP_DEVICE=/dev/loop42
+          MOUNT_POINT=./rootfs
+
           echo "=====> IMAGE PATH: $IMAGE_PATH"
+          echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
-          #sudo apt install -y kpartx 
+
+          # Create loop device and mount partitions
+          sudo losetup -D  # Clear existing loop devices
+          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH" --partscan
           
-          # Set up loop device with retry logic
-          for i in {1..5}; do
-            LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH" 2>/dev/null || true)
-            if [ -n "$LOOP_DEVICE" ]; then
-              break
-            fi
-            echo "Retrying losetup ($i/5)..."
-            sleep 2
-          done
-          
-          if [ -z "$LOOP_DEVICE" ]; then
-            echo "Error: Failed to create loop device"
-            exit 1
-          fi
-          
-          echo "LOOP_DEVICE=$LOOP_DEVICE" >> $GITHUB_OUTPUT
-          echo "=====> LOOP DEVICE: $LOOP_DEVICE"
-          
-          # Wait for device nodes to appear
-          #sleep 2
-          #sudo partprobe "$LOOP_DEVICE" || true
-          
-          # Use kpartx to create device mappings
-          #sudo kpartx -a -v "$LOOP_DEVICE"
-          #sleep 2
-          
-          # Identify partition devices (may be /dev/loopXpY or /dev/mapper/loopXpY)
-          if [ -b "${LOOP_DEVICE}p1" ]; then
-            BOOT_DEV="${LOOP_DEVICE}p1"
-            ROOT_DEV="${LOOP_DEVICE}p2"
-          elif [ -b "/dev/mapper/$(basename $LOOP_DEVICE)p1" ]; then
-            BOOT_DEV="/dev/mapper/$(basename $LOOP_DEVICE)p1"
-            ROOT_DEV="/dev/mapper/$(basename $LOOP_DEVICE)p2"
-          else
-            echo "Error: Partition devices not found"
-            exit 1
-          fi
-          
-          echo "BOOT_DEV=$BOOT_DEV" >> $GITHUB_OUTPUT
-          echo "ROOT_DEV=$ROOT_DEV" >> $GITHUB_OUTPUT
-          
-          # Force unmount any existing mounts
-          #sudo umount -l "$MOUNT_POINT/boot/firmware" 2>/dev/null || true
-          #sudo umount -l "$MOUNT_POINT" 2>/dev/null || true
-          #sudo umount -l "$BOOT_DEV" 2>/dev/null || true
-          #sudo umount -l "$ROOT_DEV" 2>/dev/null || true
-          
-          # Kill any processes using the mount point
-          #sudo fuser -km "$MOUNT_POINT" 2>/dev/null || true
-          #sleep 1
-          
-          # Create and mount
-          #sudo mkdir -p "$MOUNT_POINT/boot/firmware"
-          #sudo mount "$ROOT_DEV" "$MOUNT_POINT"
-          #sudo mount "$BOOT_DEV" "$MOUNT_POINT/boot/firmware"
-          
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
+          sudo mount --bind /dev $MOUNT_POINT/dev
+          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts
+          sudo mount --bind /proc $MOUNT_POINT/proc
+          sudo mount --bind /sys $MOUNT_POINT/sys
+
           # Add ClockworkPi repository
-          echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee "$MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list"
+          echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
           
-          # Install packages in chroot with error handling
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware" || {
-            echo "Error: Failed to install ClockworkPi packages"
-            exit 1
-          }
+          # Install packages in chroot
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware"
           
           if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi" || {
-              echo "Error: Failed to install prebuilt kernel"
-              exit 1
-            }
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
           else
-            sudo cp ../kernel-debs/*.deb "$MOUNT_POINT/tmp/"
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y" || {
-              echo "Error: Failed to install custom kernel"
-              exit 1
-            }
+            sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
           
-          # Sync to ensure all writes are flushed
-          sync
-          
-          # Unmount with retry logic
-          for i in {1..5}; do
-            if sudo umount "$MOUNT_POINT/boot/firmware" 2>/dev/null; then
-              break
-            fi
-            echo "Retrying boot umount ($i/5)..."
-            sudo fuser -km "$MOUNT_POINT/boot/firmware" 2>/dev/null || true
-            sleep 2
-          done
-          
-          for i in {1..5}; do
-            if sudo umount "$MOUNT_POINT" 2>/dev/null; then
-              break
-            fi
-            echo "Retrying root umount ($i/5)..."
-            sudo fuser -km "$MOUNT_POINT" 2>/dev/null || true
-            sleep 2
-          done
-          
-          # Remove kpartx mappings
-          sudo kpartx -d "$LOOP_DEVICE" || true
-          
-          # Detach loop device
-          sudo losetup -d "$LOOP_DEVICE" || true
+          sudo umount $MOUNT_POINT/boot/firmware
+          sudo umount $MOUNT_POINT
+          sudo losetup -d $LOOP_DEVICE
           
           # Compress image
           xz -9 -T0 "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
-
-      - name: Cleanup on failure
-        if: failure() && steps.customize.outputs.LOOP_DEVICE
-        run: |
-          set +e
-          MOUNT_POINT="${{ steps.customize.outputs.MOUNT_POINT }}"
-          LOOP_DEVICE="${{ steps.customize.outputs.LOOP_DEVICE }}"
-          
-          echo "=====> Emergency cleanup"
-          
-          # Kill all processes using mount points
-          sudo fuser -km "$MOUNT_POINT" 2>/dev/null || true
-          
-          # Force unmount everything
-          sudo umount -l "$MOUNT_POINT/boot/firmware" 2>/dev/null || true
-          sudo umount -l "$MOUNT_POINT" 2>/dev/null || true
-          
-          # Clean up device mappings
-          if [ -n "$LOOP_DEVICE" ]; then
-            sudo kpartx -d "$LOOP_DEVICE" 2>/dev/null || true
-            sudo losetup -d "$LOOP_DEVICE" 2>/dev/null || true
-          fi
-          
-          # Clean up any orphaned loop devices
-          sudo losetup -D || true
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
@@ -318,7 +213,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
+          tag_name: ${{ steps.tag.output.tag_name }}
           files: |
             kernel-debs/*.deb
             kernel-patch/*.diff
