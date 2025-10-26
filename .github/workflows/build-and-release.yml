@@ -185,7 +185,13 @@ jobs:
           echo "nameserver 8.8.4.4" | sudo tee -a $MOUNT_POINT/etc/resolv.conf
 
           # Add ClockworkPi repository
-          echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          ## If matrix distro is jammy, use ubuntu jammy repo
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          else
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          fi
+
           
           # Install packages in chroot
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware"
