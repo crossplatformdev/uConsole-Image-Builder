@@ -1,320 +1,164 @@
-name: CI/CD uConsole CM4
+name: Build and Release uConsole Images
 
 on:
   push:
-    branches: 
-      - '**'   # cualquier rama (incluye commits que actualicen submódulos)
-    tags:
+    branches:
       - '**'
   workflow_dispatch:
     inputs:
       kernel_mode:
-        description: 'Kernel mode: build from source or use prebuilt package'
+        description: 'Kernel mode (build/prebuilt)'
         required: true
+        default: 'prebuilt'
         type: choice
-        options: [build, prebuilt]
-        default: build
-
-permissions:
-  contents: write
+        options:
+          - build
+          - prebuilt
 
 env:
-  # Parche a aplicar
-  KPATCH_URL: https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
-  KPATCH_FILE: rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
-
-  # RPI kernel branch/base
-  RPI_KERNEL_REPO: https://github.com/raspberrypi/linux.git
-  RPI_KERNEL_BRANCH: rpi-6.12.y
-
-  # Imágenes a construir (rpi-image-gen/config/*.yaml)
-  IMAGE_MATRIX_JSON: '["bookworm-minbase.yaml","bullseye-minbase.yaml","debian-minbase.yaml"]'
-
-  # Repositorio oficial ClockworkPi apt (se usa en la imagen)
-  CLOCKWORKPI_APT_BASE: https://raw.githubusercontent.com/clockworkpi/apt/gh-pages
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
 
 jobs:
-  build-kernel:
-    name: Build Kernel (or Skip if prebuilt)
+  prepare-kernel:
     runs-on: ubuntu-24.04
-    timeout-minutes: 360
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.kernel_mode == 'build')
+    outputs:
+      kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
-      - name: Checkout repository (with submodules)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install build dependencies (cross-compile aarch64)
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev
-          sudo apt -y install crossbuild-essential-arm64 git patch
+          sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
+          sudo apt -y install crossbuild-essential-arm64
 
-      - name: Fetch Raspberry Pi kernel source
+      - name: Download and apply patch
         run: |
-          git clone --depth=1 --branch "${RPI_KERNEL_BRANCH}" "${RPI_KERNEL_REPO}" linux
+          wget https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
+          
+      - name: Build kernel
+        if: env.KERNEL_MODE == 'build'
+        run: |
           cd linux
-          git submodule update --init --recursive
-
-      - name: Apply ClockworkPi patch
-        working-directory: linux
-        run: |
-          wget -O "${KPATCH_FILE}" "${KPATCH_URL}"
-          patch -p1 < "${KPATCH_FILE}"
-
-      - name: Configure and build (deb-pkg)
-        working-directory: linux
-        env:
-          KERNEL: kernel8
-          ARCH: arm64
-          CROSS_COMPILE: aarch64-linux-gnu-
-          LOCALCONFIG: -raspi
-        run: |
+          export KERNEL=kernel8
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export LOCALCONFIG=-raspi
+          patch -p1 < ../rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
           make bcm2711_defconfig
-          # Compilación con hilos = cores + 2
-          J=$(( $(nproc) + 2 ))
-          # Los debs se generan en el directorio padre (..)
-          make -j"$J" deb-pkg
-
-      - name: Collect kernel artifacts
-        run: |
-          mkdir -p artifacts/kernel
-          # Los .deb se generan junto a "linux" (..)
-          shopt -s nullglob
-          for f in ./*.deb; do mv "$f" artifacts/kernel/; done || true
-          # Guarda el parche aplicado
-          cp linux/"${KPATCH_FILE}" artifacts/kernel/ || true
-          # Info de compilación
-          {
-            echo "# Kernel build info"
-            echo "Built on: $(date -u)"
-            echo "Repo: ${RPI_KERNEL_REPO}"
-            echo "Branch: ${RPI_KERNEL_BRANCH}"
-            echo "Commit: $(git -C linux rev-parse HEAD || echo unknown)"
-          } > artifacts/kernel/KERNEL_INFO.md
-        shell: bash
+          make deb-pkg -j$(($(nproc) + 2))
 
       - name: Upload kernel artifacts
+        if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: kernel-debs
-          path: artifacts/kernel/
-          retention-days: 30
+          path: |
+            ./*.deb
+            
+      - name: Upload patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-patch
+          path: rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff
 
-  build-images:
-    name: Build Base Images + Install Kernel (${{ matrix.config }})
+  build-image:
+    needs: prepare-kernel
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
-    needs: [build-kernel]
-    if: always() && (needs.build-kernel.result == 'success' || needs.build-kernel.result == 'skipped')
     strategy:
-      fail-fast: false
       matrix:
-        config: ${{ fromJSON(env.IMAGE_MATRIX_JSON) }}
+        distro: [bookworm, bullseye]
     steps:
-      - name: Checkout repository (with submodules)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Decide kernel mode
-        id: mode
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "mode=${{ inputs.kernel_mode }}" >> $GITHUB_OUTPUT
-          else
-            echo "mode=build" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Download built kernel debs (if build mode)
-        if: steps.mode.outputs.mode == 'build'
-        uses: actions/download-artifact@v4
-        with:
-          name: kernel-debs
-          path: artifacts/kernel/
-
-      - name: Install host tools for image provisioning
-        run: |
-          sudo apt update
-          # Dependencias rpi-image-gen + chroot ARM64
-          sudo apt -y install git xz-utils qemu-user-static binfmt-support kpartx dosfstools e2fsprogs parted wget ca-certificates
-
-      - name: Clone and prepare rpi-image-gen
+      - name: Clone rpi-image-gen
         run: |
           git clone https://github.com/raspberrypi/rpi-image-gen.git
           cd rpi-image-gen
           sudo ./install_deps.sh
 
-      - name: Build base image (${{ matrix.config }})
-        working-directory: rpi-image-gen
-        run: |
-          ./rpi-image-gen build -c "./config/${{ matrix.config }}"
-          ls -lh output
+      - name: Download kernel artifacts
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+        uses: actions/download-artifact@v4
+        with:
+          name: kernel-debs
+          path: ./kernel-debs
 
-      - name: Detect built image path
-        id: img
+      - name: Build base image
         run: |
-          set -e
-          IMG_DIR="rpi-image-gen/output"
-          # rpi-image-gen suele producir *.img (sin comprimir)
-          IMG_PATH="$(ls -1t ${IMG_DIR}/*.img | head -n1)"
-          echo "path=${IMG_PATH}" >> $GITHUB_OUTPUT
+          cd rpi-image-gen
+          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
-      - name: Mount image rootfs
-        id: mnt
+      - name: Customize image
         run: |
-          set -euo pipefail
-          IMG="${{ steps.img.outputs.path }}"
-          LOOP_NAME=$(sudo losetup --find --show "$IMG")
-          echo "loop=${LOOP_NAME}" >> $GITHUB_OUTPUT
-          sudo partprobe "$LOOP_NAME"
-          # Mapear particiones (asumimos p2=root)
-          MAPS=$(sudo kpartx -v -a "$LOOP_NAME" | awk '{print $3}')
-          ROOT_MAP=$(echo "$MAPS" | tail -n1)
-          DEV="/dev/mapper/${ROOT_MAP}"
-          echo "rootdev=${DEV}" >> $GITHUB_OUTPUT
-          sudo mkdir -p /mnt/rootimg
-          sudo mount "$DEV" /mnt/rootimg
-          # Copiar qemu para chroot
-          sudo mkdir -p /mnt/rootimg/usr/bin
-          sudo cp /usr/bin/qemu-aarch64-static /mnt/rootimg/usr/bin/
-
-      - name: Add ClockworkPi apt repository inside image
-        run: |
-          set -euo pipefail
-          ROOT=/mnt/rootimg
-          # Inferir suite desde el nombre de config
-          case "${{ matrix.config }}" in
-            bookworm-*) SUITE=bookworm ;;
-            bullseye-*) SUITE=bullseye ;;
-            debian-*)   SUITE=debian ;;
-            *)          SUITE=bookworm ;;
-          esac
-          echo "deb [trusted=yes] $CLOCKWORKPI_APT_BASE $SUITE main" | sudo tee "$ROOT/etc/apt/sources.list.d/clockworkpi.list"
-          # Minimiza prompts dentro de chroot
-          echo 'APT::Get::Assume-Yes "true";' | sudo tee "$ROOT/etc/apt/apt.conf.d/99assume-yes" >/dev/null
-
-      - name: Install kernel + packages inside image (prebuilt)
-        if: steps.mode.outputs.mode == 'prebuilt'
-        run: |
-          set -euo pipefail
-          ROOT=/mnt/rootimg
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt update"
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt install -y clockworkpi-audio clockworkpi-firmware uconsole-kernel-cm4-rpi"
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt clean"
-
-      - name: Install kernel + packages inside image (built .deb)
-        if: steps.mode.outputs.mode == 'build'
-        run: |
-          set -euo pipefail
-          ROOT=/mnt/rootimg
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt update"
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt install -y clockworkpi-audio clockworkpi-firmware"
-          # Copiar e instalar nuestros .deb del kernel
-          sudo mkdir -p "$ROOT/tmp/kernel-debs"
-          sudo cp -v artifacts/kernel/*.deb "$ROOT/tmp/kernel-debs/"
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "dpkg -i /tmp/kernel-debs/*.deb || apt -y -f install"
-          sudo chroot "$ROOT" /usr/bin/qemu-aarch64-static /bin/bash -lc "apt clean"
-
-      - name: Unmount image and compress
-        id: pack
-        run: |
-          set -euo pipefail
-          ROOT=/mnt/rootimg
-          IMG="${{ steps.img.outputs.path }}"
-          LOOP="${{ steps.mnt.outputs.loop }}"
-          ROOTDEV="${{ steps.mnt.outputs.rootdev }}"
-          sync || true
-          sudo umount "$ROOT"
-          sudo kpartx -d "$LOOP"
-          sudo losetup -d "$LOOP"
-          xz -T0 -9e -v "$IMG"
-          echo "xz=${IMG}.xz" >> $GITHUB_OUTPUT
-          ls -lh "${IMG}.xz"
+          cd rpi-image-gen
+          IMAGE_PATH=$(find output -name "*.img" | head -n 1)
+          LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
+          MOUNT_POINT=/mnt/uconsole-image
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot
+          
+          # Add ClockworkPi repository
+          echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          
+          # Install packages in chroot
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware"
+          
+          if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
+          else
+            sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
+          fi
+          
+          sudo umount $MOUNT_POINT/boot
+          sudo umount $MOUNT_POINT
+          sudo losetup -d $LOOP_DEVICE
+          
+          # Compress image
+          xz -9 -T0 "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: image-${{ matrix.config }}
-          path: ${{ steps.pack.outputs.xz }}
-          retention-days: 30
-          compression-level: 0
+          name: uconsole-${{ matrix.distro }}-image
+          path: uconsole-${{ matrix.distro }}-cm4.img.xz
 
-  create-release:
-    name: Create Release with Artifacts
-    needs: [build-kernel, build-images]
+  release:
+    needs: [prepare-kernel, build-image]
     runs-on: ubuntu-24.04
-    if: always() && needs.build-images.result == 'success'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository (full history)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts/
 
-      - name: Determine tag
+      - name: Create release tag
         id: tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=release-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Zip current repository snapshot
-        run: |
-          zip -r "repo-${{ steps.tag.outputs.tag }}.zip" . -x ".git/*" ".github/*/node_modules/*"
-
-      - name: Prepare release payload
-        run: |
-          mkdir -p release-files
-          # Kernel .deb + parche + info
-          if [ -d release-artifacts/kernel-debs ]; then
-            cp -v release-artifacts/kernel-debs/* release-files/ || true
-          fi
-          # Imágenes .img.xz
-          find release-artifacts -name "*.img.xz" -exec cp -v {} release-files/ \;
-          # Añadir snapshot del repo
-          mv -v "repo-${{ steps.tag.outputs.tag }}.zip" release-files/
-          echo "Release will contain:"
-          ls -lh release-files/
-
-      - name: Generate release notes
-        id: notes
-        run: |
-          cat > release-body.md << 'EOF'
-          # uConsole CI/CD ${{ steps.tag.outputs.tag }}
-
-          Este release incluye:
-          - 💾 **Imágenes .img.xz** (bookworm/bullseye/debian) con kernel parcheado e instalado (según modo elegido).
-          - 📦 **Paquetes .deb** del kernel (si `kernel_mode=build`).
-          - 🧩 **Parche aplicado** y metadatos de build.
-          - 🗂️ **Snapshot del repo** (.zip) tal como estaba en el momento del release.
-
-          ## Modo de kernel
-          - `build`: Kernel compilado desde ${RPI_KERNEL_REPO} (${RPI_KERNEL_BRANCH}) con el parche de ClockworkPi.
-          - `prebuilt`: Kernel desde el apt oficial de ClockworkPi (`uconsole-kernel-cm4-rpi`).
-
-          ## Verificación
-          Recomendado verificar con `sha256sum` tras descarga.
-
-          _Build date (UTC)_: $(date -u)
-          EOF
+          TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: uConsole CI/CD ${{ steps.tag.outputs.tag }}
-          draft: false
-          prerelease: false
-          files: release-files/*
-          body_path: release-body.md
+          tag_name: ${{ steps.tag.output.tag_name }}
+          files: |
+            kernel-debs/*.deb
+            kernel-patch/*.diff
+            uconsole-*-image/*.img.xz
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
