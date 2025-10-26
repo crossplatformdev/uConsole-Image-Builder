@@ -154,8 +154,10 @@ jobs:
           sudo kpartx -a -v $IMAGE_PATH          
 
           # Busca el punto de montaje asociado
-          MNT=$(lsblk -no MOUNTPOINT "$LOOP_DEVICE")
+          MNT=$(lsblk -no MOUNTPOINT "$LOOP_DEVICEp1")
           sudo umount "$MNT"
+          MNT=$(lsblk -no MOUNTPOINT "$LOOP_DEVICEp2")
+          sudo umount "$MNT"          
 
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
