@@ -141,7 +141,7 @@ jobs:
       - name: Customize image
         run: |        
           cd rpi-image-gen
-          IMAGE_PATH=$(find $IGconf_image_outputdir -name "*.img" | head -n 1)
+          IMAGE_PATH=$(find "./work/image-deb12-arm64-min/deb12-arm64-min.img" -name "*.img" | head -n 1 || find "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" | head -n 1)
           
           LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
           MOUNT_POINT=/mnt/uconsole-image
