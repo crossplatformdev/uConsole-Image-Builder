@@ -192,8 +192,8 @@ jobs:
           sleep 5  # Wait for mounts to stabilize
 
           # Configure DNS resolvers
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee $MOUNT_POINT/etc/resolv.conf"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a $MOUNT_POINT/etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
 
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
