@@ -119,6 +119,9 @@ jobs:
           git clone https://github.com/raspberrypi/rpi-image-gen.git
           cd rpi-image-gen
           sudo ./install_deps.sh
+          ./rpi-image-gen layer --list
+          sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
+
 
       - name: Download kernel artifacts
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
@@ -130,7 +133,7 @@ jobs:
       - name: Build base image
         run: |
           cd rpi-image-gen
-          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
+          sudo ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
 
       - name: Customize image
         run: |
