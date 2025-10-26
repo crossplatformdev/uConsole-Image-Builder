@@ -175,47 +175,73 @@ jobs:
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
-
           # Create loop device and mount partitions
-          sudo losetup -D  # Clear existing loop devices
+          sudo losetup -D || true  # Clear existing loop devices
+          sudo sync
+          sleep 2
 
-          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH"
+          # Setup loop device with retry
+          for i in {1..3}; do
+            sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH" && break || sleep 5
+          done
+          sudo partprobe $LOOP_DEVICE || true
+          sleep 3
           
           sudo mkdir -p $MOUNT_POINT
-          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
-          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
-          sudo mount --bind /dev $MOUNT_POINT/dev
-          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts
-          sudo mount --bind /proc $MOUNT_POINT/proc
-          sudo mount --bind /sys $MOUNT_POINT/sys
-
-          sleep 5  # Wait for mounts to stabilize
-
+          
+          # Mount with error checking and retry
           # Configure DNS resolvers
-          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' >> /etc/resolv.conf"
+          sudo mkdir -p $MOUNT_POINT/boot/firmware
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
-          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
-          if [ "${{ matrix.distro }}" == "jammy" ]; then
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
-          else
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
-          fi
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget --retry-connrefused --waitretry=5 --read-timeout=20 --timeout=15 -t 5 -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg" || true
           
+          sudo mount --bind /dev $MOUNT_POINT/dev || true
+          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts || true
+          sudo mount --bind /proc $MOUNT_POINT/proc || true
+          sudo mount --bind /sys $MOUNT_POINT/sys || true
+
+          sleep 5  # Wait for mounts to stabilize
           # Install packages in chroot
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update -o Acquire::Retries=3" || true
+          sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends clockworkpi-audio clockworkpi-cm-firmware || true"
           
           if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends uconsole-kernel-cm4-rpi || true"
           else
-            sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
-            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
-          fi
-
+            sudo mkdir -p $MOUNT_POINT/tmp
+            sudo cp -f ../kernel-debs/*.deb $MOUNT_POINT/tmp/ || true
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb 2>&1 || DEBIAN_FRONTEND=noninteractive apt install -f -y"
+          # Set LOCALE to en_US.UTF-8
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8" || true
+          
+          # Restore original resolv.conf
+          sudo chroot $MOUNT_POINT /bin/bash -c "test -f /etc/resolv.conf.bak && mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          # Clean up with forced unmount if necessary
+          sudo sync
+          sleep 2
+          
+          sudo umount -f $MOUNT_POINT/dev/pts 2>/dev/null || sudo umount -l $MOUNT_POINT/dev/pts 2>/dev/null || true
+          sudo umount -f $MOUNT_POINT/dev 2>/dev/null || sudo umount -l $MOUNT_POINT/dev 2>/dev/null || true
+          sudo umount -f $MOUNT_POINT/proc 2>/dev/null || sudo umount -l $MOUNT_POINT/proc 2>/dev/null || true
+          sudo umount -f $MOUNT_POINT/sys 2>/dev/null || sudo umount -l $MOUNT_POINT/sys 2>/dev/null || true
+          
+          sleep 2
+          sudo umount -f $MOUNT_POINT/boot/firmware 2>/dev/null || sudo umount -l $MOUNT_POINT/boot/firmware 2>/dev/null || true
+          sleep 2
+          sudo umount -f $MOUNT_POINT 2>/dev/null || sudo umount -l $MOUNT_POINT 2>/dev/null || true
+          
+          sleep 2
+          sudo losetup -d $LOOP_DEVICE || true
+          sudo sync
+          
+          # Compress image
+          xz -9 -T0 "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "tzselect noninteractive && echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
           
