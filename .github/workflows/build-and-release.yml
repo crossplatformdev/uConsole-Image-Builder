@@ -148,7 +148,6 @@ jobs:
           # If matrix.distro is bookworm, use deb12-arm64-min.img
           # If matrix.distro is trixie, use deb13-arm64-min.img
           # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
-          cd rpi-image-gen
           if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
             # If matrix.distro is bookworm, 
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
