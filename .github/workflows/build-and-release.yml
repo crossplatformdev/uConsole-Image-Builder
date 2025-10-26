@@ -151,7 +151,7 @@ jobs:
           echo "=====> IMAGE PATH: $IMAGE_PATH"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
-          sudo apt install -y kpartx 
+          #sudo apt install -y kpartx 
           
           # Set up loop device with retry logic
           for i in {1..5}; do
@@ -172,12 +172,12 @@ jobs:
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           
           # Wait for device nodes to appear
-          sleep 2
-          sudo partprobe "$LOOP_DEVICE" || true
+          #sleep 2
+          #sudo partprobe "$LOOP_DEVICE" || true
           
           # Use kpartx to create device mappings
-          sudo kpartx -a -v "$LOOP_DEVICE"
-          sleep 2
+          #sudo kpartx -a -v "$LOOP_DEVICE"
+          #sleep 2
           
           # Identify partition devices (may be /dev/loopXpY or /dev/mapper/loopXpY)
           if [ -b "${LOOP_DEVICE}p1" ]; then
@@ -195,19 +195,19 @@ jobs:
           echo "ROOT_DEV=$ROOT_DEV" >> $GITHUB_OUTPUT
           
           # Force unmount any existing mounts
-          sudo umount -l "$MOUNT_POINT/boot/firmware" 2>/dev/null || true
-          sudo umount -l "$MOUNT_POINT" 2>/dev/null || true
-          sudo umount -l "$BOOT_DEV" 2>/dev/null || true
-          sudo umount -l "$ROOT_DEV" 2>/dev/null || true
+          #sudo umount -l "$MOUNT_POINT/boot/firmware" 2>/dev/null || true
+          #sudo umount -l "$MOUNT_POINT" 2>/dev/null || true
+          #sudo umount -l "$BOOT_DEV" 2>/dev/null || true
+          #sudo umount -l "$ROOT_DEV" 2>/dev/null || true
           
           # Kill any processes using the mount point
-          sudo fuser -km "$MOUNT_POINT" 2>/dev/null || true
-          sleep 1
+          #sudo fuser -km "$MOUNT_POINT" 2>/dev/null || true
+          #sleep 1
           
           # Create and mount
-          sudo mkdir -p "$MOUNT_POINT/boot/firmware"
-          sudo mount "$ROOT_DEV" "$MOUNT_POINT"
-          sudo mount "$BOOT_DEV" "$MOUNT_POINT/boot/firmware"
+          #sudo mkdir -p "$MOUNT_POINT/boot/firmware"
+          #sudo mount "$ROOT_DEV" "$MOUNT_POINT"
+          #sudo mount "$BOOT_DEV" "$MOUNT_POINT/boot/firmware"
           
           # Add ClockworkPi repository
           echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee "$MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list"
