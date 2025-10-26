@@ -76,6 +76,20 @@ jobs:
       matrix:
         distro: [bookworm, trixie]
     steps:
+      - name: Set up QEMU user-mode emulation
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/arm64
+
+      - name: Install qemu-user-static and binfmt-support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+          # ensure update-binfmts exists and qemu-aarch64 interpreter is enabled
+          if command -v update-binfmts >/dev/null 2>&1; then
+            sudo update-binfmts --enable qemu-aarch64 || true
+          fi
+          
       - name: Checkout repository
         uses: actions/checkout@v4
 
