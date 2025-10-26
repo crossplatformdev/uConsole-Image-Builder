@@ -121,6 +121,7 @@ jobs:
           sudo ./install_deps.sh
           ./rpi-image-gen layer --list
           sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
+          sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
 
 
       - name: Download kernel artifacts
