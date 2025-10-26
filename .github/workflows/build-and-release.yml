@@ -144,7 +144,7 @@ jobs:
           IMAGE_PATH=$(find "./work/image-deb12-arm64-min/deb12-arm64-min.img" -name "*.img" | head -n 1 || find "./work/image-deb13-arm64-min/deb13-arm64-min.img" -name "*.img" | head -n 1)
           
           LOOP_DEVICE=$(sudo losetup -fP --show "$IMAGE_PATH")
-          MOUNT_POINT=./mnt/uconsole-image
+          MOUNT_POINT=/mnt/uconsole-image
 
           echo "=====> IMAGE PATH: $IMAGE_PATH"
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
@@ -153,9 +153,13 @@ jobs:
           sudo apt install -y kpartx 
           sudo kpartx -a -v $IMAGE_PATH          
 
-          mountpoint -q ${LOOP_DEVICE}p2 && umount ${LOOP_DEVICE}p2
-          mountpoint -q ${LOOP_DEVICE}p1 && umount ${LOOP_DEVICE}p1         
-
+          
+          # Busca el punto de montaje asociado
+          MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p1)
+          mountpoint -q $MNT && umount $MNT
+          MNT=$(lsblk -no MOUNTPOINT ${LOOP_DEVICE}p2)
+          mountpoint -q $MNT && umount $MNT
+          
           sudo mkdir -p $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
           sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
