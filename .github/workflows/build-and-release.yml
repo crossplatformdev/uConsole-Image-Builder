@@ -195,7 +195,7 @@ jobs:
 
           
           # Install packages in chroot
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-firmware"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
           
           if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
