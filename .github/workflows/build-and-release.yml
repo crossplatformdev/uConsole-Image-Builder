@@ -2,7 +2,10 @@ name: CI/CD uConsole CM4
 
 on:
   push:
-    branches: ['**']   # cualquier rama (incluye commits que actualicen submódulos)
+    branches: 
+      - '**'   # cualquier rama (incluye commits que actualicen submódulos)
+    tags:
+      - '**'
   workflow_dispatch:
     inputs:
       kernel_mode:
