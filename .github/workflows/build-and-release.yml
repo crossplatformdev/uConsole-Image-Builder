@@ -117,12 +117,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone rpi-image-gen
+        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
-          # If matrix.distro is jammy, exit early as rpi-image-gen does not support it
-          if [ "${{ matrix.distro }}" == "jammy" ]; then
-            echo "Skipping rpi-image-gen setup for jammy"
-            exit 0
-          fi
           git clone https://github.com/raspberrypi/rpi-image-gen.git
           cd rpi-image-gen
           sudo ./install_deps.sh
@@ -132,13 +128,14 @@ jobs:
 
 
       - name: Download kernel artifacts
-        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
         uses: actions/download-artifact@v4
         with:
           name: kernel-debs
           path: ./kernel-debs
 
       - name: Build base image
+        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
           cd rpi-image-gen
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
