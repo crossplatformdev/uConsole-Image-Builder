@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kernel-patch
-          path: "./linux/rpi-6.12.y...ak-rex_ClockworkPi-linux_rpi-6.12.y.diff"
+          path: ./rpi-6.12.y...ak-rex_ClockworkPi-linux_rpi-6.12.y.diff
 
   build-image:
     needs: prepare-kernel
