@@ -142,7 +142,12 @@ jobs:
         run: |        
           cd rpi-image-gen
           
-          IMAGE_PATH=$(find $IGconf_deploy_dir/** -name "*.img" | head -n 1 )
+          # If matrix.distro is bookworm, 
+          if [ "${{ matrix.distro }}" == "bookworm" ]; then
+            IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
+          else
+            IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
+          fi
           LOOP_DEVICE=/dev/loop42
           MOUNT_POINT=./rootfs
 
