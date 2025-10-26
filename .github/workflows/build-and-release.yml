@@ -29,23 +29,19 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies
+      - name: Build kernel
+        if: env.KERNEL_MODE == 'build'
         run: |
           sudo apt update
           sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
           sudo apt -y install crossbuild-essential-arm64
-
-      - name: Download and apply patch        
-        run: |
+          
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
           export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
           echo "Downloading $URL -> $safe"
           wget -q -O "$safe" "$URL"          
-          
-      - name: Build kernel
-        if: env.KERNEL_MODE == 'build'
-        run: |
+                    
           cd linux
           export KERNEL=kernel8
           export ARCH=arm64
