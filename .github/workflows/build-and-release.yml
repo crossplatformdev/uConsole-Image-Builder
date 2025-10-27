@@ -257,6 +257,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+      workflows: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
