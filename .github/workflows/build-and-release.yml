@@ -9,7 +9,7 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: 'prebuilt'
+        default: 'build'
         type: choice
         options:
           - build
