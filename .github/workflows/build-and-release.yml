@@ -91,28 +91,7 @@ jobs:
           if command -v update-binfmts >/dev/null 2>&1; then
             sudo update-binfmts --enable qemu-aarch64 || true
           fi
-
-      - name: Install Debian archive keys and required tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnupg ca-certificates debian-archive-keyring
-
-          # Ensure Debian archive keys are present
-          sudo apt-get install -y --reinstall debian-archive-keyring || true
-
-          # Add any additional public keys reported in the logs so apt can verify repos
-          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 54404762BBB6E853 BDE6D2B9216EC7A8"
-          for key in $KEYS; do
-            # Try HKPS first, fallback to hkp
-            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
-              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
-            # Export and dearmor into apt trusted dir
-            gpg --batch --export "$key" | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/${key}.gpg
-          done
-
-          # Sanity update (should succeed now)
-          sudo apt-get update
-          
+        
       - name: Checkout repository
         uses: actions/checkout@v4
 
