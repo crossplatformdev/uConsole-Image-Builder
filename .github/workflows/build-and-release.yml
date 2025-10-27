@@ -2,32 +2,16 @@ name: Build and Release uConsole Images
 
 on:
   push:
-    tags:
-      - 'v*'
-      - 'release-*'
     branches:
-      - '**'      # todas las ramas
-
+      - '**'
   workflow_dispatch:
     inputs:
-      suite:
-        description: 'Distribution suite to build (or "all" for all suites)'
-        required: true
-        type: choice
-        options:
-          - all
-          - jammy
-          - focal
-          - bookworm
-          - bullseye
-          - trixie
-        default: all
       kernel_mode:
-        description: 'Kernel installation mode'
+        description: 'Kernel mode (build/prebuilt)'
         required: true
+        default: 'build'
         type: choice
         options:
-          - prebuilt
           - build
         default: prebuilt
       create_release:
@@ -36,18 +20,17 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
+env:
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
 
 jobs:
-  build-kernel:
-    name: Build Kernel Packages
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    if: (github.event_name == 'workflow_dispatch' && inputs.kernel_mode == 'build') || github.event_name == 'push'
-    
+  prepare-kernel:
+    runs-on: ubuntu-24.04
+    outputs:
+      kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
       - name: Checkout repository
+        if: env.KERNEL_MODE == 'build'
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -84,76 +67,75 @@ jobs:
       
       - name: Create kernel info artifact
         run: |
-          mkdir -p artifacts/kernel-debs
-          echo "# Kernel Build Information"
-          echo ""
-          echo "Built on: $(date -u)"
-          echo "Repository: ${{ github.repository }}"
-          echo "Commit: ${{ github.sha }}"
-          echo ""
-          echo "## Kernel Source"
-          echo "Repository: ${{ steps.kernel_info.outputs.repo }}"
-          echo "Branch: ${{ steps.kernel_info.outputs.branch }}"
-          echo "Commit: ${{ steps.kernel_info.outputs.commit }}"
-          echo ""
-          echo "## Packages"
-          ls -lh artifacts/kernel-debs/*.deb 2>/dev/null || echo "No .deb files found" > artifacts/kernel-debs/KERNEL_INFO.md
-      
-      - name: Upload kernel packages
+          sudo dpkg --add-architecture arm64
+          
+          sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list 
+          sudo sed -i 's/deb /deb [arch=amd64] /' /etc/apt/sources.list
+          sudo sed -i 's/deb-src /deb-src [arch=amd64] /' /etc/apt/sources.list
+
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+          echo "deb-src [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+
+          sudo apt update
+          sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
+          sudo apt -y install build-essential debhelper-compat libelf-dev libssl-dev libssl-dev:arm64
+          sudo apt -y install crossbuild-essential-arm64
+          sudo apt build-dep -y linux linux-image-unsigned-*-generic linux-image-unsigned-*-lowlatency
+
+          cd linux
+
+          export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
+          export orig="$(basename "$URL")"
+          export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          
+          echo "Downloading $URL -> $safe"
+          wget -q -O "$safe" "$URL"
+
+          export PATCH_ABSOLUTE_PATH=`pwd`/"$safe"
+          
+          export KERNEL=kernel8
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export LOCALCONFIG=-raspi
+          patch -p1 < "$safe"
+          make bcm2711_defconfig
+          make deb-pkg -j$(($(nproc) + 2))
+
+      - name: Upload kernel artifacts
+        if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: kernel-debs
-          path: artifacts/kernel-debs/
-          retention-days: 90
-  
-  build-images:
-    name: Build Images for ${{ matrix.suite }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 240
-    needs: [build-kernel]
-    if: always() && (needs.build-kernel.result == 'success' || needs.build-kernel.result == 'skipped')
+          path: |
+            ./*.deb
+            
+      - name: Upload patch
+        if: env.KERNEL_MODE == 'build'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-patch
+          path: $PATCH_ABSOLUTE_PATH
+
+  build-image:
+    needs: prepare-kernel
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        suite: ${{ github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' && fromJSON('["jammy", "bookworm", "trixie"]') || fromJSON(format('["{0}"]', inputs.suite))) || fromJSON('["jammy", "bookworm", "trixie"]') }}
-      fail-fast: false
-    
+        distro: [bookworm, trixie, jammy]
     steps:
-      - name: Maximize build space
+      - name: Set up QEMU user-mode emulation
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/arm64
+      
+      - name: Add 4GB swap to avoid apt OOM        
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
-          df -h
-      
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      
-      - name: Download kernel packages
-        if: (github.event_name == 'workflow_dispatch' && inputs.kernel_mode == 'build') || github.event_name == 'push'
-        uses: actions/download-artifact@v4
-        with:
-          name: kernel-debs
-          path: artifacts/kernel-debs/
-      
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      
-      - name: Determine kernel mode
-        id: kernel_mode
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "mode=${{ inputs.kernel_mode }}" >> $GITHUB_OUTPUT
-          else
-            echo "mode=build" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Build uConsole image for ${{ matrix.suite }}
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+      - name: Install qemu-user-static and binfmt-support
         run: |
           export SUITE=${{ matrix.suite }}
           export KERNEL_MODE=${{ steps.kernel_mode.outputs.mode }}
@@ -211,127 +193,164 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Download all artifacts
+
+      - name: Clone rpi-image-gen
+        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
+        run: |
+          git clone https://github.com/raspberrypi/rpi-image-gen.git
+          cd rpi-image-gen
+          sudo ./install_deps.sh
+          ./rpi-image-gen layer --list
+          sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
+          sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
+
+
+      - name: Download kernel artifacts
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
         uses: actions/download-artifact@v4
         with:
-          path: release-artifacts/
-      
-      - name: Organize release files
+          name: kernel-debs
+          path: ./kernel-debs
+
+      - name: Build base image
+        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
-          mkdir -p release-files
-          
-          # Copy kernel debs if they exist
-          if [ -d release-artifacts/kernel-debs ]; then
-            cp release-artifacts/kernel-debs/*.deb release-files/ 2>/dev/null || true
-            cp release-artifacts/kernel-debs/*.md release-files/ 2>/dev/null || true
+          cd rpi-image-gen
+          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
+
+      - name: Customize image
+        run: |
+          # If matrix.distro is bookworm, use deb12-arm64-min.img
+          # If matrix.distro is trixie, use deb13-arm64-min.img
+          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
+            # If matrix.distro is bookworm, 
+            if [ "${{ matrix.distro }}" == "bookworm" ]; then
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
+            else
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
+            fi
           fi
           
-          # Copy images and checksums
-          find release-artifacts -name "*.img.xz" -exec cp {} release-files/ \;
-          find release-artifacts -name "*.sha256" -exec cp {} release-files/ \;
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+            wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz
+            unxz ubuntu-jammy-raspi.img.xz
+            IMAGE_PATH=./ubuntu-jammy-raspi.img
+          fi
+
+          if [ "${{ matrix.distro }}" == "popos" ]; then
+            IMAGE_PATH=https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
+            wget $IMAGE_PATH -O pop-os_22.04_arm64_raspi_4.img.xz
+            unxz pop-os_22.04_arm64_raspi_4.img.xz
+            IMAGE_PATH=./pop-os_22.04_arm64_raspi_4.img
+          fi
+
+          LOOP_DEVICE=$(sudo losetup -f)
+          MOUNT_POINT=./rootfs
+
+          echo "=====> IMAGE PATH: $IMAGE_PATH"
+          echo "=====> LOOP DEVICE: $LOOP_DEVICE"
+          echo "=====> MOUNT POINT: $MOUNT_POINT"
+
+
+          # Create loop device and mount partitions
+          sudo losetup -D  # Clear existing loop devices
+
+          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH"
           
-          # List all release files
-          echo "Release files:"
-          ls -lh release-files/
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
+          sudo mount --bind /dev $MOUNT_POINT/dev
+          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts
+          sudo mount --bind /proc $MOUNT_POINT/proc
+          sudo mount --bind /sys $MOUNT_POINT/sys
+
+          sleep 5  # Wait for mounts to stabilize
+
+          # Configure DNS resolvers
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
+
+          # Add ClockworkPi repository
+          ## If matrix distro is jammy, use ubuntu jammy repo
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget -qO - https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          else
+            #echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+          fi
+
+          
+          # Install packages in chroot
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
+          
+          if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
+          else
+            sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
+          fi
+
+          # Set LOCALE to en_US.UTF-8
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y locales"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
+          
+          # Restore original resolv.conf
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+
+          # Clean up
+          sudo umount $MOUNT_POINT/dev/pts
+          sudo umount $MOUNT_POINT/dev
+          sudo umount $MOUNT_POINT/proc
+          sudo umount $MOUNT_POINT/sys
+          
+          sudo umount $MOUNT_POINT/boot/firmware
+          sudo umount $MOUNT_POINT
+          sudo losetup -d $LOOP_DEVICE
+          
+          # Compress image
+          xz --threads=1 --memory=1000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz         
       
-      - name: Determine tag name
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: uconsole-${{ matrix.distro }}-cm4.img.xz
+
+  release:
+    needs: [prepare-kernel, build-image]
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create release tag
         id: tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=release-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Generate release body
-        id: release_body
-        run: |
-          cat > release-body.md << 'EOF'
-          # uConsole Images - ${{ steps.tag.outputs.tag }}
-          
-          This release includes bootable Raspberry Pi images for ClockworkPi uConsole CM4 devices.
-          
-          ## Included Images
-          
-          - **Ubuntu 22.04 (jammy)**: Full-featured Ubuntu LTS
-          - **Debian 12 (bookworm)**: Stable Debian release
-          - **Debian 13 (trixie)**: Latest Debian testing
-          
-          ## Kernel Packages
-          
-          This release includes ClockworkPi kernel .deb packages built from source.
-          
-          Kernel packages included:
-          - `linux-image-*.deb` - Kernel image
-          - `linux-headers-*.deb` - Kernel headers for module compilation
-          - `linux-libc-dev-*.deb` - Kernel headers for userspace
-          
-          See `KERNEL_INFO.md` for detailed kernel source information.
-          
-          ## Installation
-          
-          ### Flash Image to SD Card
-          
-          ```bash
-          # Extract and write to SD card (replace /dev/sdX with your SD card device)
-          xz -dc uconsole-jammy-arm64.img.xz | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
-          sudo sync
-          ```
-          
-          ### Install Kernel Packages on Existing System
-          
-          ```bash
-          # Copy .deb files to your uConsole
-          scp linux-*.deb uconsole@your-uconsole:/tmp/
-          
-          # Install on uConsole
-          ssh uconsole@your-uconsole
-          cd /tmp
-          sudo dpkg -i linux-*.deb
-          sudo apt-get install -f
-          sudo reboot
-          ```
-          
-          ## Verification
-          
-          Verify checksums before flashing:
-          ```bash
-          sha256sum -c uconsole-jammy-arm64.sha256
-          ```
-          
-          ## Default Credentials
-          
-          - **Username**: uconsole
-          - **Password**: uconsole
-          - **Root access**: User has passwordless sudo
-          
-          ## Source Code
-          
-          - **This repository**: https://github.com/${{ github.repository }}
-          - **Kernel source**: See KERNEL_INFO.md for details
-          - **Commit**: ${{ github.sha }}
-          
-          ## More Information
-          
-          - Documentation: See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
-          - Issues: https://github.com/${{ github.repository }}/issues
-          
-          ---
-          
-          Built on: $(date -u)
-          EOF
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+          TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: uConsole Images ${{ steps.tag.outputs.tag }}
-          draft: false
-          prerelease: false
-          files: release-files/*
-          body_path: release-body.md
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          files: |
+            kernel-debs/*.deb
+            kernel-patch/*.diff
+            uconsole-*-image/*.img.xz
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
