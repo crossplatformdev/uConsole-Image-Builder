@@ -82,6 +82,13 @@ jobs:
         uses: docker/setup-qemu-action@v2
         with:
           platforms: linux/arm64
+      
+      - name: Add 4GB swap to avoid apt OOM        
+        run: |
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
 
       - name: Install qemu-user-static and binfmt-support
         run: |
@@ -138,13 +145,6 @@ jobs:
         run: |
           cd rpi-image-gen
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
-
-      - name: Add 4GB swap to avoid apt OOM        
-        run: |
-          sudo fallocate -l 4G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
 
       - name: Customize image
         run: |
