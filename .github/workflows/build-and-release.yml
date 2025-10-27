@@ -16,7 +16,7 @@ on:
           - prebuilt
 
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
 
 jobs:
   prepare-kernel:
