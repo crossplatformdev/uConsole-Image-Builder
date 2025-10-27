@@ -5,4 +5,3 @@
 	path = linux
 	url = https://github.com/raspberrypi/linux.git
 	branch = rpi-6.12.y
-	shallow = true
