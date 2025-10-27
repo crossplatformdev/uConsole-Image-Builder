@@ -19,10 +19,11 @@ env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
 
 jobs:
-  prepare-kernel:
-    runs-on: ubuntu-24.04
-    outputs:
-      kernel_mode: ${{ env.KERNEL_MODE }}
+  build-image:
+    runs-on: ubuntu-latest-4-cores
+    container:
+      image: ubuntu:24.04
+      options: --privileged
     steps:
       - name: Checkout repository
         if: env.KERNEL_MODE == 'build'
