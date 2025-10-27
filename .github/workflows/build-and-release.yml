@@ -235,7 +235,7 @@ jobs:
           sudo losetup -d $LOOP_DEVICE
           
           # Compress image
-          xz -9 -T0 "$IMAGE_PATH"
+          xz --threads=1 --memory=3000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
       
       - name: Upload image artifact
@@ -268,7 +268,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.output.tag_name }}
+          tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
             kernel-debs/*.deb
             kernel-patch/*.diff
