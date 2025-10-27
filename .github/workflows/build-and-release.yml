@@ -35,6 +35,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
+          sudo apt -y install build-essential debhelper-compat libelf-dev libssl-dev
           sudo apt -y install crossbuild-essential-arm64
                     
           cd linux
