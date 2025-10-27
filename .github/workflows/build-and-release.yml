@@ -9,18 +9,18 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: 'prebuilt'
+        default: 'build'
         type: choice
         options:
           - build
           - prebuilt
 
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
 
 jobs:
   prepare-kernel:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -33,10 +33,14 @@ jobs:
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
         run: |
-          sudo apt update
-          sudo apt -y install bc bison flex libssl-dev make libc6-dev libncurses5-dev wget
-          sudo apt -y install crossbuild-essential-arm64
-                    
+          # enable debian sources
+          cat /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -i 's/deb/deb deb-src/g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt update 
+
+          sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev
+          sudo apt install -y build-essential
+          sudo apt build-dep -a arm64 linux linux-raspi
           cd linux
 
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
@@ -44,36 +48,55 @@ jobs:
           export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
           
           echo "Downloading $URL -> $safe"
-          wget -q -O "$safe" "$URL"
+          if ! wget -q -O "$safe" "$URL"; then
+            echo "Failed to download patch, exiting"
+            exit 1
+          fi
 
-          export PATCH_ABSOLUTE_PATH=`pwd`/"$safe"
+          if [ ! -f "$safe" ] || [ ! -s "$safe" ]; then
+            echo "Patch file is empty or missing, exiting"
+            exit 1
+          fi
+
+          export PATCH_ABSOLUTE_PATH="$(pwd)/$safe"
           
           export KERNEL=kernel8
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALCONFIG=-raspi
-          patch -p1 < "$safe"
+          
+          if ! patch -p1 < "$safe"; then
+            echo "Patch application failed, exiting"
+            exit 1
+          fi
+          
           make bcm2711_defconfig
           make deb-pkg -j$(($(nproc) + 2))
 
-      - name: Upload kernel artifacts
+          mv ../*.deb /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
+          mv "$safe" /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/uconsole-kernel-patch.diff
+        
+          echo "KERNEL_DEB_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/" >> $GITHUB_ENV
+
+      - name: Upload kernel artifacts (1)
         if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: kernel-debs
           path: |
-            ./*.deb
-            
-      - name: Upload patch
+            /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb
+
+      - name: Upload kernel artifacts (2) 
         if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-patch
-          path: $PATCH_ABSOLUTE_PATH
+          name: kernel-patch-uconsole
+          path: |
+            /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/uconsole-kernel-patch.diff
 
   build-image:
     needs: prepare-kernel
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
@@ -82,7 +105,7 @@ jobs:
         uses: docker/setup-qemu-action@v2
         with:
           platforms: linux/arm64
-
+      
       - name: Install qemu-user-static and binfmt-support
         run: |
           sudo apt-get update
@@ -100,8 +123,7 @@ jobs:
           # Ensure Debian archive keys are present
           sudo apt-get install -y --reinstall debian-archive-keyring || true
 
-          # Add any additional public keys reported in the logs so apt can verify repos
-          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 54404762BBB6E853 BDE6D2B9216EC7A8"
+          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4"
           for key in $KEYS; do
             # Try HKPS first, fallback to hkp
             gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
@@ -236,14 +258,14 @@ jobs:
           sudo losetup -d $LOOP_DEVICE
           
           # Compress image
-          xz --threads=1 --memory=3000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
+          xz --threads=1 --memory=1000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
           name: uconsole-${{ matrix.distro }}-image
-          path: uconsole-${{ matrix.distro }}-cm4.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
 
   release:
     needs: [prepare-kernel, build-image]
