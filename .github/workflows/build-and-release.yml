@@ -259,6 +259,7 @@ jobs:
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
+          name: uconsole-${{ matrix.distro }}-image
           path: uconsole-${{ matrix.distro }}-cm4.img.xz
 
   release:
