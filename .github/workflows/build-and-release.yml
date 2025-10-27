@@ -242,13 +242,12 @@ jobs:
           sudo losetup -d $LOOP_DEVICE
           
           # Compress image
-          xz --threads=1 --memory=3000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" ../uconsole-${{ matrix.distro }}-cm4.img.xz
+          xz --threads=1 --memory=1000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz         
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-image
           path: uconsole-${{ matrix.distro }}-cm4.img.xz
 
   release:
