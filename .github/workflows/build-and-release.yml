@@ -100,16 +100,6 @@ jobs:
           # Ensure Debian archive keys are present
           sudo apt-get install -y --reinstall debian-archive-keyring || true
 
-          # Add any additional public keys reported in the logs so apt can verify repos
-          # 
-          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
-            # No extra keys needed for Debian bookworm/trixie
-            echo "No extra keys needed for Debian ${{ matrix.distro }}"
-          elif [ "${{ matrix.distro }}" == "jammy" ]; then
-            # No extra keys needed for Ubuntu jammy
-            echo "No extra keys needed for Ubuntu jammy"
-          fi
-
           KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4"
           for key in $KEYS; do
             # Try HKPS first, fallback to hkp
@@ -148,6 +138,13 @@ jobs:
         run: |
           cd rpi-image-gen
           ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
+
+      - name: Add 4GB swap to avoid apt OOM        
+        run: |
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
 
       - name: Customize image
         run: |
