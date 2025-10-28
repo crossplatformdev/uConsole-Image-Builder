@@ -236,7 +236,7 @@ jobs:
           if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
           else
-            sudo cp ../kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo cp /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
 
@@ -293,9 +293,10 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
-            kernel-debs/*.deb
-            kernel-patch/*.diff
-            uconsole-*-image/*.img.xz
+            /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb
+            /home/runner/work/uConsole-Image-Builder/kernel-patch/*.diff
+            /home/runner/work/uConsole-Image-Builder/uconsole-*-cm4.img.xz
+    
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
