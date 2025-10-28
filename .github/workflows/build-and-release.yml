@@ -150,11 +150,11 @@ jobs:
 
 
       - name: Download kernel artifacts
-        if: needs.prepare-kernel.outputs.kernel_mode == 'build' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
           name: kernel-debs
-          path: ./kernel-debs
+          path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
 
       - name: Build base image
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
@@ -178,14 +178,14 @@ jobs:
           
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
-            wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz
+            wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
             unxz ubuntu-jammy-raspi.img.xz
             IMAGE_PATH=./ubuntu-jammy-raspi.img
           fi
 
           if [ "${{ matrix.distro }}" == "popos" ]; then
             IMAGE_PATH=https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
-            wget $IMAGE_PATH -O pop-os_22.04_arm64_raspi_4.img.xz
+            wget $IMAGE_PATH -O pop-os_22.04_arm64_raspi_4.img.xz > /dev/null 2>&1
             unxz pop-os_22.04_arm64_raspi_4.img.xz
             IMAGE_PATH=./pop-os_22.04_arm64_raspi_4.img
           fi
@@ -224,19 +224,23 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -qO - https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+            # Install tasks 'ubuntu-server' and 'ubuntu-desktop'
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ubuntu-server ubuntu-desktop"
           else
             #echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
+            # Install tasks 'debian-server' and 'debian-desktop'
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y debian-server debian-desktop"
           fi
 
           
           # Install packages in chroot
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
           
-          if [ "${{ needs.prepare-kernel.outputs.kernel_mode }}" == "prebuilt" ]; then
+          if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
           else
-            sudo cp /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
           fi
 
@@ -246,6 +250,79 @@ jobs:
           
           # Restore original resolv.conf
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+          
+          # Configure uConsole-specific config.txt
+          sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
+          kernel=kernel8.img
+
+          # For more options and information see
+          # http://rptl.io/configtxt
+          # Some settings may impact device functionality. See link above for details
+
+          # Uncomment some or all of these to enable the optional hardware interfaces
+          #dtparam=i2c_arm=on
+          #dtparam=i2s=on
+          #dtparam=spi=on
+
+          # Enable audio (loads snd_bcm2835)
+          dtparam=audio=on
+
+          # Additional overlays and parameters are documented
+          # /boot/firmware/overlays/README
+
+          # Automatically load overlays for detected cameras
+          camera_auto_detect=1
+
+          # Automatically load overlays for detected DSI displays
+          display_auto_detect=1
+
+          # Automatically load initramfs files, if found
+          auto_initramfs=1
+
+          # Enable DRM VC4 V3D driver
+          #dtoverlay=vc4-kms-v3d
+
+          max_framebuffers=2
+
+          # Don't have the firmware create an initial video= setting in cmdline.txt.
+          # Use the kernel's default instead.
+          #disable_fw_kms_setup=1
+
+          # Run in 64-bit mode
+          arm_64bit=1
+
+          # Disable compensation for displays with overscan
+          disable_overscan=1
+
+          # Run as fast as firmware / board allows
+          arm_boost=1
+
+          # Enable host mode on the 2711 built-in XHCI USB controller.
+          # This line should be removed if the legacy DWC2 controller is required
+          # (e.g. for USB device mode) or if USB support is not required.
+          #otg_mode=1
+
+          ignore_lcd=1
+          display_auto_detect=0
+          dtoverlay=audremap,pins_12_13
+          dtoverlay=dwc2,dr_mode=host
+          dtparam=ant2
+
+          # Enable DRM VC4 V3D driver (Clockworkpi uConsole CM4)
+          dtoverlay=clockworkpi-uconsole
+          dtoverlay=vc4-kms-v3d-pi4,cma-384
+          dtparam=pciex1=off
+          dtparam=spi=on
+          enable_uart=1
+          #dtparam=drm_fb0_rp1_dsi1
+          #initial_turbo=0
+          EOF
+
+          # Generate vmlinuz
+          sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
+          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"
+          
+          
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
@@ -277,8 +354,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download kernel artifacts
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
+        with:
+          name: kernel-debs
+          path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
+
+      - name: Download patch artifacts
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+        uses: actions/download-artifact@v4
+        with:
+          name: kernel-patch-uconsole
+          path: /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-patch/
+
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: uconsole-${{ matrix.distro }}-image
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
 
       - name: Create release tag
         id: tag
@@ -294,7 +388,7 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb
-            /home/runner/work/uConsole-Image-Builder/kernel-patch/*.diff
+            /home/runner/work/uConsole-Image-Builder/kernel-patch-uconsole/*.diff
             /home/runner/work/uConsole-Image-Builder/uconsole-*-cm4.img.xz
     
           generate_release_notes: true
