@@ -320,9 +320,7 @@ jobs:
 
           # Generate vmlinuz
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
-          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"
-          
-          
+          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
