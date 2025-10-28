@@ -45,12 +45,12 @@ jobs:
 
           sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev
           sudo apt install -y build-essential
-          sudo apt build-dep -a arm64 linux linux-raspi
+          sudo apt build-dep -y -a arm64 linux linux-raspi
           cd linux
 
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
-          export safe="$(echo "$orig" | sed 's/[^A-Za-z0-9._-]/_/g')"
+          export safe=uconsole-kernel-patch.diff
           
           echo "Downloading $URL -> $safe"
           if ! wget -q -O "$safe" "$URL"; then
@@ -333,7 +333,11 @@ jobs:
           # Generate vmlinuz
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
           sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove && apt-get clean && apt-get update && apt-get upgrade"
+          
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove" 
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
@@ -352,7 +356,7 @@ jobs:
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-image
+          name: uconsole-${{ matrix.distro }}-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
 
   release:
@@ -370,20 +374,32 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: kernel-debs
-          path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
+          path: /home/runner/work/uConsole-Image-Builder/kernel-debs.zip
 
       - name: Download patch artifacts
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
           name: kernel-patch-uconsole
-          path: /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-patch/
+          path: /home/runner/work/uConsole-Image-Builder/kernel-patch-uconsole.zip
 
       - name: Download image artifacts
         uses: actions/download-artifact@v4
         with:
-          name: uconsole-${{ needs.build-image.outputs.image }}-image
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ needs.build-image.outputs.image }}-cm4.img.xz
+          name: uconsole-trixie-cm4.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-trixie-cm4.img.xz
+
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: uconsole-bookworm-cm4.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-bookworm-cm4.img.xz
+
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: uconsole-jammy-cm4.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-jammy-cm4.img.xz
 
       - name: Create release tag
         id: tag
@@ -399,9 +415,10 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb
-            /home/runner/work/uConsole-Image-Builder/kernel-patch-uconsole/*.diff
-            /home/runner/work/uConsole-Image-Builder/uconsole-*-cm4.img.xz
-    
+            /home/runner/work/uConsole-Image-Builder/kernel-patch-uconsole.zip
+            /home/runner/work/uConsole-Image-Builder/uconsole-trixie-cm4.img.xz
+            /home/runner/work/uConsole-Image-Builder/uconsole-bookworm-cm4.img.xz
+            /home/runner/work/uConsole-Image-Builder/uconsole-jammy-cm4.img.xz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
