@@ -17,6 +17,10 @@ on:
 
 env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
+  KERNEL_VERSION: ${{ github.event.inputs.kernel_version || '6.12.y' }}
+  KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
+  UBUNTU_TASKS: 'ubuntu-gnome-desktop ubuntu-server'
+  DEBIAN_TASKS: 'live-task-gnome'
 
 jobs:
   prepare-kernel:
@@ -95,11 +99,16 @@ jobs:
             /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch.diff
 
   build-image:
+    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
+    outputs:
+      image: ${{ matrix.distro }}
+      kernel_version: ${{ env.KERNEL_VERSION }}
+      kernel_arch: ${{ env.KERNEL_ARCH }}      
     steps:
       - name: Set up QEMU user-mode emulation
         uses: docker/setup-qemu-action@v2
@@ -225,12 +234,12 @@ jobs:
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ubuntu-server ubuntu-desktop"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ${{ env.UBUNTU_TASKS }}"
           else
             #echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y debian-server debian-desktop"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ${{ env.DEBIAN_TASKS }}"
           fi
 
           
@@ -369,8 +378,8 @@ jobs:
       - name: Download image artifacts
         uses: actions/download-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-image
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
+          name: uconsole-${{ needs.build-image.outputs.image }}-image
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ needs.build-image.outputs.image }}-cm4.img.xz
 
       - name: Create release tag
         id: tag
