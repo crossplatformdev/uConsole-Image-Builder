@@ -333,11 +333,11 @@ jobs:
           # Generate vmlinuz
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
           sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
-          
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove" 
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
+
+          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove" 
+          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
