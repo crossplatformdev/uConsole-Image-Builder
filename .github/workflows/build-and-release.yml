@@ -17,10 +17,11 @@ on:
 
 env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
-  KERNEL_VERSION: ${{ github.event.inputs.kernel_version || '6.12.y' }}
+  KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
-  UBUNTU_TASKS: 'ubuntu-gnome-desktop ubuntu-server'
-  DEBIAN_TASKS: 'live-task-gnome'
+  KERNEL_COMMIT: '614fa9b' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
+  UBUNTU_TASKS: 'ubuntu-server' # ubuntu-gnome-desktop
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended' # live-task-desktop
 
 jobs:
   prepare-kernel:
@@ -46,6 +47,8 @@ jobs:
           sudo apt install -y build-essential
           sudo apt build-dep -a arm64 linux linux-raspi
           cd linux
+          git switch ${{ env.KERNEL_VERSION}}
+          git checkout ${{ env.KERNEL_COMMIT }}  # rpi-6.12.y
 
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
@@ -234,12 +237,12 @@ jobs:
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
           else
             #echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
           
