@@ -230,7 +230,7 @@ jobs:
 
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg initramfs-tools"
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -qO - https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
@@ -243,6 +243,8 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
+          # Remove current linux
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* || true"
           
           # Install packages in chroot
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
@@ -331,6 +333,7 @@ jobs:
           # Generate vmlinuz
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
           sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove && apt-get clean && apt-get update && apt-get upgrade"
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
