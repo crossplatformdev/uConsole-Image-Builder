@@ -4,4 +4,4 @@
 [submodule "linux"]
 	path = linux
 	url = https://github.com/raspberrypi/linux.git
-	branch = rpi-6.12.y
+	tag = rpi-6.12.y_20241206_2
