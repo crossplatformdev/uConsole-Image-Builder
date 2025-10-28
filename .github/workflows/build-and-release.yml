@@ -47,8 +47,6 @@ jobs:
           sudo apt install -y build-essential
           sudo apt build-dep -a arm64 linux linux-raspi
           cd linux
-          git switch ${{ env.KERNEL_VERSION}}
-          git checkout ${{ env.KERNEL_COMMIT }}  # rpi-6.12.y
 
           export URL="https://github.com/raspberrypi/linux/compare/rpi-6.12.y...ak-rex:ClockworkPi-linux:rpi-6.12.y.diff"
           export orig="$(basename "$URL")"
