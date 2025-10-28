@@ -63,7 +63,7 @@ jobs:
           export KERNEL=kernel8
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export LOCALCONFIG=-raspi
+          export LOCALVERSION=-raspi
           
           if ! patch -p1 < "$safe"; then
             echo "Patch application failed, exiting"
@@ -71,7 +71,7 @@ jobs:
           fi
           
           make bcm2711_defconfig
-          make deb-pkg -j$(($(nproc) + 2))
+          make deb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
 
           mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs/
           
@@ -320,9 +320,7 @@ jobs:
 
           # Generate vmlinuz
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
-          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"
-          
-          
+          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
