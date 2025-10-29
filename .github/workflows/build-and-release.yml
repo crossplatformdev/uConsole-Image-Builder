@@ -187,7 +187,7 @@ jobs:
           fi
           
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-server-arm64+raspi.img.xz
             wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
             unxz ubuntu-jammy-raspi.img.xz
             IMAGE_PATH=./ubuntu-jammy-raspi.img
