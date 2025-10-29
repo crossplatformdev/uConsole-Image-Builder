@@ -403,7 +403,7 @@ jobs:
 
   release:
     needs: [prepare-kernel, build-image]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -456,7 +456,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}          
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -469,11 +469,10 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
 
-          
