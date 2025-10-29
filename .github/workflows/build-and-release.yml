@@ -27,7 +27,7 @@ env:
 
 jobs:
   prepare-kernel:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-22.04-arm
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -115,7 +115,7 @@ jobs:
   build-image:
     name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image
     needs: prepare-kernel
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-22.04-arm
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
@@ -403,7 +403,7 @@ jobs:
 
   release:
     needs: [prepare-kernel, build-image]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-22.04-arm
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
