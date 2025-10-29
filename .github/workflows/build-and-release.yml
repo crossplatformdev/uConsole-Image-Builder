@@ -234,6 +234,9 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
 
+          # Remove current linux
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* || true"
+          
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg initramfs-tools"
@@ -251,12 +254,6 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
-          # Remove current linux
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* || true"
-          
-          # Install packages in chroot
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware flash-kernel"
-          
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
           else
@@ -343,8 +340,6 @@ jobs:
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
-
-          sudo chroot $MOUNT_POINT /bin/bash -c "flash-kernel --force 6.12.54-v8-raspi"
 
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
