@@ -234,7 +234,7 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
 
           # Remove current linux
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* linux-raspi-headers-* || true"
           
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
