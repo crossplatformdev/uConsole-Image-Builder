@@ -260,10 +260,10 @@ jobs:
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' with install recommends
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install --install-recommends -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install --install-recommends -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
