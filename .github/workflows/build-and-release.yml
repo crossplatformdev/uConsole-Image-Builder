@@ -83,7 +83,7 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ env.UCONSOLE_CORE }}" != "cm4" ]; then
+          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
             make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
           else
             make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig
