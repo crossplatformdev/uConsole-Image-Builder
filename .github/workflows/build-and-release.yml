@@ -263,10 +263,7 @@ jobs:
 
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y locales"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
-          
-          # Restore original resolv.conf
-          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
           
           # Configure uConsole-specific config.txt
           sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
@@ -368,6 +365,9 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBLAYOUT=\"us\"' >> /etc/default/keyboard"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBMODEL=\"pc105\"' >> /etc/default/keyboard"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive keyboard-configuration"
+          
+          # Restore original resolv.conf
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
           
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
