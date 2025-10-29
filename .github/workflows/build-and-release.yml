@@ -20,8 +20,8 @@ env:
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
-  UBUNTU_TASKS: 'ubuntu-server ubuntu-gnome-desktop task-laptop'
-  DEBIAN_TASKS: 'live-task-standard live-task-recommended live-task-gnome task-laptop'
+  UBUNTU_TASKS: 'ubuntu-server task-laptop'
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop'
 
 jobs:
   prepare-kernel:
@@ -213,10 +213,6 @@ jobs:
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
-          # Resize image to 8GB
-          sudo apt-get install -y qemu-utils
-          sudo qemu-img resize "$IMAGE_PATH" 8G                
-
           # Create loop device and mount partitions
           sudo losetup -D  # Clear existing loop devices
 
@@ -231,13 +227,7 @@ jobs:
           sudo mount --bind /sys $MOUNT_POINT/sys
 
           sleep 5  # Wait for mounts to stabilize
-
-          # Resize root filesystem to fill the partition
-          # Get root partition in which is mounted $MOUNT_POINT
-          sudo chroot $MOUNT_POINT /bin/bash -c "export ROOT_PART=\$(findmnt -n -o SOURCE /) && \
-            echo 'Resizing filesystem on '\$ROOT_PART && \
-            resize2fs \$ROOT_PART"
-
+     
           # Configure DNS resolvers
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
