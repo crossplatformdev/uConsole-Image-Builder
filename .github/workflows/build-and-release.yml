@@ -247,7 +247,7 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* || true"
           
           # Install packages in chroot
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y clockworkpi-audio clockworkpi-cm-firmware flash-kernel flash-kernel-installer"
           
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
@@ -330,10 +330,9 @@ jobs:
           #initial_turbo=0
           EOF
 
-          # Generate vmlinuz
+          # Generate vmlinuz (raspi kernel) initramfs
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
-          sudo chroot $MOUNT_POINT /bin/bash -c "update-grub || true"         
-
+          
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove" 
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
