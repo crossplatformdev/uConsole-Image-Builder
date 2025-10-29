@@ -21,7 +21,7 @@ env:
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
   UBUNTU_TASKS: 'ubuntu-server' # ubuntu-gnome-desktop
-  DEBIAN_TASKS: 'live-task-standard live-task-recommended live-task-gnome-desktop'
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended live-task-desktop-gnome'
 
 jobs:
   prepare-kernel:
@@ -368,7 +368,7 @@ jobs:
           
           # Restore original resolv.conf
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
-          
+
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
           sudo umount $MOUNT_POINT/dev
