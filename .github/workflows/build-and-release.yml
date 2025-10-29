@@ -22,12 +22,12 @@ env:
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
   UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager network-manager-* wpasupplicant openssh-server'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager openssh-server'
-  UCONSOLE_CORE: "cm4" # core model: cm4, cm5
+  UCONSOLE_CORE: 'cm4' # core model: cm4, cm5
     
 
 jobs:
   prepare-kernel:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -115,7 +115,7 @@ jobs:
   build-image:
     name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image
     needs: prepare-kernel
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
@@ -403,7 +403,7 @@ jobs:
 
   release:
     needs: [prepare-kernel, build-image]
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-24.04-arm
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -456,7 +456,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}          
+          tag_name: uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -469,7 +469,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}
+          tag_name: uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
