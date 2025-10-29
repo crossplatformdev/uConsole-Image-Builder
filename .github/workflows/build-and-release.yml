@@ -351,8 +351,24 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "chown -R clockworkpi:clockworkpi /home/clockworkpi/Desktop"
 
           # Set hostname
-          sudo chroot $MOUNT_POINT /bin/bash -c "hostnamectl set-hostname uConsole"
-                    
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'uconsole' > /etc/hostname"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/ubuntu|debian|raspbian|raspberrypi/uconsole/g' /etc/hosts"
+
+          # Enable SSH by default
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y openssh-server"
+          sudo chroot $MOUNT_POINT /bin/bash -c "systemctl enable ssh"
+          sudo chroot $MOUNT_POINT /bin/bash -c "touch /boot/firmware/ssh"
+          
+          # Set timezone to UTC
+          sudo chroot $MOUNT_POINT /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
+          sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive tzdata"
+
+          # Set keyboard layout to us
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y keyboard-configuration"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBLAYOUT=\"us\"' >> /etc/default/keyboard"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBMODEL=\"pc105\"' >> /etc/default/keyboard"
+          sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive keyboard-configuration"
+          
           # Clean up
           sudo umount $MOUNT_POINT/dev/pts
           sudo umount $MOUNT_POINT/dev
