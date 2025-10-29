@@ -153,6 +153,11 @@ jobs:
       - name: Setup rpi-image-gen
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
+          # Verify submodule is checked out
+          if [ ! -f rpi-image-gen/rpi-image-gen ]; then
+            echo "ERROR: rpi-image-gen submodule not properly checked out"
+            exit 1
+          fi
           cd rpi-image-gen
           sudo ./install_deps.sh
           ./rpi-image-gen layer --list
