@@ -213,6 +213,9 @@ jobs:
           echo "=====> LOOP DEVICE: $LOOP_DEVICE"
           echo "=====> MOUNT POINT: $MOUNT_POINT"
 
+          # Resize image to 8GB
+          sudo apt-get install -y qemu-utils
+          sudo qemu-img resize "$IMAGE_PATH" 8G                
 
           # Create loop device and mount partitions
           sudo losetup -D  # Clear existing loop devices
@@ -228,6 +231,12 @@ jobs:
           sudo mount --bind /sys $MOUNT_POINT/sys
 
           sleep 5  # Wait for mounts to stabilize
+
+          # Resize root filesystem to fill the partition
+          # Get root partition in which is mounted $MOUNT_POINT
+          sudo chroot $MOUNT_POINT /bin/bash -c "export ROOT_PART=\$(findmnt -n -o SOURCE /) && \
+            echo 'Resizing filesystem on '\$ROOT_PART && \
+            resize2fs \$ROOT_PART"
 
           # Configure DNS resolvers
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
