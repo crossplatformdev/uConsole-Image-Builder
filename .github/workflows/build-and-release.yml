@@ -9,14 +9,14 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: 'build'
+        default: 'prebuilt'
         type: choice
         options:
           - build
           - prebuilt
 
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
@@ -237,14 +237,16 @@ jobs:
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg initramfs-tools"
-          sudo chroot $MOUNT_POINT /bin/bash -c "wget -qO - https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y uconsole-kernel-cm4-rpi clockworkpi-*"
+
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop'
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
           else
-            #echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/${{ matrix.distro }} stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
-            echo "deb https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main" | sudo tee $MOUNT_POINT/etc/apt/sources.list.d/clockworkpi.list
             # Install tasks 'debian-server' and 'debian-desktop'
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
@@ -271,8 +273,6 @@ jobs:
           
           # Configure uConsole-specific config.txt
           sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
-          kernel=kernel8.img
-
           # For more options and information see
           # http://rptl.io/configtxt
           # Some settings may impact device functionality. See link above for details
@@ -418,6 +418,7 @@ jobs:
           ls -laR /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Create GitHub Release
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
@@ -428,3 +429,14 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          files: |
+            /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
