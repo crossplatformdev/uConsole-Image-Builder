@@ -147,11 +147,12 @@ jobs:
           
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Clone rpi-image-gen
+      - name: Setup rpi-image-gen
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
-          git clone https://github.com/raspberrypi/rpi-image-gen.git
           cd rpi-image-gen
           sudo ./install_deps.sh
           ./rpi-image-gen layer --list
