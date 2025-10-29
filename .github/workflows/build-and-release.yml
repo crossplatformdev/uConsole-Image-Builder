@@ -20,8 +20,8 @@ env:
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
-  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager network-manager-* wpasupplicant iproute2 iputils-ping iputils-tracepath ethtool net-tools curl wget ca-certificates openssh-client openssh-server wpasupplicant iw rfkill modemmanager isc-dhcp-client bind9-dnsutils tcpdump traceroute mtr-tiny nmap netcat-openbsd socat iperf3 whois nftables ufw iptables openvpn strongswan bridge-utils vlan avahi-daemon nfs-common cifs-utils samba'
-  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager openssh-server network-manager network-manager-* wpasupplicant iproute2 iputils-ping iputils-tracepath ethtool net-tools curl wget ca-certificates openssh-client openssh-server wpasupplicant iw rfkill modemmanager isc-dhcp-client bind9-dnsutils tcpdump traceroute mtr-tiny nmap netcat-openbsd socat iperf3 whois nftables ufw iptables openvpn strongswan bridge-utils vlan avahi-daemon nfs-common cifs-utils samba'
+  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager network-manager-* wpasupplicant net-tools openssh-client openssh-server rfkill'
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager network-manager-* wpasupplicant net-tools openssh-client openssh-server rfkill'
   UCONSOLE_CORE: 'cm4' # core model: cm4, cm5
  
 
