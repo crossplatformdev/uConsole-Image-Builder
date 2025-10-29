@@ -44,7 +44,7 @@ The workflow consists of three main jobs that run sequentially:
 
 **Runner**: `ubuntu-24.04-arm` (ARM64 native runner)
 
-**Dependencies**: Requires `prepare-kernel` job to complete
+**Dependencies**: Requires `prepare-kernel` job to complete (the job passes through quickly when `kernel_mode=prebuilt`)
 
 **Matrix Strategy**: Builds images in parallel for:
 - Debian 12 (bookworm)
@@ -120,7 +120,8 @@ The workflow consists of three main jobs that run sequentially:
 3. Creates GitHub Release:
    - **With kernel build**: Attaches images, kernel packages, and patch
    - **Without kernel build**: Attaches only images
-   - Tag format: `Images for uconsole-{CORE}-{VERSION}-{TAG}`
+   - Release title format: `Images for uconsole-{CORE}-{VERSION}-{TAG}`
+   - Actual tag name: `release-YYYYMMDD-HHMMSS` (auto-generated)
    - Auto-generates release notes from commit history
 
 **Permissions Required**: `contents: write` for creating releases
@@ -239,9 +240,11 @@ git push origin v1.0.0
 ```
 
 The workflow will automatically:
-1. Build kernel from source
+1. Build kernel (mode determined by `KERNEL_MODE` environment variable, defaults to `prebuilt`)
 2. Create images for all distributions
 3. Create a GitHub release with all artifacts
+
+Note: To build kernel from source on tag pushes, set `KERNEL_MODE=build` in the workflow environment variables.
 
 **Method 2: Manual Dispatch**
 
@@ -326,8 +329,8 @@ This patch includes:
 
 - **Runner Type**: ubuntu-24.04-arm (ARM64 native)
 - **Disk Space**: Minimum 20GB free (40GB+ recommended for kernel builds)
-- **Memory**: 7GB (standard for GitHub hosted runners)
-- **CPU**: 2 cores (standard for GitHub hosted runners)
+- **Memory**: ~7GB (typical for GitHub hosted runners, verify for ARM64 runners)
+- **CPU**: 2+ cores (typical for GitHub hosted runners, ARM64 runners may vary)
 
 ### Build Times:
 
