@@ -20,8 +20,10 @@ env:
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
-  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager openssh-server'
+  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager network-manager-* wpasupplicant openssh-server'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager openssh-server'
+  UCONSOLE_CORE: "cm4" # core model: cm4, cm5
+    
 
 jobs:
   prepare-kernel:
@@ -65,7 +67,13 @@ jobs:
 
           export PATCH_ABSOLUTE_PATH="$(pwd)/$safe"
           
-          export KERNEL=kernel8
+          ## If env.UCONSOLE_CORE is 'cm4'
+          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
+            export KERNEL=kernel8            
+          else
+            export KERNEL=kernel_2712            
+          fi
+          
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export LOCALVERSION=-raspi
@@ -74,8 +82,13 @@ jobs:
             echo "Patch application failed, exiting"
             exit 1
           fi
+
+          if [ "${{ env.UCONSOLE_CORE }}" != "cm4" ]; then
+            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
+          else
+            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig
+          fi
           
-          make bcm2711_defconfig
           make deb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
 
           mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs/
@@ -246,11 +259,11 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y uconsole-kernel-cm4-rpi clockworkpi-*"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            # Install tasks 'ubuntu-server' and 'ubuntu-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
+            # Install tasks 'ubuntu-server' and 'ubuntu-desktop' with install recommends
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install --install-recommends -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install --install-recommends -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
@@ -443,7 +456,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
+          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -456,7 +469,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
+          tag_name: Images for uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
