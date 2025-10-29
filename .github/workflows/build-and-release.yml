@@ -341,12 +341,15 @@ jobs:
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
           #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
 
-          # Create user 'clockworkpi', identified by 'clockworkpi', create home directory and add to sudoers
+          # Create user 'clockworkpi', identified by 'clockworkpi', create skeleton home directory and add to sudoers
           sudo chroot $MOUNT_POINT /bin/bash -c "adduser --gecos 'Clockwork Pi,,,,' --disabled-password clockworkpi || true"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'clockworkpi\nclockworkpi' | passwd clockworkpi"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'clockworkpi:clockworkpi' | chpasswd"
           sudo chroot $MOUNT_POINT /bin/bash -c "usermod -aG sudo clockworkpi"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'clockworkpi ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
-                    
+
+          sudo chroot $MOUNT_POINT /bin/bash -c "mkdir -p /home/clockworkpi/Desktop"
+          sudo chroot $MOUNT_POINT /bin/bash -c "chown -R clockworkpi:clockworkpi /home/clockworkpi/Desktop"
+
           # Set hostname
           sudo chroot $MOUNT_POINT /bin/bash -c "hostnamectl set-hostname uConsole"
                     
