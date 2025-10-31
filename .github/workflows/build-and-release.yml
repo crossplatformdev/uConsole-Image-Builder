@@ -273,6 +273,17 @@ jobs:
               # Root partition for Ubuntu Raspberry Pi images
               ROOT_PARTITION="${RESIZE_LOOP}p2"
               
+              # Verify partition device exists after losetup
+              if [ ! -e "$ROOT_PARTITION" ]; then
+                echo "ERROR: Partition device $ROOT_PARTITION not found after losetup"
+                echo "Available devices:"
+                ls -l ${RESIZE_LOOP}* || true
+                sudo losetup -d "$RESIZE_LOOP"
+                exit 1
+              fi
+              
+              echo "Found partition device: $ROOT_PARTITION"
+              
               # Resize the root partition (partition 2)
               if ! echo ", +" | sudo sfdisk --no-reread -N 2 "$RESIZE_LOOP"; then
                 echo "ERROR: Failed to resize partition"
@@ -282,6 +293,18 @@ jobs:
               
               if ! sudo partprobe "$RESIZE_LOOP"; then
                 echo "ERROR: Failed to update partition table"
+                sudo losetup -d "$RESIZE_LOOP"
+                exit 1
+              fi
+              
+              # Wait for partition device to be ready after partprobe
+              sleep 2
+              
+              # Verify partition device still exists after resize
+              if [ ! -e "$ROOT_PARTITION" ]; then
+                echo "ERROR: Partition device $ROOT_PARTITION disappeared after resize"
+                echo "Available devices:"
+                ls -l ${RESIZE_LOOP}* || true
                 sudo losetup -d "$RESIZE_LOOP"
                 exit 1
               fi
