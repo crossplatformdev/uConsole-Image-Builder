@@ -141,7 +141,7 @@ jobs:
             /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch.diff
 
   build-image:
-    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image
+    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
     strategy:
@@ -225,7 +225,7 @@ jobs:
         run: |
           # If matrix.distro is bookworm, use deb12-arm64-min.img
           # If matrix.distro is trixie, use deb13-arm64-min.img
-          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-24.04-arm.5-preinstalled-desktop-arm64+raspi.img.xz
+          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
           if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
             # If matrix.distro is bookworm, 
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
@@ -236,7 +236,7 @@ jobs:
           fi
           
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-24.04-arm.5-preinstalled-server-arm64+raspi.img.xz
+            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-server-arm64+raspi.img.xz
             wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
             unxz ubuntu-jammy-raspi.img.xz
             IMAGE_PATH=./ubuntu-jammy-raspi.img
