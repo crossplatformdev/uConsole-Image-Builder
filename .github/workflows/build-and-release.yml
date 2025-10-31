@@ -65,6 +65,7 @@ jobs:
           cd genimage
           make
           sudo make install
+          
       - name: Checkout repository
         if: env.KERNEL_MODE == 'build'
         uses: actions/checkout@v4
