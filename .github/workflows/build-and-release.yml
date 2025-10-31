@@ -67,7 +67,7 @@ jobs:
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
         run: |
-          sudo dpkg --add-architecture arm64
+          #sudo dpkg --add-architecture arm64
           # enable debian sources
           cat /etc/apt/sources.list.d/ubuntu.sources
           sudo sed -i 's/deb/deb deb-src/g' /etc/apt/sources.list.d/ubuntu.sources
