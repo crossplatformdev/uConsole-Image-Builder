@@ -54,6 +54,9 @@ jobs:
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
+      - name: Set DNS to Google (optional)
+        run: |
+          echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null    
       - name: Checkout repository
         if: env.KERNEL_MODE == 'build'
         uses: actions/checkout@v4
