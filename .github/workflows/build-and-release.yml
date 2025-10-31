@@ -200,6 +200,8 @@ jobs:
           ./rpi-image-gen layer --list
           sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
           sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
+          # Increase root partition size to 800% for 8GB root filesystem
+          sed -i 's/root_part_size: 300%/root_part_size: 800%/g' ./config/${{ matrix.distro }}-minbase.yaml
 
 
       - name: Download kernel artifacts
