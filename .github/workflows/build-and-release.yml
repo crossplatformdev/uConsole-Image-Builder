@@ -9,7 +9,7 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: prebuilt
+        default: build
         type: choice
         options:
           - build
@@ -40,7 +40,7 @@ on:
           - cm5          
 env:
   UCONSOLE_CORE: ${{ github.event.inputs.uconsole_core || 'cm4' }} # core model: cm4, cm5
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
@@ -50,7 +50,7 @@ env:
 
 jobs:
   prepare-kernel:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -152,7 +152,7 @@ jobs:
   build-image:
     name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image
     needs: prepare-kernel
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
@@ -234,7 +234,7 @@ jobs:
         run: |
           # If matrix.distro is bookworm, use deb12-arm64-min.img
           # If matrix.distro is trixie, use deb13-arm64-min.img
-          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-latest.5-preinstalled-desktop-arm64+raspi.img.xz
           if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
             # If matrix.distro is bookworm, 
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
@@ -245,7 +245,7 @@ jobs:
           fi
           
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-server-arm64+raspi.img.xz
+            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-latest.5-preinstalled-server-arm64+raspi.img.xz
             wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
             unxz ubuntu-jammy-raspi.img.xz
             IMAGE_PATH=./ubuntu-jammy-raspi.img
@@ -510,7 +510,7 @@ jobs:
 
   release:
     needs: [prepare-kernel, build-image]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
