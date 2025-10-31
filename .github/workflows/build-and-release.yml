@@ -459,23 +459,20 @@ jobs:
           #dtparam=drm_fb0_rp1_dsi1
           #initial_turbo=0
           dtparam=spi=on          
+          
           EOF
 
           ## If env.uconsole_core is 'cm4', configure cmdline.txt
           if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
-            sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
-            dtoverlay=clockworkpi-uconsole
-            dtoverlay=vc4-kms-v3d-pi4,cma-384
-            dtparam=pciex1=off
-            enable_uart=1
-            EOF
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
           else
-            sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
-            dtoverlay=clockworkpi-uconsole-cm5
-            dtoverlay=vc4-kms-v3d-pi5,cma-384
-            dtparam=pciex1=off
-            enable_uart=1
-            EOF
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
           fi
 
           # Generate vmlinuz (raspi kernel) initramfs
