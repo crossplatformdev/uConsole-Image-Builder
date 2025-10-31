@@ -264,6 +264,9 @@ jobs:
                 exit 1
               fi
               
+              # Root partition for Ubuntu Raspberry Pi images
+              ROOT_PARTITION="${RESIZE_LOOP}p2"
+              
               # Resize the root partition (partition 2)
               if ! echo ", +" | sudo sfdisk --no-reread -N 2 "$RESIZE_LOOP"; then
                 echo "ERROR: Failed to resize partition"
@@ -277,17 +280,17 @@ jobs:
                 exit 1
               fi
               
-              # Resize the filesystem - e2fsck may report errors on a clean filesystem
-              # Exit code 0 means no errors, 1 means filesystem was corrected (acceptable)
+              # Resize the filesystem - e2fsck exit codes:
+              # 0 = no errors, 1 = errors corrected (acceptable), >1 = serious errors
               E2FSCK_EXIT=0
-              sudo e2fsck -f -y ${RESIZE_LOOP}p2 || E2FSCK_EXIT=$?
+              sudo e2fsck -f -y "$ROOT_PARTITION" || E2FSCK_EXIT=$?
               if [ "$E2FSCK_EXIT" -gt 1 ]; then
                 echo "ERROR: Filesystem check failed with exit code $E2FSCK_EXIT"
                 sudo losetup -d "$RESIZE_LOOP"
                 exit 1
               fi
               
-              if ! sudo resize2fs ${RESIZE_LOOP}p2; then
+              if ! sudo resize2fs "$ROOT_PARTITION"; then
                 echo "ERROR: Failed to resize filesystem"
                 sudo losetup -d "$RESIZE_LOOP"
                 exit 1
