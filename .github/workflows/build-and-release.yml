@@ -384,7 +384,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.UBUNTU_DESKTOP_TASK }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.UBUNTU_DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.DEBIAN_DESKTOP_TASK }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
