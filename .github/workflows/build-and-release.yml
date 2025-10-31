@@ -275,32 +275,32 @@ jobs:
           
           # Add ClockworkPi repository
           ## If matrix distro is jammy, use ubuntu jammy repo
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y wget gnupg initramfs-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools"
 
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
           sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt update"
-          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y uconsole-kernel-cm4-rpi clockworkpi-*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y --no-install-recommends uconsole-kernel-cm4-rpi clockworkpi-*"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            # Install tasks 'ubuntu-server' and 'ubuntu-desktop' with install recommends
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.UBUNTU_TASKS }}"
+            # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y aptitude tasksel ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y uconsole-kernel-cm4-rpi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends uconsole-kernel-cm4-rpi"
           else
             sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
-            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y"
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y --no-install-recommends"
           fi
 
           sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y --no-install-recommends wireguard-tools"
 
           # Set LOCALE to en_US.UTF-8
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y locales tzdata"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends locales tzdata"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
           
           # Configure uConsole-specific config.txt
@@ -370,11 +370,6 @@ jobs:
 
           # Generate vmlinuz (raspi kernel) initramfs
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
-          
-          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get auto-remove" 
-          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
-          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update"
-          #sudo chroot $MOUNT_POINT /bin/bash -c "apt-get upgrade -y"
 
           # Create user 'clockworkpi', identified by 'clockworkpi', create skeleton home directory and add to sudoers
           sudo chroot $MOUNT_POINT /bin/bash -c "adduser --gecos 'Clockwork Pi,,,,' --disabled-password clockworkpi || true"
@@ -390,7 +385,7 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/ubuntu|debian|raspbian|raspberrypi/uconsole/g' /etc/hosts"
 
           # Enable SSH by default
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y openssh-server"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends openssh-server"
           sudo chroot $MOUNT_POINT /bin/bash -c "systemctl enable ssh"
           sudo chroot $MOUNT_POINT /bin/bash -c "touch /boot/firmware/ssh"
           
@@ -399,10 +394,26 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive tzdata"
 
           # Set keyboard layout to us
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y keyboard-configuration"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends keyboard-configuration"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBLAYOUT=\"us\"' >> /etc/default/keyboard"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBMODEL=\"pc105\"' >> /etc/default/keyboard"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive keyboard-configuration"
+          
+          # Cleanup to reduce image size
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get autoremove -y"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
+          
+          # Remove unnecessary files to save space
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
+          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type f ! -name copyright -delete"
+          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type d -empty -delete"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/lintian/* /usr/share/linda/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} +"
           
           # Restore original resolv.conf
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
@@ -417,8 +428,8 @@ jobs:
           sudo umount $MOUNT_POINT
           sudo losetup -d $LOOP_DEVICE
           
-          # Compress image
-          xz --threads=1 --memory=1000MiB --check=crc32 --compress --keep "$IMAGE_PATH"
+          # Compress image with maximum compression settings
+          xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
       
       - name: Upload image artifact
