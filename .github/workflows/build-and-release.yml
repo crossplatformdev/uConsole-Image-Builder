@@ -456,14 +456,27 @@ jobs:
           dtparam=ant2
 
           # Enable DRM VC4 V3D driver (Clockworkpi uConsole CM4)
-          dtoverlay=clockworkpi-uconsole
-          dtoverlay=vc4-kms-v3d-pi4,cma-384
-          dtparam=pciex1=off
-          dtparam=spi=on
-          enable_uart=1
           #dtparam=drm_fb0_rp1_dsi1
           #initial_turbo=0
+          dtparam=spi=on          
           EOF
+
+          ## If env.uconsole_core is 'cm4', configure cmdline.txt
+          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
+            sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
+            dtoverlay=clockworkpi-uconsole
+            dtoverlay=vc4-kms-v3d-pi4,cma-384
+            dtparam=pciex1=off
+            enable_uart=1
+            EOF
+          else
+            sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
+            dtoverlay=clockworkpi-uconsole-cm5
+            dtoverlay=vc4-kms-v3d-pi5,cma-384
+            dtparam=pciex1=off
+            enable_uart=1
+            EOF
+          fi
 
           # Generate vmlinuz (raspi kernel) initramfs
           sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
