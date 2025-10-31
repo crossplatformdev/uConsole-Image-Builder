@@ -238,7 +238,10 @@ jobs:
             # Resize image to 8GB for GNOME desktop
             echo "Resizing Ubuntu image to 8GB..."
             # Get current image size
-            CURRENT_SIZE=$(stat -c%s "$IMAGE_PATH")
+            CURRENT_SIZE=$(stat -c%s "$IMAGE_PATH" 2>/dev/null) || {
+              echo "ERROR: Failed to get image size"
+              exit 1
+            }
             TARGET_SIZE=$((8 * 1024 * 1024 * 1024))  # 8GB in bytes
             
             # Only resize if current size is less than target
@@ -267,12 +270,18 @@ jobs:
                 sudo losetup -d "$RESIZE_LOOP"
                 exit 1
               fi
-              sudo partprobe "$RESIZE_LOOP"
+              
+              if ! sudo partprobe "$RESIZE_LOOP"; then
+                echo "ERROR: Failed to update partition table"
+                sudo losetup -d "$RESIZE_LOOP"
+                exit 1
+              fi
               
               # Resize the filesystem - e2fsck may report errors on a clean filesystem
-              # Exit code 1 means filesystem was corrected, which is acceptable
+              # Exit code 0 means no errors, 1 means filesystem was corrected (acceptable)
+              E2FSCK_EXIT=0
               sudo e2fsck -f -y ${RESIZE_LOOP}p2 || E2FSCK_EXIT=$?
-              if [ "${E2FSCK_EXIT:-0}" -gt 1 ]; then
+              if [ "$E2FSCK_EXIT" -gt 1 ]; then
                 echo "ERROR: Filesystem check failed with exit code $E2FSCK_EXIT"
                 sudo losetup -d "$RESIZE_LOOP"
                 exit 1
