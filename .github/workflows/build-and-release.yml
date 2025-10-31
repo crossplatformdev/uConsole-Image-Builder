@@ -57,6 +57,7 @@ jobs:
       - name: Set DNS to Google (optional)
         run: |
           echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+          
       - name: Build and install genimage from source
         run: |
           sudo apt-get update
