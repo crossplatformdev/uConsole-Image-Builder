@@ -45,8 +45,10 @@ env:
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
   # apt packages that will be installed on the images
-  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk ubuntu-gnome-desktop'
-  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk task-gnome-desktop'
+  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
+  UBUNTU_DESKTOP_TASK: 'ubuntu-gnome-desktop'  # You can replace this task to install other desktop. i.e ubuntu-cinnammom-desktop
+  DEBIAN_DESKTOP_TASK: 'task-gnome-desktop'
 
 jobs:
   prepare-kernel:
@@ -379,10 +381,10 @@ jobs:
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.UBUNTU_DESKTOP_TASK }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.UBUNTU_DESKTOP_TASK }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
