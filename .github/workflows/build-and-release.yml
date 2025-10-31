@@ -409,11 +409,11 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/tmp/*"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
-          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type f ! -name copyright -delete"
-          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type d -empty -delete"
-          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*"
-          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/lintian/* /usr/share/linda/*"
-          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} +"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type f ! -name copyright -delete"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type d -empty -delete"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/lintian/* /usr/share/linda/*"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} +"
           
           # Restore original resolv.conf
           sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
