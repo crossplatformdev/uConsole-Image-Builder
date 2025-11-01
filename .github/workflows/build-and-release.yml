@@ -537,13 +537,13 @@ jobs:
           
           # Compress image with maximum compression settings
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-cm4.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-cm4.img.xz
+          name: uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
 
   release:
     needs: [prepare-kernel, build-image]
@@ -570,12 +570,14 @@ jobs:
           path: /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Download image artifacts
+        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
         uses: actions/download-artifact@v4
         with:
           name: uconsole-trixie-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Download image artifacts
+        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
         uses: actions/download-artifact@v4
         with:
           name: uconsole-bookworm-cm4.img.xz
@@ -583,9 +585,31 @@ jobs:
 
       - name: Download image artifacts
         uses: actions/download-artifact@v4
+        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
         with:
           name: uconsole-jammy-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
+
+      - name: Download image artifacts
+        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+        uses: actions/download-artifact@v4
+        with:
+          name: uconsole-trixie-cm5.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/release/
+
+      - name: Download image artifacts
+        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+        uses: actions/download-artifact@v4
+        with:
+          name: uconsole-bookworm-cm5.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/release/
+
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+        with:
+          name: uconsole-jammy-cm5.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/release/          
 
       - name: Create release tag
         id: tag
