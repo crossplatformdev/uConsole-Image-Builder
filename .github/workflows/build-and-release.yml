@@ -584,8 +584,8 @@ jobs:
           path: /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Download image artifacts
-        uses: actions/download-artifact@v4
         if: ${{ env.UCONSOLE_CORE }} == 'cm4'
+        uses: actions/download-artifact@v4
         with:
           name: uconsole-jammy-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
@@ -605,8 +605,8 @@ jobs:
           path: /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Download image artifacts
-        uses: actions/download-artifact@v4
         if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+        uses: actions/download-artifact@v4
         with:
           name: uconsole-jammy-cm5.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/          
