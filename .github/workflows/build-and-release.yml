@@ -211,12 +211,7 @@ jobs:
               fi
               ;;
             cinnamon)
-              if [ "${{ matrix.distro }}" == "jammy" ]; then
-                # Ubuntu doesn't have an official Cinnamon desktop, use task
-                echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
-              else
-                echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
-              fi
+              echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
               ;;
             mate)
               if [ "${{ matrix.distro }}" == "jammy" ]; then
@@ -234,7 +229,7 @@ jobs:
               ;;
             lxde)
               if [ "${{ matrix.distro }}" == "jammy" ]; then
-                echo "DESKTOP_TASK=lubuntu-desktop" >> $GITHUB_ENV
+                echo "DESKTOP_TASK=lxde" >> $GITHUB_ENV
               else
                 echo "DESKTOP_TASK=task-lxde-desktop" >> $GITHUB_ENV
               fi
