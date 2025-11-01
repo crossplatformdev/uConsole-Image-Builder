@@ -44,6 +44,8 @@ env:
 jobs:
   prepare-kernel:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     strategy:
       matrix:
         uconsole_core: [cm4, cm5]
@@ -140,6 +142,8 @@ jobs:
     name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
