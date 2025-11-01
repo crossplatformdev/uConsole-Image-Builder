@@ -30,16 +30,7 @@ on:
         options:
           - rpi-6.12.y
           - riscv          
-      uconsole_core:
-        description: 'uXonsole core'
-        required: true
-        default: cm4
-        type: choice
-        options:
-          - cm4
-          - cm5          
 env:
-  UCONSOLE_CORE: ${{ github.event.inputs.uconsole_core || 'cm4' }} # core model: cm4, cm5
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
@@ -53,6 +44,11 @@ env:
 jobs:
   prepare-kernel:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        uconsole_core: [cm4, cm5]
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -97,8 +93,8 @@ jobs:
 
           export PATCH_ABSOLUTE_PATH="$(pwd)/$safe"
           
-          ## If env.UCONSOLE_CORE is 'cm4'
-          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
+          ## If matrix.uconsole_core is 'cm4'
+          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
             export KERNEL=kernel8            
           else
             export KERNEL=kernel_2712            
@@ -113,7 +109,7 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
+          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
             make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
           else
             make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig
@@ -121,34 +117,37 @@ jobs:
           
           make deb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
 
-          mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs/
+          mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs-${{ matrix.uconsole_core }}/
           
-          mv ../*.deb /home/runner/work/uConsole-Image-Builder/kernel-debs/
-          mv "$safe" /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch.diff
+          mv ../*.deb /home/runner/work/uConsole-Image-Builder/kernel-debs-${{ matrix.uconsole_core }}/
+          mv "$safe" /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch-${{ matrix.uconsole_core }}.diff
 
       - name: Upload kernel artifacts (1)
         if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-debs
+          name: kernel-debs-${{ matrix.uconsole_core }}
           path: |
-            /home/runner/work/uConsole-Image-Builder/kernel-debs/*.deb
+            /home/runner/work/uConsole-Image-Builder/kernel-debs-${{ matrix.uconsole_core }}/*.deb
 
       - name: Upload kernel artifacts (2) 
         if: env.KERNEL_MODE == 'build'
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-patch-uconsole
+          name: kernel-patch-uconsole-${{ matrix.uconsole_core }}
           path: |
-            /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch.diff
+            /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch-${{ matrix.uconsole_core }}.diff
 
   build-image:
-    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}
+    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
+        uconsole_core: [cm4, cm5]
     outputs:
       image: ${{ matrix.distro }}
       kernel_version: ${{ env.KERNEL_VERSION }}
@@ -214,7 +213,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
-          name: kernel-debs
+          name: kernel-debs-${{ matrix.uconsole_core }}
           path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
 
       - name: Build base image
@@ -463,7 +462,7 @@ jobs:
           EOF
 
           ## If env.uconsole_core is 'cm4', configure cmdline.txt
-          if [ "${{ env.UCONSOLE_CORE }}" == "cm4" ]; then
+          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
@@ -537,13 +536,13 @@ jobs:
           
           # Compress image with maximum compression settings
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ env.UCONSOLE_CORE }}.img.xz
+          name: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
 
   release:
     needs: [prepare-kernel, build-image]
@@ -555,57 +554,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download kernel artifacts
+      - name: Download kernel artifacts (CM4)
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
-          name: kernel-debs
+          name: kernel-debs-cm4
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download patch artifacts
+      - name: Download kernel artifacts (CM5)
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
-          name: kernel-patch-uconsole
+          name: kernel-debs-cm5
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
+      - name: Download patch artifacts (CM4)
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+        uses: actions/download-artifact@v4
+        with:
+          name: kernel-patch-uconsole-cm4
+          path: /home/runner/work/uConsole-Image-Builder/release/
+
+      - name: Download patch artifacts (CM5)
+        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+        uses: actions/download-artifact@v4
+        with:
+          name: kernel-patch-uconsole-cm5
+          path: /home/runner/work/uConsole-Image-Builder/release/
+
+      - name: Download image artifacts (trixie-cm4)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-trixie-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
+      - name: Download image artifacts (bookworm-cm4)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-bookworm-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm4'
+      - name: Download image artifacts (jammy-cm4)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-jammy-cm4.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+      - name: Download image artifacts (trixie-cm5)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-trixie-cm5.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+      - name: Download image artifacts (bookworm-cm5)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-bookworm-cm5.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts
-        if: ${{ env.UCONSOLE_CORE }} == 'cm5'
+      - name: Download image artifacts (jammy-cm5)
         uses: actions/download-artifact@v4
         with:
           name: uconsole-jammy-cm5.img.xz
@@ -624,7 +631,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -637,7 +644,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.UCONSOLE_CORE }}-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
