@@ -249,7 +249,8 @@ jobs:
               fi
               ;;
             *)
-              echo "Unknown desktop: ${{ matrix.desktop }}"
+              echo "ERROR: Unknown desktop environment: ${{ matrix.desktop }}"
+              echo "Supported desktop environments: gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback"
               exit 1
               ;;
           esac
@@ -648,7 +649,7 @@ jobs:
       - name: Download image artifacts (all variants)
         uses: actions/download-artifact@v4
         with:
-          pattern: uconsole-*.img.xz
+          pattern: uconsole-*-*-*.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
           merge-multiple: true          
 
