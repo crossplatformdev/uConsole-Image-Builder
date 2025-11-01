@@ -179,8 +179,8 @@ env:
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2'
-  UBUNTU_TASKS: 'ubuntu-server task-laptop network-manager network-manager-* wpasupplicant openssh-server'
-  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop network-manager openssh-server'
+  UBUNTU_TASKS: 'ubuntu-standard ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
+  DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   UCONSOLE_CORE: "cm4"
 ```
 
