@@ -38,8 +38,6 @@ env:
   # apt packages that will be installed on the images
   UBUNTU_TASKS: 'ubuntu-standard ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
-  UBUNTU_DESKTOP_TASK: 'ubuntu-gnome-desktop'  # You can replace this task to install other desktop. i.e ubuntu-cinnammom-desktop
-  DEBIAN_DESKTOP_TASK: 'task-gnome-desktop'
 
 jobs:
   prepare-kernel:
@@ -139,7 +137,7 @@ jobs:
             /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch-${{ matrix.uconsole_core }}.diff
 
   build-image:
-    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}
+    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -148,6 +146,7 @@ jobs:
       matrix:
         distro: [bookworm, trixie, jammy]
         uconsole_core: [cm4, cm5]
+        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
     outputs:
       image: ${{ matrix.distro }}
       kernel_version: ${{ env.KERNEL_VERSION }}
@@ -191,6 +190,71 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Set desktop task packages
+        id: desktop_task
+        run: |
+          # Map desktop environment to appropriate task packages
+          case "${{ matrix.desktop }}" in
+            gnome)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=ubuntu-gnome-desktop" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-gnome-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            kde)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=kubuntu-desktop" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-kde-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            cinnamon)
+              echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
+              ;;
+            mate)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=ubuntu-mate-desktop" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-mate-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            xfce)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=xubuntu-desktop" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-xfce-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            lxde)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=lxde" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-lxde-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            lxqt)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=lubuntu-desktop" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-lxqt-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            gnome-flashback)
+              if [ "${{ matrix.distro }}" == "jammy" ]; then
+                echo "DESKTOP_TASK=ubuntu-gnome-desktop gnome-session-flashback" >> $GITHUB_ENV
+              else
+                echo "DESKTOP_TASK=task-gnome-flashback-desktop" >> $GITHUB_ENV
+              fi
+              ;;
+            *)
+              echo "ERROR: Unknown desktop environment: ${{ matrix.desktop }}"
+              echo "Supported desktop environments: gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback"
+              exit 1
+              ;;
+          esac
+          echo "Desktop task set to: $DESKTOP_TASK"
 
       - name: Setup rpi-image-gen
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
@@ -380,10 +444,10 @@ jobs:
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.UBUNTU_DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.DESKTOP_TASK }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.DEBIAN_DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.DESKTOP_TASK }}"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
@@ -536,13 +600,13 @@ jobs:
           
           # Compress image with maximum compression settings
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}.img.xz
+          name: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
 
   release:
     needs: [prepare-kernel, build-image]
@@ -582,41 +646,12 @@ jobs:
           name: kernel-patch-uconsole-cm5
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts (trixie-cm4)
+      - name: Download image artifacts (all variants)
         uses: actions/download-artifact@v4
         with:
-          name: uconsole-trixie-cm4.img.xz
+          pattern: uconsole-*-*-*.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts (bookworm-cm4)
-        uses: actions/download-artifact@v4
-        with:
-          name: uconsole-bookworm-cm4.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts (jammy-cm4)
-        uses: actions/download-artifact@v4
-        with:
-          name: uconsole-jammy-cm4.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts (trixie-cm5)
-        uses: actions/download-artifact@v4
-        with:
-          name: uconsole-trixie-cm5.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts (bookworm-cm5)
-        uses: actions/download-artifact@v4
-        with:
-          name: uconsole-bookworm-cm5.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts (jammy-cm5)
-        uses: actions/download-artifact@v4
-        with:
-          name: uconsole-jammy-cm5.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/release/          
+          merge-multiple: true          
 
       - name: Create release tag
         id: tag

@@ -4,7 +4,22 @@ This document explains the automated Continuous Integration and Continuous Deplo
 
 ## Overview
 
-The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole CM4 device. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
+The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole CM4 and CM5 devices. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
+
+## Desktop Environments Supported
+
+The workflow builds images with the following desktop environments:
+
+- **GNOME** - Full-featured desktop with modern interface
+- **KDE Plasma** - Highly customizable desktop environment
+- **Cinnamon** - Traditional desktop with modern features
+- **MATE** - Lightweight traditional desktop
+- **Xfce** - Fast and lightweight desktop
+- **LXDE** - Extremely lightweight desktop for resource-constrained systems
+- **LXQt** - Lightweight Qt-based desktop
+- **GNOME Flashback** - Traditional GNOME 2-style desktop
+
+Each desktop environment is available for all supported distributions (Debian Bookworm, Debian Trixie, Ubuntu Jammy) and hardware variants (CM4, CM5).
 
 ## Workflow File
 
@@ -47,9 +62,11 @@ The workflow consists of three main jobs that run sequentially:
 **Dependencies**: Requires `prepare-kernel` job to complete (the job passes through quickly when `kernel_mode=prebuilt`)
 
 **Matrix Strategy**: Builds images in parallel for:
-- Debian 12 (bookworm)
-- Debian 13 (trixie)
-- Ubuntu 22.04 (jammy)
+- Distributions: Debian 12 (bookworm), Debian 13 (trixie), Ubuntu 22.04 (jammy)
+- Hardware: CM4 and CM5
+- Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback
+
+This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop environments).
 
 **Key Steps**:
 1. **Environment Setup**:
@@ -72,7 +89,9 @@ The workflow consists of three main jobs that run sequentially:
    - Removes existing kernel packages
    - Adds ClockworkPi APT repository
    - Installs kernel (prebuilt or custom-built .debs)
-   - Installs distribution-specific task packages
+   - Installs distribution-specific desktop environment:
+     - For Ubuntu (jammy): ubuntu-gnome-desktop, kubuntu-desktop, ubuntu-mate-desktop, xubuntu-desktop, lubuntu-desktop, etc.
+     - For Debian (bookworm/trixie): task-gnome-desktop, task-kde-desktop, task-mate-desktop, task-xfce-desktop, task-lxde-desktop, task-lxqt-desktop, task-cinnamon-desktop, task-gnome-flashback-desktop
    - Configures system:
      - Creates `clockworkpi` user (password: `clockworkpi`)
      - Sets hostname to `uconsole`
@@ -85,7 +104,8 @@ The workflow consists of three main jobs that run sequentially:
 
 5. **Image Compression**:
    - Compresses image with xz (high compression)
-   - Names output: `uconsole-{distro}-cm4.img.xz`
+   - Names output: `uconsole-{distro}-{core}-{desktop}.img.xz`
+   - Examples: `uconsole-bookworm-cm4-gnome.img.xz`, `uconsole-jammy-cm5-kde.img.xz`
 
 6. **Artifact Upload**:
    - Uploads compressed image as GitHub Actions artifact
@@ -94,6 +114,7 @@ The workflow consists of three main jobs that run sequentially:
 - `KERNEL_MODE`: Controls kernel installation method (`prebuilt` or `build`)
 - `UBUNTU_TASKS`: Task packages to install for Ubuntu distributions
 - `DEBIAN_TASKS`: Task packages to install for Debian distributions
+- `DESKTOP_TASK`: Dynamically set based on the desktop matrix value and distribution
 
 ### 3. `release` Job
 
@@ -274,10 +295,12 @@ Artifacts will be available for download from the Actions tab for 30 days.
 1. Navigate to: Actions → Select workflow run
 2. Scroll to "Artifacts" section
 3. Download desired artifacts:
-   - `kernel-debs` (kernel packages)
-   - `uconsole-trixie-cm4.img.xz` (Debian 13 image)
-   - `uconsole-bookworm-cm4.img.xz` (Debian 12 image)
-   - `uconsole-jammy-cm4.img.xz` (Ubuntu 22.04 image)
+   - `kernel-debs-cm4` / `kernel-debs-cm5` (kernel packages, if built from source)
+   - Image artifacts with pattern: `uconsole-{distro}-{core}-{desktop}.img.xz`
+   - Examples:
+     - `uconsole-bookworm-cm4-gnome.img.xz` (Debian 12 with GNOME on CM4)
+     - `uconsole-jammy-cm5-kde.img.xz` (Ubuntu 22.04 with KDE Plasma on CM5)
+     - `uconsole-trixie-cm4-xfce.img.xz` (Debian 13 with Xfce on CM4)
 
 ### From Releases:
 
@@ -366,13 +389,17 @@ To modify the workflow behavior:
    strategy:
      matrix:
        distro: [bookworm, trixie, jammy, focal]
+       uconsole_core: [cm4, cm5]
+       desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
    ```
 
-2. **Change kernel source**: Modify the patch URL in `prepare-kernel` job
+2. **Add or remove desktop environments**: Modify the desktop array in the matrix. Remember to update the desktop task mapping step accordingly.
 
-3. **Add custom packages**: Modify `UBUNTU_TASKS` or `DEBIAN_TASKS` environment variables
+3. **Change kernel source**: Modify the patch URL in `prepare-kernel` job
 
-4. **Change compression**: Modify the `xz` command in the image compression step
+4. **Add custom packages**: Modify `UBUNTU_TASKS` or `DEBIAN_TASKS` environment variables
+
+5. **Change compression**: Modify the `xz` command in the image compression step
 
 ## Related Documentation
 
