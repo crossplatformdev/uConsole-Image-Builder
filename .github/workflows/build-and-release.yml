@@ -660,16 +660,18 @@ jobs:
         id: tag
         run: |
           TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
+          FULL_TAG_NAME="uconsole-${{ env.KERNEL_VERSION }}-${TAG_NAME}-${{ matrix.distro }}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          git tag $TAG_NAME-${{ matrix.distro }} || true
-          git push origin $TAG_NAME-${{ matrix.distro }} || true
+          echo "full_tag_name=$FULL_TAG_NAME" >> $GITHUB_OUTPUT
+          git tag "$FULL_TAG_NAME"
+          git push origin "$FULL_TAG_NAME"
           ls -laR /home/runner/work/uConsole-Image-Builder/release/
 
       - name: Create GitHub Release for ${{ matrix.distro }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}-${{ matrix.distro }}
+          tag_name: ${{ steps.tag.outputs.full_tag_name }}
           name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
@@ -683,7 +685,7 @@ jobs:
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}-${{ matrix.distro }}
+          tag_name: ${{ steps.tag.outputs.full_tag_name }}
           name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
