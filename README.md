@@ -118,7 +118,7 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
 
 ### 3. `release` Job
 
-**Purpose**: Create GitHub releases with build artifacts, organized per distribution
+**Purpose**: Create GitHub releases with build artifacts, organized per distribution and core type
 
 **Runner**: `ubuntu-24.04-arm` (ARM64 native runner)
 
@@ -128,30 +128,30 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
 - Runs only on `main` branch pushes
 - Runs on any tag push (tags starting with `v*` or `release-*`)
 
-**Matrix Strategy**: Creates separate releases for each distribution (bookworm, trixie, jammy) to reduce disk space requirements
+**Matrix Strategy**: Creates separate releases for each distribution (bookworm, trixie, jammy) and core type (CM4, CM5) to reduce disk space requirements
 
 **Key Steps**:
-1. Downloads artifacts for specific distro:
-   - Kernel .deb packages (if built from source) - shared across all distro releases
-   - Kernel patch file (if built from source) - shared across all distro releases
-   - Distribution-specific images (~16 images: 8 desktops × 2 cores per distro)
+1. Downloads artifacts for specific distro and core:
+   - Kernel .deb packages for the specific core (if built from source)
+   - Kernel patch file for the specific core (if built from source)
+   - Distribution and core-specific images (~8 images: 8 desktops × 1 core per release)
 
 2. Creates release tag:
-   - Auto-generates tag name: `release-YYYYMMDD-HHMMSS-{distro}`
+   - Auto-generates tag name: `release-YYYYMMDD-HHMMSS-{distro}-{core}`
    - Pushes tag to repository
-   - Examples: `release-20241206-123456-bookworm`, `release-20241206-123456-trixie`
+   - Examples: `release-20241206-123456-bookworm-cm4`, `release-20241206-123456-trixie-cm5`
 
 3. Creates GitHub Release:
-   - **With kernel build**: Attaches distro-specific images, kernel packages, and patch
-   - **Without kernel build**: Attaches only distro-specific images
-   - Release title format: `uConsole Images - {distro} - {KERNEL_VERSION}`
-   - Examples: `uConsole Images - bookworm - rpi-6.12.y`, `uConsole Images - jammy - rpi-6.12.y`
-   - Actual tag name: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}`
+   - **With kernel build**: Attaches distro and core-specific images, kernel packages, and patch
+   - **Without kernel build**: Attaches only distro and core-specific images
+   - Release title format: `uConsole Images - {distro} - {core} - {KERNEL_VERSION}`
+   - Examples: `uConsole Images - bookworm - cm4 - rpi-6.12.y`, `uConsole Images - jammy - cm5 - rpi-6.12.y`
+   - Actual tag name: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}-{core}`
    - Auto-generates release notes from commit history
 
 **Permissions Required**: `contents: write` for creating releases
 
-**Disk Space Optimization**: By creating separate releases per distro, each release job only downloads ~5GB of images instead of ~14GB for all images combined. This prevents "out of disk space" errors on CI/CD runners with limited storage (14GB available).
+**Disk Space Optimization**: By creating separate releases per distro and core type, each individual release job only downloads ~2.5GB of images (8 images) instead of ~5GB (16 images). This prevents "out of disk space" errors on CI/CD runners with limited storage (~14GB available per job). While 6 release jobs run (potentially in parallel), each job operates independently with its own storage allocation.
 
 ## Workflow Triggers
 
@@ -247,20 +247,21 @@ The workflow produces several artifacts:
 
 ### In Releases (Permanent):
 
-Each distribution gets its own separate release to optimize disk space usage:
+Each distribution and core type combination gets its own separate release to optimize disk space usage:
 
-**Per-Distro Releases** (bookworm, trixie, jammy):
-1. Bootable images for the specific distribution (~16 images: 8 desktops × 2 cores)
-2. Kernel packages (if built from source) - included in all distro releases
-3. Kernel patch file (if built from source) - included in all distro releases
+**Per-Distro-Core Releases** (bookworm/trixie/jammy × cm4/cm5):
+1. Bootable images for the specific distribution and core (~8 images: 8 desktops × 1 core)
+2. Kernel packages for the specific core (if built from source)
+3. Kernel patch file for the specific core (if built from source)
 4. Auto-generated release notes
 
-**Release Naming**: `uConsole Images - {distro} - {KERNEL_VERSION}`
-- Example: `uConsole Images - bookworm - rpi-6.12.y`
-- Example: `uConsole Images - jammy - rpi-6.12.y`
+**Release Naming**: `uConsole Images - {distro} - {core} - {KERNEL_VERSION}`
+- Example: `uConsole Images - bookworm - cm4 - rpi-6.12.y`
+- Example: `uConsole Images - jammy - cm5 - rpi-6.12.y`
 
-**Tag Naming**: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}`
-- Example: `uconsole-rpi-6.12.y-release-20241206-123456-bookworm`
+**Tag Naming**: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}-{core}`
+- Example: `uconsole-rpi-6.12.y-release-20241206-123456-bookworm-cm4`
+- Example: `uconsole-rpi-6.12.y-release-20241206-123456-trixie-cm5`
 
 ## Using the Workflow
 
@@ -278,12 +279,12 @@ git push origin v1.0.0
 
 The workflow will automatically:
 1. Build kernel (mode determined by `KERNEL_MODE` environment variable, defaults to `prebuilt`)
-2. Create images for all distributions (bookworm, trixie, jammy)
-3. Create separate GitHub releases for each distribution to optimize disk space
+2. Create images for all distributions (bookworm, trixie, jammy) and cores (cm4, cm5)
+3. Create separate GitHub releases for each distribution-core combination to optimize disk space
 
-Each distribution will get its own release with:
-- ~16 images (8 desktops × 2 cores)
-- Kernel packages and patches (if kernel was built from source)
+Each distribution-core combination will get its own release with:
+- ~8 images (8 desktops × 1 core)
+- Kernel packages and patches for the specific core (if kernel was built from source)
 
 Note: To build kernel from source on tag pushes, set `KERNEL_MODE=build` in the workflow environment variables.
 
@@ -325,13 +326,16 @@ Artifacts will be available for download from the Actions tab for 30 days.
 ### From Releases:
 
 1. Navigate to: Releases
-2. Select the release for your desired distribution:
-   - `uConsole Images - bookworm - {version}` for Debian 12
-   - `uConsole Images - trixie - {version}` for Debian 13
-   - `uConsole Images - jammy - {version}` for Ubuntu 22.04
+2. Select the release for your desired distribution and core:
+   - `uConsole Images - bookworm - cm4 - {version}` for Debian 12 on CM4
+   - `uConsole Images - bookworm - cm5 - {version}` for Debian 12 on CM5
+   - `uConsole Images - trixie - cm4 - {version}` for Debian 13 on CM4
+   - `uConsole Images - trixie - cm5 - {version}` for Debian 13 on CM5
+   - `uConsole Images - jammy - cm4 - {version}` for Ubuntu 22.04 on CM4
+   - `uConsole Images - jammy - cm5 - {version}` for Ubuntu 22.04 on CM5
 3. Download files from "Assets" section
-   - Each release contains ~16 image variants (8 desktops × 2 cores)
-   - Kernel packages and patches (if available)
+   - Each release contains ~8 image variants (8 desktops × 1 core)
+   - Kernel packages and patches for the specific core (if available)
 
 ## Image Installation
 

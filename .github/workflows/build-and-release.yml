@@ -617,42 +617,32 @@ jobs:
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
+        uconsole_core: [cm4, cm5]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download kernel artifacts (CM4)
+      - name: Download kernel artifacts (${{ matrix.uconsole_core }})
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
-          name: kernel-debs-cm4
+          name: kernel-debs-${{ matrix.uconsole_core }}
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download kernel artifacts (CM5)
+      - name: Download patch artifacts (${{ matrix.uconsole_core }})
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
-          name: kernel-debs-cm5
+          name: kernel-patch-uconsole-${{ matrix.uconsole_core }}
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download patch artifacts (CM4)
-        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
+      # Download only images for this specific distro-core combination
+      # Pattern matches artifacts from build-image job (line 608):
+      # uconsole-{distro}-{core}-{desktop}.img.xz
+      - name: Download image artifacts for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         uses: actions/download-artifact@v4
         with:
-          name: kernel-patch-uconsole-cm4
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download patch artifacts (CM5)
-        if: needs.prepare-kernel.outputs.kernel_mode == 'build'
-        uses: actions/download-artifact@v4
-        with:
-          name: kernel-patch-uconsole-cm5
-          path: /home/runner/work/uConsole-Image-Builder/release/
-
-      - name: Download image artifacts for ${{ matrix.distro }}
-        uses: actions/download-artifact@v4
-        with:
-          pattern: uconsole-${{ matrix.distro }}-*-*.img.xz
+          pattern: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-*.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
           merge-multiple: true          
 
@@ -660,19 +650,19 @@ jobs:
         id: tag
         run: |
           TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
-          FULL_TAG_NAME="uconsole-${{ env.KERNEL_VERSION }}-${TAG_NAME}-${{ matrix.distro }}"
+          FULL_TAG_NAME="uconsole-${{ env.KERNEL_VERSION }}-${TAG_NAME}-${{ matrix.distro }}-${{ matrix.uconsole_core }}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "full_tag_name=$FULL_TAG_NAME" >> $GITHUB_OUTPUT
           git tag "$FULL_TAG_NAME"
           git push origin "$FULL_TAG_NAME"
           ls -laR /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Create GitHub Release for ${{ matrix.distro }}
+      - name: Create GitHub Release for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
-          name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -681,12 +671,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create GitHub Release for ${{ matrix.distro }}
+      - name: Create GitHub Release for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
-          name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
