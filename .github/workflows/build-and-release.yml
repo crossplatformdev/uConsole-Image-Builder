@@ -636,6 +636,9 @@ jobs:
           name: kernel-patch-uconsole-${{ matrix.uconsole_core }}
           path: /home/runner/work/uConsole-Image-Builder/release/
 
+      # Download only images for this specific distro-core combination
+      # Pattern matches artifacts from build-image job (line 608):
+      # uconsole-{distro}-{core}-{desktop}.img.xz
       - name: Download image artifacts for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         uses: actions/download-artifact@v4
         with:

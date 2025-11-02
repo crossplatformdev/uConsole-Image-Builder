@@ -151,7 +151,7 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
 
 **Permissions Required**: `contents: write` for creating releases
 
-**Disk Space Optimization**: By creating separate releases per distro and core type, each release job only downloads ~2.5GB of images instead of ~14GB for all images combined. This prevents "out of disk space" errors on CI/CD runners with limited storage (14GB available).
+**Disk Space Optimization**: By creating separate releases per distro and core type, each individual release job only downloads ~2.5GB of images (8 images) instead of ~5GB (16 images). This prevents "out of disk space" errors on CI/CD runners with limited storage (~14GB available per job). While 6 release jobs run (potentially in parallel), each job operates independently with its own storage allocation.
 
 ## Workflow Triggers
 
