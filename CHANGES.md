@@ -4,6 +4,23 @@ All notable changes to the uConsole Image Builder project will be documented in 
 
 ## [Unreleased]
 
+### Changed - Separate Releases per Distribution
+
+- **Per-Distro Release Strategy**: Modified CI/CD workflow to create separate GitHub releases for each distribution
+  - Each distribution (bookworm, trixie, jammy) now gets its own dedicated release
+  - Release job uses matrix strategy to process distributions independently
+  - Each release contains ~16 images (8 desktops × 2 cores) instead of all 48 images
+  - Reduces disk space requirements from ~14GB to ~5GB per release job
+  - Prevents "out of disk space" errors on CI/CD runners with limited storage (14GB available)
+
+**Benefits:**
+- **Disk Space Efficiency**: Each release job only downloads images for one distribution
+- **Better Organization**: Users can easily find images for their preferred distribution
+- **Improved Reliability**: Prevents CI/CD failures due to disk space constraints
+- **Clear Naming**: Release titles and tags clearly indicate the distribution
+  - Example: `uConsole Images - bookworm - rpi-6.12.y`
+  - Tag: `uconsole-rpi-6.12.y-release-20241206-123456-bookworm`
+
 ### Changed - Docker-Only Kernel Builds
 
 - **Removed Old Kernel Build Methods**: Simplified kernel building to use only Docker
