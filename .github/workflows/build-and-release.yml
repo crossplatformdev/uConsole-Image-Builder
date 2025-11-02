@@ -614,6 +614,9 @@ jobs:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+    strategy:
+      matrix:
+        distro: [bookworm, trixie, jammy]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -646,10 +649,10 @@ jobs:
           name: kernel-patch-uconsole-cm5
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Download image artifacts (all variants)
+      - name: Download image artifacts for ${{ matrix.distro }}
         uses: actions/download-artifact@v4
         with:
-          pattern: uconsole-*-*-*.img.xz
+          pattern: uconsole-${{ matrix.distro }}-*-*.img.xz
           path: /home/runner/work/uConsole-Image-Builder/release/
           merge-multiple: true          
 
@@ -658,15 +661,16 @@ jobs:
         run: |
           TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
+          git tag $TAG_NAME-${{ matrix.distro }} || true
+          git push origin $TAG_NAME-${{ matrix.distro }} || true
           ls -laR /home/runner/work/uConsole-Image-Builder/release/
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release for ${{ matrix.distro }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}-${{ matrix.distro }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -675,11 +679,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release for ${{ matrix.distro }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}
+          tag_name: uconsole-${{ env.KERNEL_VERSION }}-${{ steps.tag.outputs.tag_name }}-${{ matrix.distro }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
