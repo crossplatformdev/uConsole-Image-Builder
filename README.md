@@ -118,9 +118,9 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
 
 ### 3. `release` Job
 
-**Purpose**: Create GitHub releases with all build artifacts
+**Purpose**: Create GitHub releases with build artifacts, organized per distribution
 
-**Runner**: `ubuntu-24.04` (standard x86_64 runner)
+**Runner**: `ubuntu-24.04-arm` (ARM64 native runner)
 
 **Dependencies**: Requires both `prepare-kernel` and `build-image` jobs to complete
 
@@ -128,24 +128,30 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
 - Runs only on `main` branch pushes
 - Runs on any tag push (tags starting with `v*` or `release-*`)
 
+**Matrix Strategy**: Creates separate releases for each distribution (bookworm, trixie, jammy) to reduce disk space requirements
+
 **Key Steps**:
-1. Downloads all artifacts:
-   - Kernel .deb packages (if built from source)
-   - Kernel patch file (if built from source)
-   - All distribution images (trixie, bookworm, jammy)
+1. Downloads artifacts for specific distro:
+   - Kernel .deb packages (if built from source) - shared across all distro releases
+   - Kernel patch file (if built from source) - shared across all distro releases
+   - Distribution-specific images (~16 images: 8 desktops × 2 cores per distro)
 
 2. Creates release tag:
-   - Auto-generates tag name: `release-YYYYMMDD-HHMMSS`
+   - Auto-generates tag name: `release-YYYYMMDD-HHMMSS-{distro}`
    - Pushes tag to repository
+   - Examples: `release-20241206-123456-bookworm`, `release-20241206-123456-trixie`
 
 3. Creates GitHub Release:
-   - **With kernel build**: Attaches images, kernel packages, and patch
-   - **Without kernel build**: Attaches only images
-   - Release title format: `Images for uconsole-{CORE}-{VERSION}-{TAG}`
-   - Actual tag name: `release-YYYYMMDD-HHMMSS` (auto-generated)
+   - **With kernel build**: Attaches distro-specific images, kernel packages, and patch
+   - **Without kernel build**: Attaches only distro-specific images
+   - Release title format: `uConsole Images - {distro} - {KERNEL_VERSION}`
+   - Examples: `uConsole Images - bookworm - rpi-6.12.y`, `uConsole Images - jammy - rpi-6.12.y`
+   - Actual tag name: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}`
    - Auto-generates release notes from commit history
 
 **Permissions Required**: `contents: write` for creating releases
+
+**Disk Space Optimization**: By creating separate releases per distro, each release job only downloads ~5GB of images instead of ~14GB for all images combined. This prevents "out of disk space" errors on CI/CD runners with limited storage (14GB available).
 
 ## Workflow Triggers
 
@@ -241,10 +247,20 @@ The workflow produces several artifacts:
 
 ### In Releases (Permanent):
 
-1. Bootable images for all distributions
-2. Kernel packages (if built from source)
-3. Kernel patch file (if built from source)
+Each distribution gets its own separate release to optimize disk space usage:
+
+**Per-Distro Releases** (bookworm, trixie, jammy):
+1. Bootable images for the specific distribution (~16 images: 8 desktops × 2 cores)
+2. Kernel packages (if built from source) - included in all distro releases
+3. Kernel patch file (if built from source) - included in all distro releases
 4. Auto-generated release notes
+
+**Release Naming**: `uConsole Images - {distro} - {KERNEL_VERSION}`
+- Example: `uConsole Images - bookworm - rpi-6.12.y`
+- Example: `uConsole Images - jammy - rpi-6.12.y`
+
+**Tag Naming**: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}`
+- Example: `uconsole-rpi-6.12.y-release-20241206-123456-bookworm`
 
 ## Using the Workflow
 
@@ -262,8 +278,12 @@ git push origin v1.0.0
 
 The workflow will automatically:
 1. Build kernel (mode determined by `KERNEL_MODE` environment variable, defaults to `prebuilt`)
-2. Create images for all distributions
-3. Create a GitHub release with all artifacts
+2. Create images for all distributions (bookworm, trixie, jammy)
+3. Create separate GitHub releases for each distribution to optimize disk space
+
+Each distribution will get its own release with:
+- ~16 images (8 desktops × 2 cores)
+- Kernel packages and patches (if kernel was built from source)
 
 Note: To build kernel from source on tag pushes, set `KERNEL_MODE=build` in the workflow environment variables.
 
@@ -305,8 +325,13 @@ Artifacts will be available for download from the Actions tab for 30 days.
 ### From Releases:
 
 1. Navigate to: Releases
-2. Select desired release
+2. Select the release for your desired distribution:
+   - `uConsole Images - bookworm - {version}` for Debian 12
+   - `uConsole Images - trixie - {version}` for Debian 13
+   - `uConsole Images - jammy - {version}` for Ubuntu 22.04
 3. Download files from "Assets" section
+   - Each release contains ~16 image variants (8 desktops × 2 cores)
+   - Kernel packages and patches (if available)
 
 ## Image Installation
 
