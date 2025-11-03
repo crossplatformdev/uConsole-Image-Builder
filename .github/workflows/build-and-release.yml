@@ -273,7 +273,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y coreutils quilt parted qemu-user-static debootstrap zerofree zip \
             dosfstools e2fsprogs libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc \
-            gpg pigz xxd arch-test bmap-tools kmod
+            gpg pigz xxd arch-test bmap-tools kmod debian-archive-keyring
+
+          # Import Debian GPG keys that will be needed inside pi-gen chroots
+          # These keys are required for apt operations in the bootstrapped Debian systems
+          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853"
+          mkdir -p stage0/00-debian-keys/files
+          for key in $KEYS; do
+            # Try HKPS first, fallback to hkp
+            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
+              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || true
+            # Export to a file that can be copied into chroots
+            gpg --batch --export "$key" | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
+          done
+          
+          # Create a script to install these keys in the chroot
+          cat > stage0/00-debian-keys/00-run.sh << 'KEYEOF'
+          #!/bin/bash -e
+          # Install Debian archive keys in the chroot
+          for keyfile in /tmp/stage0/00-debian-keys/files/*.gpg; do
+            if [ -f "$keyfile" ]; then
+              cat "$keyfile" | gpg --dearmor | tee "/etc/apt/trusted.gpg.d/$(basename "$keyfile")" > /dev/null
+            fi
+          done
+          KEYEOF
+          chmod +x stage0/00-debian-keys/00-run.sh
 
           # Configure for RetroPie build
           cat > config << EOF
