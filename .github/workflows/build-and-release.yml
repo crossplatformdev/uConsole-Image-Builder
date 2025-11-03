@@ -283,17 +283,20 @@ jobs:
             # Try HKPS first, fallback to hkp
             gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
               || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || true
-            # Export to a file that can be copied into chroots
-            gpg --batch --export "$key" | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
+            # Export to dearmored GPG file that can be used directly by apt
+            gpg --batch --export "$key" | gpg --dearmor | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
           done
           
           # Create a script to install these keys in the chroot
+          # This script will be called by pi-gen during stage0
           cat > stage0/00-debian-keys/00-run.sh << 'KEYEOF'
           #!/bin/bash -e
           # Install Debian archive keys in the chroot
-          for keyfile in /tmp/stage0/00-debian-keys/files/*.gpg; do
+          # Files are in the stage directory which pi-gen mounts
+          for keyfile in files/*.gpg; do
             if [ -f "$keyfile" ]; then
-              cat "$keyfile" | gpg --dearmor | tee "/etc/apt/trusted.gpg.d/$(basename "$keyfile")" > /dev/null
+              cp "$keyfile" "/etc/apt/trusted.gpg.d/$(basename "$keyfile")"
+              chmod 644 "/etc/apt/trusted.gpg.d/$(basename "$keyfile")"
             fi
           done
           KEYEOF
