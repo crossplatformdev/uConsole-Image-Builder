@@ -172,7 +172,7 @@ jobs:
           # Ensure Debian archive keys are present
           sudo apt-get install -y --reinstall debian-archive-keyring || true
 
-          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4"
+          KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853"
           for key in $KEYS; do
             # Try HKPS first, fallback to hkp
             gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
