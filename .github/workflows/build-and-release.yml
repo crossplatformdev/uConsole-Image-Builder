@@ -784,20 +784,150 @@ jobs:
           # Find the RetroPie image built by ClockworkPi-pi-gen
           cd /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output
           
-          # Check if image is already compressed
+          # Find the image file (may be compressed or not)
           if ls *.img.xz >/dev/null 2>&1; then
-            echo "Image already compressed"
-            mv *.img.xz /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+            echo "Found compressed image, decompressing for customization"
+            IMAGE_FILE=$(ls *.img.xz | head -1)
+            unxz "$IMAGE_FILE"
+            IMAGE_PATH="${IMAGE_FILE%.xz}"
           elif ls *.img >/dev/null 2>&1; then
-            echo "Compressing image"
-            IMAGE_FILE=$(ls *.img | head -1)
-            xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress "$IMAGE_FILE"
-            mv *.img.xz /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+            IMAGE_PATH=$(ls *.img | head -1)
           else
             echo "ERROR: No RetroPie image found!"
             ls -la
             exit 1
           fi
+          
+          # Now mount and customize the RetroPie image just like standard desktops
+          LOOP_DEVICE=$(sudo losetup -f)
+          MOUNT_POINT=./rootfs
+          
+          echo "=====> IMAGE PATH: $IMAGE_PATH"
+          echo "=====> LOOP DEVICE: $LOOP_DEVICE"
+          echo "=====> MOUNT POINT: $MOUNT_POINT"
+          
+          # Create loop device and mount partitions
+          sudo losetup -D  # Clear existing loop devices
+          sudo losetup $LOOP_DEVICE -P "$IMAGE_PATH"
+          
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
+          sudo mount --bind /dev $MOUNT_POINT/dev
+          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts
+          sudo mount --bind /proc $MOUNT_POINT/proc
+          sudo mount --bind /sys $MOUNT_POINT/sys
+          
+          sleep 5  # Wait for mounts to stabilize
+          
+          # Configure DNS resolvers
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
+          
+          # Remove current linux kernels if any
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* linux-raspi-headers-* || true"
+          
+          # Add ClockworkPi repository
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y --no-install-recommends clockworkpi-*"
+          
+          # Install kernel based on CM variant and kernel mode
+          # CM3 and CM5 always use built kernels, CM4 can use prebuilt
+          if [ "${{ matrix.uconsole_core }}" == "cm4" ] && [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends uconsole-kernel-${{ matrix.uconsole_core }}-rpi"
+          else
+            sudo cp /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y --no-install-recommends"
+          fi
+          
+          # Configure device-specific config.txt with dtoverlay
+          sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
+          # For more options and information see
+          # http://rptl.io/configtxt
+          # Some settings may impact device functionality. See link above for details
+          
+          # Uncomment some or all of these to enable the optional hardware interfaces
+          #dtparam=i2c_arm=on
+          #dtparam=i2s=on
+          #dtparam=spi=on
+          
+          # Enable audio (loads snd_bcm2835)
+          dtparam=audio=on
+          
+          # Additional overlays and parameters are documented
+          # /boot/firmware/overlays/README
+          
+          # Automatically load overlays for detected cameras
+          camera_auto_detect=1
+          
+          # Automatically load overlays for detected DSI displays
+          display_auto_detect=1
+          
+          # Automatically load initramfs files, if found
+          auto_initramfs=1
+          
+          # Enable DRM VC4 V3D driver
+          disable_fw_kms_setup=1
+          EOF
+          
+          # Add device-specific dtoverlay based on matrix.device and matrix.uconsole_core
+          if [ "${{ matrix.device }}" == "devterm" ]; then
+            if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+              echo "dtoverlay=clockworkpi-devterm-cm3" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi4" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+              echo "dtoverlay=clockworkpi-devterm" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi4" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            elif [ "${{ matrix.uconsole_core }}" == "cm5" ]; then
+              echo "dtoverlay=clockworkpi-devterm-cm5" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi5" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            fi
+          else
+            if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+              echo "dtoverlay=clockworkpi-uconsole-cm3" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi4" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+              echo "dtoverlay=clockworkpi-uconsole" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi4" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            elif [ "${{ matrix.uconsole_core }}" == "cm5" ]; then
+              echo "dtoverlay=clockworkpi-uconsole-cm5" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+              echo "dtoverlay=vc4-kms-v3d-pi5" | sudo tee -a $MOUNT_POINT/boot/firmware/config.txt
+            fi
+          fi
+          
+          # Set hostname
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'uconsole' > /etc/hostname"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/ubuntu|debian|raspbian|raspberrypi/uconsole/g' /etc/hosts"
+          
+          # Cleanup to reduce image size
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get autoremove -y"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
+          
+          # Restore original resolv.conf
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+          
+          # Clean up mounts
+          sudo umount $MOUNT_POINT/dev/pts
+          sudo umount $MOUNT_POINT/dev
+          sudo umount $MOUNT_POINT/proc
+          sudo umount $MOUNT_POINT/sys
+          sudo umount $MOUNT_POINT/boot/firmware
+          sudo umount $MOUNT_POINT
+          sudo losetup -d $LOOP_DEVICE
+          
+          # Compress the customized image
+          echo "Compressing customized RetroPie image"
+          xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress "$IMAGE_PATH"
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
