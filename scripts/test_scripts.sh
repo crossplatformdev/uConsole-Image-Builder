@@ -99,11 +99,11 @@ fi
 
 # Test suite validation
 cd "$REPO_ROOT"
-output=$(SUITE=invalid ./scripts/generate_pi_image.sh 2>&1 || true)
+output=$(SUITE=invalid ./scripts/generate_rpi_image.sh 2>&1 || true)
 if echo "$output" | grep -q "ERROR: Invalid SUITE"; then
-    test_pass "generate_pi_image.sh validates suite correctly"
+    test_pass "generate_rpi_image.sh validates suite correctly"
 else
-    test_fail "generate_pi_image.sh validation incorrect"
+    test_fail "generate_rpi_image.sh validation incorrect"
 fi
 
 echo ""
@@ -186,7 +186,7 @@ echo "============================="
 cd "$REPO_ROOT"
 
 # Test that scripts respect environment variables (skip if requires root)
-test_skip "generate_pi_image.sh SUITE variable test (requires root to fully test)"
+test_skip "generate_rpi_image.sh SUITE variable test (requires root to fully test)"
 
 echo ""
 echo "8. Docker Build Tests"

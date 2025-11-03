@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation provides a unified build system for creating bootable uConsole images with the ClockworkPi kernel, using the rpi-image-gen tool and automated CI/CD workflows.
+This implementation provides a unified build system for creating bootable uConsole images with the ClockworkPi kernel, using the pi-gen tool (ClockworkPi fork) and automated CI/CD workflows.
 
 ## Key Features
 
