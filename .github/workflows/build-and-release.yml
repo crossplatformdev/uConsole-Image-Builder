@@ -313,15 +313,32 @@ jobs:
       - name: Build RetroPie image with ClockworkPi-pi-gen
         if: matrix.desktop == 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
         run: |
+          set -e  # Exit on any error
           cd rpi-image-gen
           # Run pi-gen build for RetroPie
-          sudo ./build.sh
+          if ! sudo ./build.sh; then
+            echo "ERROR: ClockworkPi-pi-gen build failed"
+            exit 1
+          fi
           
           # The output will be in the deploy directory
           # Move it to a known location for later steps
           mkdir -p /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output
-          sudo mv deploy/*.img /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/ || true
-          sudo mv deploy/*.img.xz /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/ || true
+          
+          # Check if build artifacts exist
+          if [ ! -d deploy ] || [ -z "$(ls -A deploy 2>/dev/null)" ]; then
+            echo "ERROR: No build artifacts found in deploy directory"
+            ls -la deploy/ || echo "Deploy directory doesn't exist"
+            exit 1
+          fi
+          
+          # Move artifacts
+          if ls deploy/*.img >/dev/null 2>&1; then
+            sudo mv deploy/*.img /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/
+          fi
+          if ls deploy/*.img.xz >/dev/null 2>&1; then
+            sudo mv deploy/*.img.xz /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/
+          fi
 
       - name: Build base image for standard desktops
         if: matrix.desktop != 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
@@ -366,7 +383,7 @@ jobs:
           
           # Bootstrap minimal Debian system
           sudo debootstrap --arch=arm64 --include=systemd,udev,apt,ca-certificates \
-            ${{ matrix.distro }} /mnt/base-rootfs http://deb.debian.org/debian
+            ${{ matrix.distro }} /mnt/base-rootfs https://deb.debian.org/debian
           
           # Basic setup
           echo "uconsole" | sudo tee /mnt/base-rootfs/etc/hostname

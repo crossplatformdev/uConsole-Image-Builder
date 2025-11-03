@@ -67,7 +67,7 @@ The workflow consists of three main jobs that run sequentially:
 - Hardware: CM4 and CM5
 - Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback, RetroPie
 
-This creates 50 image variants (3 distros × 2 hardware variants × 8 desktop environments) + (2 Debian distros × 2 hardware variants × 1 RetroPie) = 52 total variants.
+This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Debian distros × 2 hardware × 1 RetroPie) - (1 jammy+retropie exclusion × 2 hardware) = 48 + 4 - 2 = 50 total variants.
 
 **Key Steps**:
 1. **Environment Setup**:
