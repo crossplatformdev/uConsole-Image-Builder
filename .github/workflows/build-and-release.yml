@@ -46,7 +46,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        uconsole_core: [cm4, cm5]
+        uconsole_core: [cm3, cm4, cm5]
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -91,12 +91,8 @@ jobs:
 
           export PATCH_ABSOLUTE_PATH="$(pwd)/$safe"
           
-          ## If matrix.uconsole_core is 'cm4'
-          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
-            export KERNEL=kernel8            
-          else
-            export KERNEL=kernel_2712            
-          fi
+          ## All CM3, CM4, and CM5 use the same kernel configuration
+          export KERNEL=kernel8
           
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -107,11 +103,8 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
-            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
-          else
-            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig
-          fi
+          # Use bcm2711_defconfig for all cores (cm3, cm4, cm5)
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
           
           make deb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
 
@@ -145,7 +138,7 @@ jobs:
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
-        uconsole_core: [cm4, cm5]
+        uconsole_core: [cm3, cm4, cm5]
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback, retropie]
         exclude:
           # RetroPie only works with Debian-based distros (bookworm, trixie), not Ubuntu
@@ -635,13 +628,18 @@ jobs:
           
           EOF
 
-          ## If env.uconsole_core is 'cm4', configure cmdline.txt
-          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+          ## Configure device-specific dtoverlay based on uconsole_core
+          if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm3' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+          elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
-          else
+          else  # cm5
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
@@ -748,7 +746,7 @@ jobs:
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
-        uconsole_core: [cm4, cm5]
+        uconsole_core: [cm3, cm4, cm5]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

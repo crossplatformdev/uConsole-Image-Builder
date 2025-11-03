@@ -4,7 +4,7 @@ This document explains the automated Continuous Integration and Continuous Deplo
 
 ## Overview
 
-The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole CM4 and CM5 devices. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
+The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole CM3, CM4, and CM5 devices. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
 
 ## Desktop Environments Supported
 
@@ -20,7 +20,7 @@ The workflow builds images with the following desktop environments:
 - **GNOME Flashback** - Traditional GNOME 2-style desktop
 - **RetroPie** - Gaming-focused distribution for emulation (Debian-based only: Bookworm, Trixie)
 
-Each desktop environment is available for all supported distributions (Debian Bookworm, Debian Trixie, Ubuntu Jammy) and hardware variants (CM4, CM5), except RetroPie which is only available for Debian-based distributions.
+Each desktop environment is available for all supported distributions (Debian Bookworm, Debian Trixie, Ubuntu Jammy) and hardware variants (CM3, CM4, CM5), except RetroPie which is only available for Debian-based distributions.
 
 ## Workflow File
 
@@ -40,7 +40,7 @@ The workflow consists of three main jobs that run sequentially:
 1. Checks out repository with submodules (includes Linux kernel source)
 2. Downloads uConsole-specific kernel patch from ak-rex's fork
 3. Applies the patch to Raspberry Pi kernel (rpi-6.12.y branch)
-4. Configures kernel for CM4 (bcm2711_defconfig) or CM5 (bcm2712_defconfig)
+4. Configures kernel using bcm2711_defconfig for all cores (CM3, CM4, CM5)
 5. Builds Debian .deb packages using cross-compilation
 6. Uploads artifacts:
    - `kernel-debs`: Contains linux-image, linux-headers, and linux-libc-dev packages
@@ -50,7 +50,7 @@ The workflow consists of three main jobs that run sequentially:
 - `KERNEL_VERSION`: Kernel branch (default: `rpi-6.12.y`)
 - `KERNEL_ARCH`: Target architecture (default: `arm64`)
 - `KERNEL_COMMIT`: Specific kernel commit/tag to build
-- `UCONSOLE_CORE`: Core model (`cm4` or `cm5`, default: `cm4`)
+- `UCONSOLE_CORE`: Core model (`cm3`, `cm4`, or `cm5`, default: `cm4`)
 
 **Build Time**: ~2-4 hours on standard GitHub runners
 
@@ -64,10 +64,10 @@ The workflow consists of three main jobs that run sequentially:
 
 **Matrix Strategy**: Builds images in parallel for:
 - Distributions: Debian 12 (bookworm), Debian 13 (trixie), Ubuntu 22.04 (jammy)
-- Hardware: CM4 and CM5
+- Hardware: CM3, CM4, and CM5
 - Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback, RetroPie
 
-This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Debian distros × 2 hardware × 1 RetroPie) - (1 jammy+retropie exclusion × 2 hardware) = 48 + 4 - 2 = 50 total variants.
+This creates 75 image variants: (3 distros × 3 hardware × 8 desktops) + (2 Debian distros × 3 hardware × 1 RetroPie) - (1 jammy+retropie exclusion × 3 hardware) = 72 + 6 - 3 = 75 total variants.
 
 **Key Steps**:
 1. **Environment Setup**:
@@ -83,7 +83,7 @@ This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Deb
    - For RetroPie: Uses ClockworkPi-pi-gen's build.sh with stage2-retropie to create gaming-focused images
    - For Standard Desktops (bookworm/trixie): Uses debootstrap to create minimal base images
    - For Ubuntu (jammy): Downloads official Raspberry Pi server image
-   - Configures for CM4/CM5 compatibility
+   - Configures for CM3/CM4/CM5 compatibility
 
 4. **Image Customization**:
    - Mounts image partitions using loop devices
@@ -107,7 +107,7 @@ This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Deb
 5. **Image Compression**:
    - Compresses image with xz (high compression)
    - Names output: `uconsole-{distro}-{core}-{desktop}.img.xz`
-   - Examples: `uconsole-bookworm-cm4-gnome.img.xz`, `uconsole-jammy-cm5-kde.img.xz`
+   - Examples: `uconsole-bookworm-cm3-gnome.img.xz`, `uconsole-bookworm-cm4-gnome.img.xz`, `uconsole-jammy-cm5-kde.img.xz`
 
 6. **Artifact Upload**:
    - Uploads compressed image as GitHub Actions artifact
@@ -130,7 +130,7 @@ This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Deb
 - Runs only on `main` branch pushes
 - Runs on any tag push (tags starting with `v*` or `release-*`)
 
-**Matrix Strategy**: Creates separate releases for each distribution (bookworm, trixie, jammy) and core type (CM4, CM5) to reduce disk space requirements
+**Matrix Strategy**: Creates separate releases for each distribution (bookworm, trixie, jammy) and core type (CM3, CM4, CM5) to reduce disk space requirements
 
 **Key Steps**:
 1. Downloads artifacts for specific distro and core:
@@ -141,13 +141,13 @@ This creates 50 image variants: (3 distros × 2 hardware × 8 desktops) + (2 Deb
 2. Creates release tag:
    - Auto-generates tag name: `release-YYYYMMDD-HHMMSS-{distro}-{core}`
    - Pushes tag to repository
-   - Examples: `release-20241206-123456-bookworm-cm4`, `release-20241206-123456-trixie-cm5`
+   - Examples: `release-20241206-123456-bookworm-cm3`, `release-20241206-123456-bookworm-cm4`, `release-20241206-123456-trixie-cm5`
 
 3. Creates GitHub Release:
    - **With kernel build**: Attaches distro and core-specific images, kernel packages, and patch
    - **Without kernel build**: Attaches only distro and core-specific images
    - Release title format: `uConsole Images - {distro} - {core} - {KERNEL_VERSION}`
-   - Examples: `uConsole Images - bookworm - cm4 - rpi-6.12.y`, `uConsole Images - jammy - cm5 - rpi-6.12.y`
+   - Examples: `uConsole Images - bookworm - cm3 - rpi-6.12.y`, `uConsole Images - bookworm - cm4 - rpi-6.12.y`, `uConsole Images - jammy - cm5 - rpi-6.12.y`
    - Actual tag name: `uconsole-{KERNEL_VERSION}-release-YYYYMMDD-HHMMSS-{distro}-{core}`
    - Auto-generates release notes from commit history
 
@@ -251,7 +251,7 @@ The workflow produces several artifacts:
 
 Each distribution and core type combination gets its own separate release to optimize disk space usage:
 
-**Per-Distro-Core Releases** (bookworm/trixie/jammy × cm4/cm5):
+**Per-Distro-Core Releases** (bookworm/trixie/jammy × cm3/cm4/cm5):
 1. Bootable images for the specific distribution and core (~8 images: 8 desktops × 1 core)
 2. Kernel packages for the specific core (if built from source)
 3. Kernel patch file for the specific core (if built from source)
@@ -281,7 +281,7 @@ git push origin v1.0.0
 
 The workflow will automatically:
 1. Build kernel (mode determined by `KERNEL_MODE` environment variable, defaults to `prebuilt`)
-2. Create images for all distributions (bookworm, trixie, jammy) and cores (cm4, cm5)
+2. Create images for all distributions (bookworm, trixie, jammy) and cores (cm3, cm4, cm5)
 3. Create separate GitHub releases for each distribution-core combination to optimize disk space
 
 Each distribution-core combination will get its own release with:
@@ -318,9 +318,10 @@ Artifacts will be available for download from the Actions tab for 30 days.
 1. Navigate to: Actions → Select workflow run
 2. Scroll to "Artifacts" section
 3. Download desired artifacts:
-   - `kernel-debs-cm4` / `kernel-debs-cm5` (kernel packages, if built from source)
+   - `kernel-debs-cm3` / `kernel-debs-cm4` / `kernel-debs-cm5` (kernel packages, if built from source)
    - Image artifacts with pattern: `uconsole-{distro}-{core}-{desktop}.img.xz`
    - Examples:
+     - `uconsole-bookworm-cm3-gnome.img.xz` (Debian 12 with GNOME on CM3)
      - `uconsole-bookworm-cm4-gnome.img.xz` (Debian 12 with GNOME on CM4)
      - `uconsole-jammy-cm5-kde.img.xz` (Ubuntu 22.04 with KDE Plasma on CM5)
      - `uconsole-trixie-cm4-xfce.img.xz` (Debian 13 with Xfce on CM4)
@@ -329,10 +330,13 @@ Artifacts will be available for download from the Actions tab for 30 days.
 
 1. Navigate to: Releases
 2. Select the release for your desired distribution and core:
+   - `uConsole Images - bookworm - cm3 - {version}` for Debian 12 on CM3
    - `uConsole Images - bookworm - cm4 - {version}` for Debian 12 on CM4
    - `uConsole Images - bookworm - cm5 - {version}` for Debian 12 on CM5
+   - `uConsole Images - trixie - cm3 - {version}` for Debian 13 on CM3
    - `uConsole Images - trixie - cm4 - {version}` for Debian 13 on CM4
    - `uConsole Images - trixie - cm5 - {version}` for Debian 13 on CM5
+   - `uConsole Images - jammy - cm3 - {version}` for Ubuntu 22.04 on CM3
    - `uConsole Images - jammy - cm4 - {version}` for Ubuntu 22.04 on CM4
    - `uConsole Images - jammy - cm5 - {version}` for Ubuntu 22.04 on CM5
 3. Download files from "Assets" section
@@ -420,7 +424,7 @@ To modify the workflow behavior:
    strategy:
      matrix:
        distro: [bookworm, trixie, jammy, focal]
-       uconsole_core: [cm4, cm5]
+       uconsole_core: [cm3, cm4, cm5]
        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
    ```
 
