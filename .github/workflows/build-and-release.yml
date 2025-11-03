@@ -635,7 +635,7 @@ jobs:
           ## Configure device-specific dtoverlay based on uconsole_core
           if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm3' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
           elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
