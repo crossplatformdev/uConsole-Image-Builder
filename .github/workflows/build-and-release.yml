@@ -174,11 +174,11 @@ jobs:
 
           KEYS=(6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853)
           for key in "${KEYS[@]}"; do
-            # Try HKPS first, fallback to hkp
-            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
-              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
-            # Export and dearmor into apt trusted dir
-            gpg --batch --export "$key" | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/${key}.gpg
+            # Try HKPS first, fallback to hkp; make gpg non-interactive
+            gpg --batch --no-tty --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
+              || gpg --batch --no-tty --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+            # Export and dearmor into apt trusted dir without invoking sudo gpg
+            gpg --batch --no-tty --export "$key" | gpg --batch --no-tty --dearmor | sudo tee /etc/apt/trusted.gpg.d/${key}.gpg > /dev/null
           done
 
           # Sanity update (should succeed now)
@@ -276,11 +276,11 @@ jobs:
 
           KEYS=(6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853)
           for key in "${KEYS[@]}"; do
-            # Try HKPS first, fallback to hkp
-            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
-              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
-            # Export and dearmor into apt trusted dir
-            gpg --batch --export "$key" | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/${key}.gpg
+            # Try HKPS first, fallback to hkp; make gpg non-interactive
+            gpg --batch --no-tty --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
+              || gpg --batch --no-tty --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+            # Export and dearmor into apt trusted dir without invoking sudo gpg
+            gpg --batch --no-tty --export "$key" | gpg --batch --no-tty --dearmor | sudo tee /etc/apt/trusted.gpg.d/${key}.gpg > /dev/null
           done
 
           # Install dependencies for pi-gen
@@ -297,11 +297,11 @@ jobs:
           # These keys are required for apt operations in the bootstrapped Debian systems
           KEYS="6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853"
           for key in $KEYS; do
-            # Try HKPS first, fallback to hkp
-            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
-              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || true
-            # Export directly to host's apt trusted directory so debootstrap can use them
-            gpg --batch --export "$key" | sudo tee "/etc/apt/trusted.gpg.d/debian-${key}.gpg" > /dev/null
+            # Try HKPS first, fallback to hkp; make gpg non-interactive
+            gpg --batch --no-tty --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
+              || gpg --batch --no-tty --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || true
+            # Export directly to host's apt trusted directory so debootstrap can use them (already dearmored)
+            gpg --batch --no-tty --export "$key" | gpg --batch --no-tty --dearmor | sudo tee "/etc/apt/trusted.gpg.d/debian-${key}.gpg" > /dev/null
           done
           
           # Create stage0 directory for chroot scripts
@@ -309,7 +309,7 @@ jobs:
           
           # Export keys to files that will be copied into the chroot after it's created
           for key in $KEYS; do
-            gpg --batch --export "$key" | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
+            gpg --batch --no-tty --export "$key" | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
           done
           
           # Create a chroot script that will execute inside the chroot after it's created
