@@ -340,6 +340,10 @@ jobs:
           # This replaces the rpi-image-gen approach
           echo "Creating minimal ${{ matrix.distro }} base with debootstrap"
           
+          # Install debootstrap if not already present
+          sudo apt-get update
+          sudo apt-get install -y debootstrap
+          
           # Create a minimal base image
           IMAGE_SIZE="8G"
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
