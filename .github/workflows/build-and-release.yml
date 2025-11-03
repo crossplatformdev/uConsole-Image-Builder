@@ -9,7 +9,7 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: build
+        default: prebuilt
         type: choice
         options:
           - build
@@ -31,7 +31,7 @@ on:
           - rpi-6.12.y
           - riscv          
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
