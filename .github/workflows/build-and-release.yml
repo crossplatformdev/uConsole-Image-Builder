@@ -256,55 +256,181 @@ jobs:
           esac
           echo "Desktop task set to: $DESKTOP_TASK"
 
-      - name: Setup rpi-image-gen
+      - name: Setup pi-gen
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
           # Verify submodule is checked out
-          if [ ! -f rpi-image-gen/rpi-image-gen ]; then
-            echo "ERROR: rpi-image-gen submodule not properly checked out"
+          if [ ! -d pi-gen ]; then
+            echo "ERROR: pi-gen submodule not properly checked out"
             exit 1
           fi
-          cd rpi-image-gen
-          sudo ./install_deps.sh
-          ./rpi-image-gen layer --list
-          sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
-          sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
-          # Increase root partition size to 800% for 8GB root filesystem
-          sed -i 's/root_part_size: 300%/root_part_size: 800%/g' ./config/${{ matrix.distro }}-minbase.yaml
-
+          
+          # Install dependencies
+          cd pi-gen
+          sudo apt-get update
+          sudo apt-get install -y coreutils quilt parted qemu-user-static debootstrap zerofree zip \
+            dosfstools e2fsprogs libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc \
+            gpg pigz xxd arch-test bmap-tools kmod
 
       - name: Download kernel artifacts
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
         uses: actions/download-artifact@v4
         with:
           name: kernel-debs-${{ matrix.uconsole_core }}
-          path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
+          path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/artifacts/kernel-debs/
 
-      - name: Build base image
+      - name: Build image with pi-gen
         if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
         run: |
-          cd rpi-image-gen
-          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
-
-      - name: Customize image
-        run: |
-          # If matrix.distro is bookworm, use deb12-arm64-min.img
-          # If matrix.distro is trixie, use deb13-arm64-min.img
-          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
-          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
-            # If matrix.distro is bookworm, 
-            if [ "${{ matrix.distro }}" == "bookworm" ]; then
-              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
-            else
-              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
-            fi
+          cd pi-gen
+          
+          # Determine stage list based on desktop environment
+          if [ "${{ matrix.desktop }}" == "gnome" ] || [ "${{ matrix.desktop }}" == "kde" ] || \
+             [ "${{ matrix.desktop }}" == "mate" ] || [ "${{ matrix.desktop }}" == "xfce" ] || \
+             [ "${{ matrix.desktop }}" == "lxde" ] || [ "${{ matrix.desktop }}" == "lxqt" ] || \
+             [ "${{ matrix.desktop }}" == "cinnamon" ] || [ "${{ matrix.desktop }}" == "gnome-flashback" ]; then
+            STAGE_LIST="stage0 stage1 stage2"
+          else
+            STAGE_LIST="stage0 stage1 stage2"
           fi
           
-          if [ "${{ matrix.distro }}" == "jammy" ]; then
-            IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-server-arm64+raspi.img.xz
-            wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
-            unxz ubuntu-jammy-raspi.img.xz
-            IMAGE_PATH=./ubuntu-jammy-raspi.img
+          # Create config file
+          cat > config << EOF
+          IMG_NAME="uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}"
+          RELEASE="${{ matrix.distro }}"
+          TARGET_HOSTNAME="uconsole"
+          FIRST_USER_NAME="clockworkpi"
+          FIRST_USER_PASS="clockworkpi"
+          DISABLE_FIRST_BOOT_USER_RENAME=1
+          ENABLE_SSH=1
+          WPA_COUNTRY="US"
+          LOCALE_DEFAULT="en_US.UTF-8"
+          TIMEZONE_DEFAULT="UTC"
+          KEYBOARD_KEYMAP="us"
+          KEYBOARD_LAYOUT="English (US)"
+          DEPLOY_COMPRESSION="xz"
+          COMPRESSION_LEVEL=6
+          STAGE_LIST="$STAGE_LIST"
+          EOF
+          
+          # Create custom kernel installation stage
+          CUSTOM_STAGE="stage2/06-uconsole-kernel"
+          mkdir -p "$CUSTOM_STAGE"
+          
+          if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
+            # Install prebuilt kernel
+            cat > "$CUSTOM_STAGE/00-run-chroot.sh" << 'KERNELEOF'
+          #!/bin/bash -e
+          
+          echo "Installing ClockworkPi kernel from repository..."
+          
+          # Add ClockworkPi repository
+          wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/clockworkpi.gpg
+          echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | tee /etc/apt/sources.list.d/clockworkpi.list
+          
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            uconsole-kernel-cm4-rpi \
+            clockworkpi-audio \
+            clockworkpi-cm-firmware
+          
+          apt-get clean
+          rm -rf /var/lib/apt/lists/*
+          KERNELEOF
+            chmod +x "$CUSTOM_STAGE/00-run-chroot.sh"
+          else
+            # Install custom-built kernel
+            cat > "$CUSTOM_STAGE/00-run.sh" << 'BUILDEOF'
+          #!/bin/bash -e
+          
+          KERNEL_DEBS="/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/artifacts/kernel-debs"
+          if [ -d "$KERNEL_DEBS" ]; then
+            install -d "${ROOTFS_DIR}/tmp/kernel-debs"
+            install -m 644 "$KERNEL_DEBS"/*.deb "${ROOTFS_DIR}/tmp/kernel-debs/"
+          fi
+          BUILDEOF
+            chmod +x "$CUSTOM_STAGE/00-run.sh"
+            
+            cat > "$CUSTOM_STAGE/01-run-chroot.sh" << 'CHROOTEOF'
+          #!/bin/bash -e
+          
+          if [ -d /tmp/kernel-debs ]; then
+            echo "Installing custom kernel packages..."
+            apt-get update
+            apt-get install -y initramfs-tools
+            dpkg -i /tmp/kernel-debs/*.deb || apt-get install -f -y
+            rm -rf /tmp/kernel-debs
+            update-initramfs -u
+          fi
+          CHROOTEOF
+            chmod +x "$CUSTOM_STAGE/01-run-chroot.sh"
+          fi
+          
+          # Create uConsole configuration stage
+          UCONSOLE_STAGE="stage2/07-uconsole-config"
+          mkdir -p "$UCONSOLE_STAGE"
+          
+          cat > "$UCONSOLE_STAGE/00-run-chroot.sh" << 'CONFIGEOF'
+          #!/bin/bash -e
+          
+          # Configure uConsole-specific config.txt
+          cat > /boot/firmware/config.txt << 'BOOTEOF'
+          # uConsole Configuration
+          arm_64bit=1
+          disable_overscan=1
+          arm_boost=1
+          ignore_lcd=1
+          display_auto_detect=0
+          dtoverlay=audremap,pins_12_13
+          dtoverlay=dwc2,dr_mode=host
+          dtparam=ant2
+          dtparam=spi=on
+          dtparam=audio=on
+          camera_auto_detect=1
+          auto_initramfs=1
+          max_framebuffers=2
+          BOOTEOF
+          
+          # Add core-specific overlays
+          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+            echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt
+            echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt
+            echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt
+            echo 'enable_uart=1' >> /boot/firmware/config.txt
+          else
+            echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt
+            echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt
+            echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt
+            echo 'enable_uart=1' >> /boot/firmware/config.txt
+          fi
+          
+          # Enable SSH
+          touch /boot/firmware/ssh
+          CONFIGEOF
+          chmod +x "$UCONSOLE_STAGE/00-run-chroot.sh"
+          
+          # Create desktop installation stage if needed
+          if [ "${{ matrix.desktop }}" != "none" ]; then
+            DESKTOP_STAGE="stage2/08-desktop-environment"
+            mkdir -p "$DESKTOP_STAGE"
+            echo "${{ env.DESKTOP_TASK }}" > "$DESKTOP_STAGE/00-packages"
+          fi
+          
+          # Run pi-gen build
+          sudo ./build.sh
+          
+          # Copy output
+          mkdir -p ../output
+          cp -v deploy/* ../output/ || true
+
+      - name: Customize Ubuntu image
+        if: matrix.distro == 'jammy'
+        run: |
+          # Download Ubuntu image
+          IMAGE_PATH=https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-server-arm64+raspi.img.xz
+          wget $IMAGE_PATH -O ubuntu-jammy-raspi.img.xz > /dev/null 2>&1
+          unxz ubuntu-jammy-raspi.img.xz
+          IMAGE_PATH=./ubuntu-jammy-raspi.img
             
             # Resize image to 8GB for GNOME desktop
             echo "Resizing Ubuntu image to 8GB..."
@@ -453,7 +579,7 @@ jobs:
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends uconsole-kernel-cm4-rpi"
           else
-            sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/artifacts/kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt install -f -y --no-install-recommends"
           fi
 
@@ -600,13 +726,34 @@ jobs:
           
           # Compress image with maximum compression settings
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          mkdir -p /home/runner/work/uConsole-Image-Builder/output
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/output/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+      
+      - name: Collect output images
+        run: |
+          mkdir -p /home/runner/work/uConsole-Image-Builder/final-output
+          
+          # For Debian (bookworm/trixie), images are in output/ from pi-gen
+          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
+            if [ -f "output/"*.img.xz ]; then
+              cp output/*.img.xz /home/runner/work/uConsole-Image-Builder/final-output/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+            fi
+          fi
+          
+          # For Ubuntu (jammy), images are in output/
+          if [ "${{ matrix.distro }}" == "jammy" ]; then
+            if [ -f "/home/runner/work/uConsole-Image-Builder/output/"*.img.xz ]; then
+              cp /home/runner/work/uConsole-Image-Builder/output/*.img.xz /home/runner/work/uConsole-Image-Builder/final-output/
+            fi
+          fi
+          
+          ls -lh /home/runner/work/uConsole-Image-Builder/final-output/
       
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
           name: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/final-output/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
 
   release:
     needs: [prepare-kernel, build-image]

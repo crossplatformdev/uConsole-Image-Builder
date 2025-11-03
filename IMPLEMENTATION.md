@@ -19,11 +19,12 @@ This implementation provides a unified build system for creating bootable uConso
 
 ### Image Generation
 
-Uses rpi-image-gen (Raspberry Pi's official image generator) to create bootable images:
+Uses pi-gen (ClockworkPi fork) to create bootable images:
 - Generates complete .img.xz files ready for SD card flashing
 - Integrates with ClockworkPi kernel installation
 - Supports multiple Debian/Ubuntu distributions
 - Creates compressed images with SHA256 checksums
+- Stage-based build system for customization
 
 ### Linux Kernel Source
 
@@ -58,12 +59,13 @@ Build scripts automatically detect and use the embedded kernel source when avail
 
 ### Core Scripts
 
-1. **scripts/generate_rpi_image.sh**
-   - Main wrapper for rpi-image-gen
+1. **scripts/generate_pi_image.sh**
+   - Main wrapper for pi-gen (ClockworkPi fork)
    - Creates bootable Raspberry Pi images for uConsole
    - Supports multiple distributions (Debian/Ubuntu)
    - Handles kernel installation (prebuilt or build from source)
    - Generates compressed .img.xz files
+   - Configures pi-gen stages for uConsole-specific customization
 
 2. **scripts/build_clockworkpi_kernel.sh**
    - Builds ClockworkPi kernel using Docker (reproducible builds)
@@ -109,19 +111,19 @@ Build scripts automatically detect and use the embedded kernel source when avail
 
 ## Build Process
 
-### Using rpi-image-gen (Recommended)
+### Using pi-gen (Recommended)
 
 For complete bootable images:
 
 ```bash
 # Build with prebuilt kernel (fast)
-sudo SUITE=jammy KERNEL_MODE=prebuilt ./scripts/generate_rpi_image.sh
+sudo SUITE=bookworm KERNEL_MODE=prebuilt ./scripts/generate_pi_image.sh
 
 # Build with custom kernel from source (slow)
-sudo SUITE=bookworm KERNEL_MODE=build ./scripts/generate_rpi_image.sh
+sudo SUITE=bookworm KERNEL_MODE=build ./scripts/generate_pi_image.sh
 
 # Build all supported distributions
-sudo SUITE=all KERNEL_MODE=prebuilt ./scripts/generate_rpi_image.sh
+sudo SUITE=all KERNEL_MODE=prebuilt ./scripts/generate_pi_image.sh
 ```
 
 ### Legacy: Using build-image.sh and setup-suite.sh
