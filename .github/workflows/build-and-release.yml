@@ -46,7 +46,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        uconsole_core: [cm4, cm5]
+        uconsole_core: [cm3, cm4, cm5]
     outputs:
       kernel_mode: ${{ env.KERNEL_MODE }}
     steps:
@@ -92,11 +92,7 @@ jobs:
           export PATCH_ABSOLUTE_PATH="$(pwd)/$safe"
           
           ## If matrix.uconsole_core is 'cm4'
-          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
-            export KERNEL=kernel8            
-          else
-            export KERNEL=kernel_2712            
-          fi
+          export KERNEL=kernel8            
           
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
@@ -107,11 +103,7 @@ jobs:
             exit 1
           fi
 
-          if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
-            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
-          else
-            make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2712_defconfig
-          fi
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
           
           make deb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
 
@@ -145,7 +137,7 @@ jobs:
     strategy:
       matrix:
         distro: [bookworm, trixie, jammy]
-        uconsole_core: [cm4, cm5]
+        uconsole_core: [cm3, cm4, cm5]
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
     outputs:
       image: ${{ matrix.distro }}
@@ -444,10 +436,10 @@ jobs:
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ubuntu-${{ matrix.desktop }}-desktop"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} task-${{ matrix.desktop }}-desktop"
           fi
 
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
@@ -526,12 +518,19 @@ jobs:
           EOF
 
           ## If env.uconsole_core is 'cm4', configure cmdline.txt
+          if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm3' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d,cma-384' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+          fi
           if [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
-          else
+          fi
+          if [ "${{ matrix.uconsole_core }}" == "cm5" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
