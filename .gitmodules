@@ -1,7 +1,7 @@
-[submodule "rpi-image-gen"]
-	path = rpi-image-gen
-	url = https://github.com/raspberrypi/rpi-image-gen.git
 [submodule "linux"]
 	path = linux
 	url = https://github.com/raspberrypi/linux.git
 	tag = rpi-6.12.y_20241206_2
+[submodule "rpi-image-gen"]
+	path = rpi-image-gen
+	url = https://github.com/ak-rex/ClockworkPi-pi-gen.git

@@ -146,7 +146,11 @@ jobs:
       matrix:
         distro: [bookworm, trixie, jammy]
         uconsole_core: [cm4, cm5]
-        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
+        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback, retropie]
+        exclude:
+          # RetroPie only works with Debian-based distros (bookworm, trixie), not Ubuntu
+          - distro: jammy
+            desktop: retropie
     outputs:
       image: ${{ matrix.distro }}
       kernel_version: ${{ env.KERNEL_VERSION }}
@@ -248,29 +252,55 @@ jobs:
                 echo "DESKTOP_TASK=task-gnome-flashback-desktop" >> $GITHUB_ENV
               fi
               ;;
+            retropie)
+              # RetroPie uses pi-gen build system, no desktop task needed
+              echo "DESKTOP_TASK=" >> $GITHUB_ENV
+              echo "IS_RETROPIE=true" >> $GITHUB_ENV
+              ;;
             *)
               echo "ERROR: Unknown desktop environment: ${{ matrix.desktop }}"
-              echo "Supported desktop environments: gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback"
+              echo "Supported desktop environments: gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback, retropie"
               exit 1
               ;;
           esac
           echo "Desktop task set to: $DESKTOP_TASK"
 
-      - name: Setup rpi-image-gen
-        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
+      - name: Setup ClockworkPi-pi-gen for RetroPie
+        if: matrix.desktop == 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
         run: |
           # Verify submodule is checked out
-          if [ ! -f rpi-image-gen/rpi-image-gen ]; then
-            echo "ERROR: rpi-image-gen submodule not properly checked out"
+          if [ ! -f rpi-image-gen/build.sh ]; then
+            echo "ERROR: ClockworkPi-pi-gen submodule not properly checked out"
             exit 1
           fi
           cd rpi-image-gen
-          sudo ./install_deps.sh
-          ./rpi-image-gen layer --list
-          sed -i 's/rpi5/rpi-cm4/g' ./config/${{ matrix.distro }}-minbase.yaml
-          sed -i '/^name:/a mode: unshare' ./config/${{ matrix.distro }}-minbase.yaml
-          # Increase root partition size to 800% for 8GB root filesystem
-          sed -i 's/root_part_size: 300%/root_part_size: 800%/g' ./config/${{ matrix.distro }}-minbase.yaml
+          
+          # Install dependencies for pi-gen
+          sudo apt-get update
+          sudo apt-get install -y coreutils quilt parted qemu-user-static debootstrap zerofree zip \
+            dosfstools e2fsprogs libarchive-tools libcap2-bin grep rsync xz-utils file git curl bc \
+            gpg pigz xxd arch-test bmap-tools kmod
+
+          # Configure for RetroPie build
+          cat > config << EOF
+          IMG_NAME="ClockworkPi-${{ matrix.distro }}-RetroPie"
+          RELEASE="${{ matrix.distro }}"
+          DEPLOY_COMPRESSION="xz"
+          TARGET_HOSTNAME="uconsole"
+          FIRST_USER_NAME="clockworkpi"
+          FIRST_USER_PASS="clockworkpi"
+          ENABLE_SSH=1
+          STAGE_LIST="stage0 stage1 stage2 stage2-retropie"
+          EOF
+
+      - name: Setup rpi-image-gen for standard desktops
+        if: matrix.desktop != 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
+        run: |
+          # For non-RetroPie builds, we don't use pi-gen
+          # Instead, we'll use the current workflow approach of building a minimal base
+          # and then customizing it with the desired desktop
+          echo "Skipping pi-gen setup for non-RetroPie desktop builds"
+          echo "Will use debootstrap approach instead"
 
 
       - name: Download kernel artifacts
@@ -280,13 +310,76 @@ jobs:
           name: kernel-debs-${{ matrix.uconsole_core }}
           path:  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/
 
-      - name: Build base image
-        if: matrix.distro == 'bookworm' || matrix.distro == 'trixie'
+      - name: Build RetroPie image with ClockworkPi-pi-gen
+        if: matrix.desktop == 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
         run: |
           cd rpi-image-gen
-          ./rpi-image-gen build -c ./config/${{ matrix.distro }}-minbase.yaml
+          # Run pi-gen build for RetroPie
+          sudo ./build.sh
+          
+          # The output will be in the deploy directory
+          # Move it to a known location for later steps
+          mkdir -p /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output
+          sudo mv deploy/*.img /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/ || true
+          sudo mv deploy/*.img.xz /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/ || true
+
+      - name: Build base image for standard desktops
+        if: matrix.desktop != 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
+        run: |
+          # For non-RetroPie builds, create a minimal Debian base using debootstrap
+          # This replaces the rpi-image-gen approach
+          echo "Creating minimal ${{ matrix.distro }} base with debootstrap"
+          
+          # Create a minimal base image
+          IMAGE_SIZE="8G"
+          if [ "${{ matrix.distro }}" == "bookworm" ]; then
+            IMAGE_NAME="deb12-arm64-min.img"
+          else
+            IMAGE_NAME="deb13-arm64-min.img"
+          fi
+          
+          # Create image file
+          mkdir -p /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/base-images
+          IMAGE_PATH="/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/base-images/$IMAGE_NAME"
+          
+          # Create an 8GB image
+          dd if=/dev/zero of="$IMAGE_PATH" bs=1M count=8192 status=progress
+          
+          # Create partitions
+          sudo parted "$IMAGE_PATH" --script mklabel msdos
+          sudo parted "$IMAGE_PATH" --script mkpart primary fat32 1MiB 513MiB
+          sudo parted "$IMAGE_PATH" --script mkpart primary ext4 513MiB 100%
+          sudo parted "$IMAGE_PATH" --script set 1 boot on
+          
+          # Setup loop device
+          LOOP_DEV=$(sudo losetup -f --show -P "$IMAGE_PATH")
+          
+          # Format partitions
+          sudo mkfs.vfat -F 32 "${LOOP_DEV}p1"
+          sudo mkfs.ext4 -F "${LOOP_DEV}p2"
+          
+          # Mount partitions
+          sudo mkdir -p /mnt/base-rootfs
+          sudo mount "${LOOP_DEV}p2" /mnt/base-rootfs
+          sudo mkdir -p /mnt/base-rootfs/boot/firmware
+          sudo mount "${LOOP_DEV}p1" /mnt/base-rootfs/boot/firmware
+          
+          # Bootstrap minimal Debian system
+          sudo debootstrap --arch=arm64 --include=systemd,udev,apt,ca-certificates \
+            ${{ matrix.distro }} /mnt/base-rootfs http://deb.debian.org/debian
+          
+          # Basic setup
+          echo "uconsole" | sudo tee /mnt/base-rootfs/etc/hostname
+          echo "127.0.0.1 localhost" | sudo tee /mnt/base-rootfs/etc/hosts
+          echo "127.0.1.1 uconsole" | sudo tee -a /mnt/base-rootfs/etc/hosts
+          
+          # Unmount
+          sudo umount /mnt/base-rootfs/boot/firmware
+          sudo umount /mnt/base-rootfs
+          sudo losetup -d "$LOOP_DEV"
 
       - name: Customize image
+        if: matrix.desktop != 'retropie'
         run: |
           # If matrix.distro is bookworm, use deb12-arm64-min.img
           # If matrix.distro is trixie, use deb13-arm64-min.img
@@ -294,9 +387,9 @@ jobs:
           if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
             # If matrix.distro is bookworm, 
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
-              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb12-arm64-min/deb12-arm64-min.img
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/base-images/deb12-arm64-min.img
             else
-              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/rpi-image-gen/work/image-deb13-arm64-min/deb13-arm64-min.img
+              IMAGE_PATH=/home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/base-images/deb13-arm64-min.img
             fi
           fi
           
@@ -602,6 +695,27 @@ jobs:
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
       
+      - name: Process RetroPie image
+        if: matrix.desktop == 'retropie'
+        run: |
+          # Find the RetroPie image built by ClockworkPi-pi-gen
+          cd /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output
+          
+          # Check if image is already compressed
+          if [ -f *.img.xz ]; then
+            echo "Image already compressed"
+            mv *.img.xz /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          elif [ -f *.img ]; then
+            echo "Compressing image"
+            IMAGE_FILE=$(ls *.img | head -1)
+            xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress "$IMAGE_FILE"
+            mv *.img.xz /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          else
+            echo "ERROR: No RetroPie image found!"
+            ls -la
+            exit 1
+          fi
+
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
