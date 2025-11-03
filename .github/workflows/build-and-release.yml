@@ -745,10 +745,10 @@ jobs:
           cd /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output
           
           # Check if image is already compressed
-          if [ -f *.img.xz ]; then
+          if ls *.img.xz >/dev/null 2>&1; then
             echo "Image already compressed"
             mv *.img.xz /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
-          elif [ -f *.img ]; then
+          elif ls *.img >/dev/null 2>&1; then
             echo "Compressing image"
             IMAGE_FILE=$(ls *.img | head -1)
             xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress "$IMAGE_FILE"
