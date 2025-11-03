@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation provides a unified build system for creating bootable uConsole images with the ClockworkPi kernel, using the rpi-image-gen tool and automated CI/CD workflows.
+This implementation provides a unified build system for creating bootable uConsole images with the ClockworkPi kernel, using the ClockworkPi-pi-gen tool and automated CI/CD workflows.
 
 ## Key Features
 
@@ -11,6 +11,8 @@ This implementation provides a unified build system for creating bootable uConso
 **Single Unified Workflow** (`.github/workflows/build-and-release.yml`):
 - Replaces 5 separate workflows with one comprehensive workflow
 - Builds complete bootable images for multiple distributions (jammy, bookworm, trixie)
+- Supports multiple desktop environments (GNOME, KDE, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback)
+- Supports RetroPie gaming distribution (Debian-based only)
 - Supports two kernel modes:
   - **prebuilt**: Fast installation using ClockworkPi repository packages
   - **build**: Custom kernel compilation from source with patches
@@ -19,7 +21,9 @@ This implementation provides a unified build system for creating bootable uConso
 
 ### Image Generation
 
-Uses rpi-image-gen (Raspberry Pi's official image generator) to create bootable images:
+Uses ClockworkPi-pi-gen (a fork of Raspberry Pi's pi-gen) for specialized builds:
+- **RetroPie Images**: Built using ClockworkPi-pi-gen's stage2-retropie for gaming-focused distributions
+- **Standard Desktop Images**: Built using debootstrap for Debian and official images for Ubuntu
 - Generates complete .img.xz files ready for SD card flashing
 - Integrates with ClockworkPi kernel installation
 - Supports multiple Debian/Ubuntu distributions
@@ -59,9 +63,10 @@ Build scripts automatically detect and use the embedded kernel source when avail
 ### Core Scripts
 
 1. **scripts/generate_rpi_image.sh**
-   - Main wrapper for rpi-image-gen
+   - Main wrapper for image generation
    - Creates bootable Raspberry Pi images for uConsole
    - Supports multiple distributions (Debian/Ubuntu)
+   - Note: The workflow now uses ClockworkPi-pi-gen directly for RetroPie builds
    - Handles kernel installation (prebuilt or build from source)
    - Generates compressed .img.xz files
 
@@ -109,9 +114,19 @@ Build scripts automatically detect and use the embedded kernel source when avail
 
 ## Build Process
 
-### Using rpi-image-gen (Recommended)
+### Using ClockworkPi-pi-gen for RetroPie
 
-For complete bootable images:
+For RetroPie gaming images:
+
+```bash
+cd rpi-image-gen
+# Edit config file to set STAGE_LIST="stage0 stage1 stage2 stage2-retropie"
+sudo ./build.sh
+```
+
+### Using Image Generation Script (Recommended for Standard Desktops)
+
+For complete bootable images with standard desktop environments:
 
 ```bash
 # Build with prebuilt kernel (fast)

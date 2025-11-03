@@ -18,8 +18,9 @@ The workflow builds images with the following desktop environments:
 - **LXDE** - Extremely lightweight desktop for resource-constrained systems
 - **LXQt** - Lightweight Qt-based desktop
 - **GNOME Flashback** - Traditional GNOME 2-style desktop
+- **RetroPie** - Gaming-focused distribution for emulation (Debian-based only: Bookworm, Trixie)
 
-Each desktop environment is available for all supported distributions (Debian Bookworm, Debian Trixie, Ubuntu Jammy) and hardware variants (CM4, CM5).
+Each desktop environment is available for all supported distributions (Debian Bookworm, Debian Trixie, Ubuntu Jammy) and hardware variants (CM4, CM5), except RetroPie which is only available for Debian-based distributions.
 
 ## Workflow File
 
@@ -64,9 +65,9 @@ The workflow consists of three main jobs that run sequentially:
 **Matrix Strategy**: Builds images in parallel for:
 - Distributions: Debian 12 (bookworm), Debian 13 (trixie), Ubuntu 22.04 (jammy)
 - Hardware: CM4 and CM5
-- Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback
+- Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback, RetroPie
 
-This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop environments).
+This creates 50 image variants (3 distros × 2 hardware variants × 8 desktop environments) + (2 Debian distros × 2 hardware variants × 1 RetroPie) = 52 total variants.
 
 **Key Steps**:
 1. **Environment Setup**:
@@ -75,13 +76,14 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
    - Adds Debian/Ubuntu archive keys
 
 2. **Submodule Initialization**:
-   - Checks out repository with `rpi-image-gen` submodule
+   - Checks out repository with `ClockworkPi-pi-gen` submodule (at rpi-image-gen path)
    - Verifies submodule integrity
 
 3. **Base Image Creation**:
-   - For Debian (bookworm/trixie): Uses rpi-image-gen to build minimal base images
+   - For RetroPie: Uses ClockworkPi-pi-gen's build.sh with stage2-retropie to create gaming-focused images
+   - For Standard Desktops (bookworm/trixie): Uses debootstrap to create minimal base images
    - For Ubuntu (jammy): Downloads official Raspberry Pi server image
-   - Modifies rpi-image-gen configs for CM4 compatibility
+   - Configures for CM4/CM5 compatibility
 
 4. **Image Customization**:
    - Mounts image partitions using loop devices
