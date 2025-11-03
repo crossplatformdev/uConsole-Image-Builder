@@ -283,24 +283,29 @@ jobs:
             # Try HKPS first, fallback to hkp
             gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
               || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" || true
-            # Export to dearmored GPG file that can be used directly by apt
-            gpg --batch --export "$key" | gpg --dearmor | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
+            # Export to GPG file - gpg --export already outputs in binary format suitable for apt
+            gpg --batch --export "$key" | sudo tee "stage0/00-debian-keys/files/${key}.gpg" > /dev/null
           done
           
-          # Create a script to install these keys in the chroot
-          # This script will be called by pi-gen during stage0
-          cat > stage0/00-debian-keys/00-run.sh << 'KEYEOF'
+          # Create a prerun script that will execute before stage0 proper
+          # This ensures keys are installed before any apt operations
+          cat > stage0/prerun.sh << 'PRERUN'
           #!/bin/bash -e
-          # Install Debian archive keys in the chroot
-          # Files are in the stage directory which pi-gen mounts
-          for keyfile in files/*.gpg; do
-            if [ -f "$keyfile" ]; then
-              cp "$keyfile" "/etc/apt/trusted.gpg.d/$(basename "$keyfile")"
-              chmod 644 "/etc/apt/trusted.gpg.d/$(basename "$keyfile")"
+          # Install Debian GPG keys before any apt operations
+          on_chroot << CHROOT
+          # Copy GPG keys into apt's trusted directory
+          for keyfile in /stage0/00-debian-keys/files/*.gpg 2>/dev/null; do
+            if [ -f "\$keyfile" ]; then
+              cp "\$keyfile" "/etc/apt/trusted.gpg.d/\$(basename "\$keyfile")"
+              chmod 644 "/etc/apt/trusted.gpg.d/\$(basename "\$keyfile")"
             fi
           done
-          KEYEOF
-          chmod +x stage0/00-debian-keys/00-run.sh
+          # Also ensure debian-archive-keyring is installed
+          apt-get update || true
+          apt-get install -y --no-install-recommends debian-archive-keyring || true
+          CHROOT
+          PRERUN
+          chmod +x stage0/prerun.sh
 
           # Configure for RetroPie build
           cat > config << EOF
