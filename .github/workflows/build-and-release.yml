@@ -130,7 +130,7 @@ jobs:
             /home/runner/work/uConsole-Image-Builder/uconsole-kernel-patch-${{ matrix.uconsole_core }}.diff
 
   build-image:
-    name: uconsole-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}
+    name: ${{ matrix.device }}-${{ needs.prepare-kernel.outputs.kernel_mode }}-image-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}
     needs: prepare-kernel
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -139,6 +139,7 @@ jobs:
       matrix:
         distro: [bookworm, trixie, jammy]
         uconsole_core: [cm3, cm4, cm5]
+        device: [devterm, uconsole]
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback, retropie]
         exclude:
           # RetroPie only works with Debian-based distros (bookworm, trixie), not Ubuntu
@@ -632,22 +633,43 @@ jobs:
           
           EOF
 
-          ## Configure device-specific dtoverlay based on uconsole_core
-          if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm3' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d,cma-384' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
-          elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
-          else  # cm5
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+          ## Configure device-specific dtoverlay based on device and uconsole_core
+          if [ "${{ matrix.device }}" == "devterm" ]; then
+            # DevTerm device overlays
+            if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-devterm-cm3' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-devterm' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            else  # cm5
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-devterm-cm5' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            fi
+          else
+            # uConsole device overlays
+            if [ "${{ matrix.uconsole_core }}" == "cm3" ]; then
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm3' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            elif [ "${{ matrix.uconsole_core }}" == "cm4" ]; then
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi4,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            else  # cm5
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=clockworkpi-uconsole-cm5' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtoverlay=vc4-kms-v3d-pi5,cma-384' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'dtparam=pciex1=off' >> /boot/firmware/config.txt"
+              sudo chroot $MOUNT_POINT /bin/bash -c "echo 'enable_uart=1' >> /boot/firmware/config.txt"
+            fi
           fi
 
           # Generate vmlinuz (raspi kernel) initramfs
@@ -712,7 +734,7 @@ jobs:
           
           # Compress image with maximum compression settings
           xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
-          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
       
       - name: Process RetroPie image
         if: matrix.desktop == 'retropie'
@@ -723,12 +745,12 @@ jobs:
           # Check if image is already compressed
           if [ -f *.img.xz ]; then
             echo "Image already compressed"
-            mv *.img.xz /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+            mv *.img.xz /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
           elif [ -f *.img ]; then
             echo "Compressing image"
             IMAGE_FILE=$(ls *.img | head -1)
             xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress "$IMAGE_FILE"
-            mv *.img.xz /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+            mv *.img.xz /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
           else
             echo "ERROR: No RetroPie image found!"
             ls -la
@@ -738,8 +760,8 @@ jobs:
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
-          path: /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          name: ${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
+          path: /home/runner/work/uConsole-Image-Builder/${{ matrix.device }}-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
 
   release:
     needs: [prepare-kernel, build-image]
@@ -769,13 +791,13 @@ jobs:
           name: kernel-patch-uconsole-${{ matrix.uconsole_core }}
           path: /home/runner/work/uConsole-Image-Builder/release/
 
-      # Download only images for this specific distro-core combination
-      # Pattern matches artifacts from build-image job (line 608):
-      # uconsole-{distro}-{core}-{desktop}.img.xz
+      # Download only images for this specific distro-core combination (both devices)
+      # Pattern matches artifacts from build-image job:
+      # {device}-{distro}-{core}-{desktop}.img.xz
       - name: Download image artifacts for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         uses: actions/download-artifact@v4
         with:
-          pattern: uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-*.img.xz
+          pattern: "*-${{ matrix.distro }}-${{ matrix.uconsole_core }}-*.img.xz"
           path: /home/runner/work/uConsole-Image-Builder/release/
           merge-multiple: true          
 

@@ -4,7 +4,7 @@ This document explains the automated Continuous Integration and Continuous Deplo
 
 ## Overview
 
-The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole CM3, CM4, and CM5 devices. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
+The uConsole-Image-Builder uses a unified GitHub Actions workflow to automatically build bootable Raspberry Pi images for the ClockworkPi uConsole and DevTerm devices with CM3, CM4, and CM5 compute modules. The workflow is designed to create complete, ready-to-flash images with minimal manual intervention.
 
 ## Desktop Environments Supported
 
@@ -65,9 +65,10 @@ The workflow consists of three main jobs that run sequentially:
 **Matrix Strategy**: Builds images in parallel for:
 - Distributions: Debian 12 (bookworm), Debian 13 (trixie), Ubuntu 22.04 (jammy)
 - Hardware: CM3, CM4, and CM5
+- Devices: DevTerm and uConsole
 - Desktop Environments: GNOME, KDE Plasma, Cinnamon, MATE, Xfce, LXDE, LXQt, GNOME Flashback, RetroPie
 
-This creates 75 image variants: (3 distros × 3 hardware × 8 desktops) + (2 Debian distros × 3 hardware × 1 RetroPie) - (1 jammy+retropie exclusion × 3 hardware) = 72 + 6 - 3 = 75 total variants.
+This creates 150 image variants: (3 distros × 3 hardware × 2 devices × 8 desktops) + (2 Debian distros × 3 hardware × 2 devices × 1 RetroPie) - (1 jammy+retropie exclusion × 3 hardware × 2 devices) = 144 + 12 - 6 = 150 total variants.
 
 **Key Steps**:
 1. **Environment Setup**:
