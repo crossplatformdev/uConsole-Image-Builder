@@ -140,7 +140,7 @@ jobs:
         distro: [bookworm, trixie, jammy]
         uconsole_core: [cm3, cm4, cm5]
         device: [devterm, uconsole]
-        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback, retropie]
+        desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
         exclude:
           # RetroPie only works with Debian-based distros (bookworm, trixie), not Ubuntu
           - distro: jammy
