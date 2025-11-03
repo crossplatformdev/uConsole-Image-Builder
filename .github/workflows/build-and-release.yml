@@ -138,7 +138,7 @@ jobs:
       matrix:
         distro: [bookworm, trixie, jammy]
         uconsole_core: [cm3, cm4, cm5]
-        desktop: [gnome, kde, cinnamon, mate, xfce, gnome-flashback]
+        desktop: [gnome, kde, cinnamon, mate, xfce4, gnome-flashback]
     outputs:
       image: ${{ matrix.distro }}
       kernel_version: ${{ env.KERNEL_VERSION }}
