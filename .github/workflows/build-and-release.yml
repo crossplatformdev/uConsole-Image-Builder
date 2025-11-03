@@ -327,12 +327,11 @@ jobs:
           fi
           
           # Move artifacts
-          if ls deploy/*.img >/dev/null 2>&1; then
-            sudo mv deploy/*.img /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/
-          fi
-          if ls deploy/*.img.xz >/dev/null 2>&1; then
-            sudo mv deploy/*.img.xz /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/
-          fi
+          shopt -s nullglob
+          for f in deploy/*.img deploy/*.img.xz; do
+            sudo mv "$f" /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/retropie-output/
+          done
+          shopt -u nullglob
 
       - name: Build base image for standard desktops
         if: matrix.desktop != 'retropie' && (matrix.distro == 'bookworm' || matrix.distro == 'trixie')
