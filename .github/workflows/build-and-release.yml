@@ -268,7 +268,21 @@ jobs:
             exit 1
           fi
           cd rpi-image-gen
-          
+                    sudo apt-get update
+          sudo apt-get install -y gnupg ca-certificates debian-archive-keyring
+
+          # Ensure Debian archive keys are present
+          sudo apt-get install -y --reinstall debian-archive-keyring || true
+
+          KEYS=(6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481 BDE6D2B9216EC7A8 8E9F831205B4BA95 762F67A0B2C39DE4 54404762BBB6E853)
+          for key in "${KEYS[@]}"; do
+            # Try HKPS first, fallback to hkp
+            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$key" \
+              || gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+            # Export and dearmor into apt trusted dir
+            gpg --batch --export "$key" | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/${key}.gpg
+          done
+
           # Install dependencies for pi-gen
           sudo apt-get update
           sudo apt-get install -y coreutils quilt parted qemu-user-static debootstrap zerofree zip \
