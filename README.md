@@ -75,23 +75,28 @@ This creates 48 image variants (3 distros × 2 hardware variants × 8 desktop en
    - Adds Debian/Ubuntu archive keys
 
 2. **Submodule Initialization**:
-   - Checks out repository with `rpi-image-gen` submodule
+   - Checks out repository with `pi-gen` submodule (ClockworkPi-pi-gen fork)
    - Verifies submodule integrity
 
 3. **Base Image Creation**:
-   - For Debian (bookworm/trixie): Uses rpi-image-gen to build minimal base images
+   - For Debian (bookworm/trixie): Uses pi-gen (ClockworkPi's fork) to build complete bootable images from scratch
    - For Ubuntu (jammy): Downloads official Raspberry Pi server image
-   - Modifies rpi-image-gen configs for CM4 compatibility
+   - pi-gen uses a stage-based build system (stage0-stage4) to create customized images
 
 4. **Image Customization**:
-   - Mounts image partitions using loop devices
-   - Sets up chroot environment with proper bind mounts
-   - Removes existing kernel packages
-   - Adds ClockworkPi APT repository
-   - Installs kernel (prebuilt or custom-built .debs)
-   - Installs distribution-specific desktop environment:
-     - For Ubuntu (jammy): ubuntu-gnome-desktop, kubuntu-desktop, ubuntu-mate-desktop, xubuntu-desktop, lubuntu-desktop, etc.
-     - For Debian (bookworm/trixie): task-gnome-desktop, task-kde-desktop, task-mate-desktop, task-xfce-desktop, task-lxde-desktop, task-lxqt-desktop, task-cinnamon-desktop, task-gnome-flashback-desktop
+   - For Debian: pi-gen handles everything through its stage system
+     - Stage 0: Bootstrap base system
+     - Stage 1: System configuration
+     - Stage 2: Lite system with kernel and uConsole-specific configuration
+     - Additional stages for desktop environments
+   - For Ubuntu: Manual customization process
+     - Mounts image partitions using loop devices
+     - Sets up chroot environment with proper bind mounts
+     - Removes existing kernel packages
+     - Adds ClockworkPi APT repository
+     - Installs kernel (prebuilt or custom-built .debs)
+     - Installs distribution-specific desktop environment:
+       - For Ubuntu (jammy): ubuntu-gnome-desktop, kubuntu-desktop, ubuntu-mate-desktop, xubuntu-desktop, lubuntu-desktop, etc.
    - Configures system:
      - Creates `clockworkpi` user (password: `clockworkpi`)
      - Sets hostname to `uconsole`

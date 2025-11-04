@@ -113,29 +113,29 @@ echo "============================="
 cd "$REPO_ROOT"
 
 # Check required directories exist
-if [ -d "rpi-image-gen" ]; then
-    test_pass "rpi-image-gen submodule directory exists"
+if [ -d "pi-gen" ]; then
+    test_pass "pi-gen submodule directory exists"
 else
-    test_fail "rpi-image-gen submodule directory missing"
+    test_fail "pi-gen submodule directory missing"
 fi
 
 if [ -d "artifacts/kernel-debs" ]; then
     test_pass "artifacts/kernel-debs directory exists"
 else
-    test_fail "artifacts/kernel-debs directory missing"
+    test_skip "artifacts/kernel-debs directory missing (expected if no kernel built)"
 fi
 
 if [ -f "patches/ak-rex.patch" ]; then
     test_pass "patches/ak-rex.patch exists"
 else
-    test_fail "patches/ak-rex.patch missing"
+    test_skip "patches/ak-rex.patch missing (patch now downloaded from GitHub)"
 fi
 
 # Check documentation exists
-if [ -f "scripts/rpi_image_gen/README.md" ]; then
-    test_pass "rpi-image-gen documentation exists"
+if [ -f "scripts/pi_gen/README.md" ]; then
+    test_pass "pi-gen documentation exists"
 else
-    test_fail "rpi-image-gen documentation missing"
+    test_fail "pi-gen documentation missing"
 fi
 
 if [ -f "CHANGES.md" ]; then
@@ -151,10 +151,10 @@ echo "============================="
 cd "$REPO_ROOT"
 
 # Check submodule is configured
-if git submodule status | grep -q "rpi-image-gen"; then
-    test_pass "rpi-image-gen submodule is configured"
+if git submodule status | grep -q "pi-gen"; then
+    test_pass "pi-gen submodule is configured"
 else
-    test_fail "rpi-image-gen submodule not configured"
+    test_fail "pi-gen submodule not configured"
 fi
 
 # Check .gitmodules exists
