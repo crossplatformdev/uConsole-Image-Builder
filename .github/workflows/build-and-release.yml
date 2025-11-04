@@ -606,7 +606,8 @@ jobs:
 
       - name: Create GitHub Release for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'build'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        timeout-minutes: 30
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
           name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
@@ -615,18 +616,21 @@ jobs:
             /home/runner/work/uConsole-Image-Builder/release/*.deb
             /home/runner/work/uConsole-Image-Builder/release/*.diff
           generate_release_notes: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release for ${{ matrix.distro }}-${{ matrix.uconsole_core }}
         if: needs.prepare-kernel.outputs.kernel_mode == 'prebuilt'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        timeout-minutes: 30
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
           name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
 
