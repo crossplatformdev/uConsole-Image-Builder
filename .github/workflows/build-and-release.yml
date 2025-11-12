@@ -65,6 +65,15 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Checkout kernel tag/commit
+        if: env.KERNEL_MODE == 'build'
+        run: |
+          cd linux
+          echo "Checking out kernel tag/commit: ${{ env.KERNEL_COMMIT }}"
+          git fetch --tags origin
+          git checkout ${{ env.KERNEL_COMMIT }}
+          echo "Currently on: $(git describe --always --tags)"
+
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
         run: |
