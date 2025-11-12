@@ -71,6 +71,14 @@ jobs:
           set -e
           cd linux
           echo "Checking out kernel tag/commit: $KERNEL_COMMIT"
+          
+          # Validate that KERNEL_COMMIT looks like a valid git reference
+          # Allow alphanumeric, dash, underscore, dot, and forward slash
+          if ! echo "$KERNEL_COMMIT" | grep -qE '^[a-zA-Z0-9._/-]+$'; then
+            echo "ERROR: Invalid kernel commit/tag format: $KERNEL_COMMIT"
+            exit 1
+          fi
+          
           if ! git fetch --tags origin; then
             echo "ERROR: Failed to fetch tags from origin"
             exit 1

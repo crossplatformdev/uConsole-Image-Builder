@@ -208,7 +208,7 @@ The workflow uses several environment variables for configuration:
 
 ```yaml
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_COMMIT: ${{ github.event.inputs.kernel_commit || 'stable_20250916' }}
