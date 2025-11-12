@@ -197,8 +197,8 @@ on:
 3. Select options:
    - **Branch**: Choose which branch to build from
    - **Kernel mode**: 
-     - `prebuilt` (default): Fast build using ClockworkPi repository packages (~45 minutes)
-     - `build`: Compile kernel from source with patches (~3-4 hours)
+     - `build` (default): Compile kernel from source with patches (~3-4 hours)
+     - `prebuilt`: Fast build using ClockworkPi repository packages (~45 minutes)
    - **Kernel commit/tag** (optional): Specify a custom kernel tag or commit (default: `stable_20250916`)
 4. Click "Run workflow"
 

@@ -80,6 +80,12 @@ jobs:
             exit 1
           fi
           
+          # Additional check: prevent '..' sequences to avoid path traversal
+          if echo "$KERNEL_COMMIT" | grep -q '\.\.'; then
+            echo "ERROR: Kernel commit/tag cannot contain '..' sequences: $KERNEL_COMMIT"
+            exit 1
+          fi
+          
           if ! git fetch --tags origin; then
             echo "ERROR: Failed to fetch tags from origin"
             exit 1
