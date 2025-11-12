@@ -34,7 +34,7 @@ on:
         description: 'Kernel commit/tag (e.g., stable_20250916, rpi-6.12.y_20241206_2)'
         required: false
         default: 'stable_20250916'
-        type: string          
+        type: string
 env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
@@ -68,11 +68,20 @@ jobs:
       - name: Checkout kernel tag/commit
         if: env.KERNEL_MODE == 'build'
         run: |
+          set -e
           cd linux
           echo "Checking out kernel tag/commit: ${{ env.KERNEL_COMMIT }}"
-          git fetch --tags origin
-          git checkout ${{ env.KERNEL_COMMIT }}
-          echo "Currently on: $(git describe --always --tags)"
+          if ! git fetch --tags origin; then
+            echo "ERROR: Failed to fetch tags from origin"
+            exit 1
+          fi
+          if ! git checkout ${{ env.KERNEL_COMMIT }}; then
+            echo "ERROR: Failed to checkout ${{ env.KERNEL_COMMIT }}"
+            echo "Available tags:"
+            git tag | tail -20
+            exit 1
+          fi
+          echo "Successfully checked out: $(git describe --always --tags)"
 
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
