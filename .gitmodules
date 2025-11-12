@@ -4,4 +4,4 @@
 [submodule "linux"]
 	path = linux
 	url = https://github.com/raspberrypi/linux.git
-	tag = rpi-6.12.y_20241206_2
+	tag = stable_20250916

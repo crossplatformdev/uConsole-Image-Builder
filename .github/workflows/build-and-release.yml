@@ -29,12 +29,17 @@ on:
         type: choice
         options:
           - rpi-6.12.y
-          - riscv          
+          - riscv
+      kernel_commit:
+        description: 'Kernel commit/tag (e.g., stable_20250916, rpi-6.12.y_20241206_2)'
+        required: false
+        default: 'stable_20250916'
+        type: string          
 env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
-  KERNEL_COMMIT: 'rpi-6.12.y_20241206_2' # 'rpi-6.12.y'  # Can be modified to point to specific commit or branch
+  KERNEL_COMMIT: ${{ github.event.inputs.kernel_commit || 'stable_20250916' }}
   # apt packages that will be installed on the images
   UBUNTU_TASKS: 'ubuntu-standard ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
