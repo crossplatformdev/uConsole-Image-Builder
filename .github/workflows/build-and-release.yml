@@ -82,9 +82,16 @@ jobs:
             exit 1
           fi
           
-          # Additional check: prevent '..' sequences to avoid path traversal
+          # Additional security checks
+          # Prevent '..' sequences to avoid path traversal
           if echo "$KERNEL_COMMIT" | grep -q '\.\.'; then
             echo "ERROR: Kernel commit/tag cannot contain '..' sequences: $KERNEL_COMMIT"
+            exit 1
+          fi
+          
+          # Prevent leading or trailing periods
+          if echo "$KERNEL_COMMIT" | grep -qE '^\.|\.$$'; then
+            echo "ERROR: Kernel commit/tag cannot start or end with a period: $KERNEL_COMMIT"
             exit 1
           fi
           
