@@ -73,9 +73,10 @@ jobs:
           echo "Checking out kernel tag/commit: $KERNEL_COMMIT"
           
           # Validate that KERNEL_COMMIT looks like a valid git reference
-          # Allow alphanumeric, dash, underscore, dot, and forward slash
-          if ! echo "$KERNEL_COMMIT" | grep -qE '^[a-zA-Z0-9._/-]+$'; then
+          # Allow alphanumeric, dash, underscore, and dot (no forward slashes to prevent path traversal)
+          if ! echo "$KERNEL_COMMIT" | grep -qE '^[a-zA-Z0-9._-]+$'; then
             echo "ERROR: Invalid kernel commit/tag format: $KERNEL_COMMIT"
+            echo "Format must contain only alphanumeric characters, dots, hyphens, and underscores"
             exit 1
           fi
           
@@ -85,8 +86,8 @@ jobs:
           fi
           if ! git checkout "$KERNEL_COMMIT"; then
             echo "ERROR: Failed to checkout $KERNEL_COMMIT"
-            echo "Available tags:"
-            git tag | tail -20
+            echo "Most recent tags available:"
+            git tag --sort=-version:refname | head -20
             exit 1
           fi
           echo "Successfully checked out: $(git describe --always --tags)"
