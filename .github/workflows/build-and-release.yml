@@ -70,18 +70,20 @@ jobs:
         run: |
           set -e
           cd linux
-          echo "Checking out kernel tag/commit: ${{ env.KERNEL_COMMIT }}"
+          echo "Checking out kernel tag/commit: $KERNEL_COMMIT"
           if ! git fetch --tags origin; then
             echo "ERROR: Failed to fetch tags from origin"
             exit 1
           fi
-          if ! git checkout ${{ env.KERNEL_COMMIT }}; then
-            echo "ERROR: Failed to checkout ${{ env.KERNEL_COMMIT }}"
+          if ! git checkout "$KERNEL_COMMIT"; then
+            echo "ERROR: Failed to checkout $KERNEL_COMMIT"
             echo "Available tags:"
             git tag | tail -20
             exit 1
           fi
           echo "Successfully checked out: $(git describe --always --tags)"
+        env:
+          KERNEL_COMMIT: ${{ env.KERNEL_COMMIT }}
 
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
