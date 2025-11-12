@@ -179,11 +179,16 @@ on:
       kernel_mode:
         description: 'Kernel mode (build/prebuilt)'
         required: true
-        default: 'prebuilt'
+        default: 'build'
         type: choice
         options:
           - build
           - prebuilt
+      kernel_commit:
+        description: 'Kernel commit/tag (e.g., stable_20250916, rpi-6.12.y_20241206_2)'
+        required: false
+        default: 'stable_20250916'
+        type: string
 ```
 
 **How to Trigger Manually**:
@@ -192,8 +197,9 @@ on:
 3. Select options:
    - **Branch**: Choose which branch to build from
    - **Kernel mode**: 
-     - `prebuilt` (default): Fast build using ClockworkPi repository packages (~45 minutes)
-     - `build`: Compile kernel from source with patches (~3-4 hours)
+     - `build` (default): Compile kernel from source with patches (~3-4 hours)
+     - `prebuilt`: Fast build using ClockworkPi repository packages (~45 minutes)
+   - **Kernel commit/tag** (optional): Specify a custom kernel tag or commit (default: `stable_20250916`)
 4. Click "Run workflow"
 
 ## Environment Variables
@@ -202,10 +208,10 @@ The workflow uses several environment variables for configuration:
 
 ```yaml
 env:
-  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'prebuilt' }}
+  KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
-  KERNEL_COMMIT: 'rpi-6.12.y_20241206_2'
+  KERNEL_COMMIT: ${{ github.event.inputs.kernel_commit || 'stable_20250916' }}
   UBUNTU_TASKS: 'ubuntu-standard ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   UCONSOLE_CORE: "cm4"
@@ -219,7 +225,9 @@ env:
 
 - **KERNEL_VERSION**: Raspberry Pi kernel branch to use (e.g., `rpi-6.12.y`)
 
-- **KERNEL_COMMIT**: Specific commit or tag in the kernel repository
+- **KERNEL_COMMIT**: Specific commit or tag in the kernel repository (e.g., `stable_20250916`)
+  - Can be customized via workflow_dispatch input parameter for easy tag selection
+  - Defaults to `stable_20250916`
 
 - **UCONSOLE_CORE**: Target hardware model
   - `cm4`: Raspberry Pi Compute Module 4 (uses bcm2711_defconfig)
