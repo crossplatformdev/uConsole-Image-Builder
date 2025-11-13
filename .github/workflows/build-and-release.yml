@@ -519,16 +519,16 @@ jobs:
           dtparam=ant2
           dtparam=spi=on          
 
-          [cm3]
+          [pi3]
           dtoverlay=clockworkpi-uconsole-cm3
           dtoverlay=vc4-kms-v3d,cma-384
           enable_uart=1
-          [cm4]
+          [pi4]
           dtoverlay=clockworkpi-uconsole
           dtoverlay=vc4-kms-v3d-pi4,cma-384
           dtparam=pciex1=off
           enable_uart=1
-          [cm5]
+          [pi5]
           dtoverlay=clockworkpi-uconsole-cm5
           dtoverlay=vc4-kms-v3d-pi5,cma-384
           dtparam=pciex1=off
