@@ -486,7 +486,7 @@ jobs:
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.DESKTOP_TASK }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --no-install-recommends aptitude tasksel ${{ env.UBUNTU_TASKS }} ${{ env.DESKTOP_TASK }}"
           else
             # Install tasks 'debian-server' and 'debian-desktop'
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt install -y --install-recommends aptitude tasksel ${{ env.DEBIAN_TASKS }} ${{ env.DESKTOP_TASK }}"
