@@ -570,6 +570,63 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get autoremove -y"
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
           
+          sudo tee $MOUNT_POINT/usr/local/bin/pi-apps << 'EOF' 
+          #!/bin/bash
+          #Make sure it runs as root
+          if [ "$EUID" -ne 0 ]; then
+            echo "Please run as root"
+            exit
+          fi
+          if wget -qO- https://raw.githubusercontent.com/Botspot/pi-apps/master/install | bash; then
+            sudo rm $0 #Delete script after running
+            echo "Pi-Apps installed successfully! Try installing an app from the Pi-Apps menu. Steam works!"
+          fi
+          EOF
+
+          sudo tee $MOUNT_POINT/usr/local/bin/code << 'EOF' 
+          #!/bin/bash
+          #Make sure it runs as root
+          if [ "$EUID" -ne 0 ]; then
+            echo "Please run as root"
+            exit
+          fi
+          if wget https://code.visualstudio.com/docs/?dv=linuxarm64_deb -O /tmp/vscode-arm64.deb && sudo dpkg -i /tmp/vscode-arm64.deb && sudo apt-get install -f -y; then
+            sudo rm $0 #Delete script after running
+            echo "VSCode installed successfully!"
+          fi
+          EOF
+
+          sudo tee $MOUNT_POINT/usr/local/bin/chromium << 'EOF' 
+          #!/bin/bash
+          #Make sure it runs as root
+          if [ "$EUID" -ne 0 ]; then
+            echo "Please run as root"
+            exit
+          fi
+          if sudo apt update && sudo apt install -y chromium; then
+            sudo rm $0 #Delete script after running
+            echo "Chromium installed successfully!"
+          fi
+          EOF
+
+          sudo tee $MOUNT_POINT/usr/local/bin/firefox << 'EOF' 
+          #!/bin/bash
+          #Make sure it runs as root
+          if [ "$EUID" -ne 0 ]; then
+            echo "Please run as root"
+            exit
+          fi
+          if sudo apt update && sudo apt install -y chromium; then
+            sudo rm $0 #Delete script after running
+            echo "Chromium installed successfully!"
+          fi
+          EOF
+
+          chmod +x $MOUNT_POINT/usr/local/bin/pi-apps
+          chmod +x $MOUNT_POINT/usr/local/bin/code
+          chmod +x $MOUNT_POINT/usr/local/bin/chromium
+          chmod +x $MOUNT_POINT/usr/local/bin/firefox
+
           # Remove unnecessary files to save space
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /tmp/*"
