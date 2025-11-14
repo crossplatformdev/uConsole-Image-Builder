@@ -622,10 +622,10 @@ jobs:
           fi
           EOF
 
-          chmod +x $MOUNT_POINT/usr/local/bin/pi-apps
-          chmod +x $MOUNT_POINT/usr/local/bin/code
-          chmod +x $MOUNT_POINT/usr/local/bin/chromium
-          chmod +x $MOUNT_POINT/usr/local/bin/firefox
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/pi-apps
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/code
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/chromium
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/firefox
 
           # Remove unnecessary files to save space
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
