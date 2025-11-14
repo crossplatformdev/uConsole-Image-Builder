@@ -482,7 +482,7 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
           sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt update"
-          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y --no-install-recommends uconsole-kernel-cm4-rpi clockworkpi-* libghc-status-notifier-*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sudo apt install -y --no-install-recommends uconsole-kernel-cm4-rpi clockworkpi-* libappindicator*"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space
