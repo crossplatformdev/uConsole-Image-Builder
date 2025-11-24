@@ -484,7 +484,7 @@ jobs:
           
           # Ensure flash-kernel is installed 
           sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends flash-kernel"
-          sudo chroot $MOUNT_POINT /bin/bash -c "echo \"\nMachine: Raspberry Pi Compute Module 4 Rev 1.1\nKernel-Flavors: arm64 armmp armmp-lpae raspi\nDTB-Id: broadcom/bcm2711-rpi-4-b.dtb\nU-Boot-Script-Name: bootscr.uboot-generic\nRequired-Packages: u-boot-tools\nBoot-Script-Path: /boot/boot.scr\" > /etc/flash-kernel/machines/clockworkpi-uconsole-cm4"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo \"\nMachine: Raspberry Pi Compute Module 4 Rev 1.1\nKernel-Flavors: arm64 armmp armmp-lpae raspi\nDTB-Id: broadcom/bcm2711-rpi-4-b.dtb\nU-Boot-Script-Name: bootscr.uboot-generic\nRequired-Packages: u-boot-tools\nBoot-Script-Path: /boot/boot.scr\" > /usr/share/flash-kernel/db/all.db"
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
