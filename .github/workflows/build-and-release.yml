@@ -480,9 +480,9 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
             # Install tasks 'ubuntu-server' and 'ubuntu-desktop' without recommended packages to save space            
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y linux-firmware linux-firmware-raspi mesa-vulkan-drivers mesa-utils  v4l2loopback-utils libv4l-0  mesa-vulkan-drivers flash-kernel u-boot-tools"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends linux-firmware linux-firmware-raspi mesa-vulkan-drivers mesa-utils  v4l2loopback-utils libv4l-0  mesa-vulkan-drivers flash-kernel u-boot-tools"
           else
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y firmware-linux-free firmware-misc-nonfree mesa-vulkan-drivers mesa-utils  v4l2loopback-utils libv4l-0  mesa-vulkan-drivers flash-kernel u-boot-tools"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree mesa-vulkan-drivers mesa-utils  v4l2loopback-utils libv4l-0  mesa-vulkan-drivers flash-kernel u-boot-tools"
           fi
           #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg --configure -a"
