@@ -360,7 +360,7 @@ jobs:
             # Only resize if current size is less than target
             if [ $CURRENT_SIZE -lt $TARGET_SIZE ]; then
               # Extend the image file
-              if ! truncate -s 7.8G "$IMAGE_PATH"; then
+              if ! truncate -s 7988M "$IMAGE_PATH"; then
                 echo "ERROR: Failed to extend image file to 7.8GB"
                 exit 1
               fi
