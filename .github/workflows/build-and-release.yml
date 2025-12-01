@@ -668,7 +668,8 @@ jobs:
           sudo losetup -d $LOOP_DEVICE
           
           # Compress image with maximum compression settings
-          xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
+          #xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
+          xz -T1 -M1000MiB --lzma2=preset=9e,dict=1GiB,nice=273 -Ccrc32 -k "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
       
       - name: Upload image artifact
