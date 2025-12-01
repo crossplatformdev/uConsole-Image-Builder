@@ -647,6 +647,7 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/tmp/*"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt purge -y *-doc"
           #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type f ! -name copyright -delete"
           #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type d -empty -delete"
           #sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*"
