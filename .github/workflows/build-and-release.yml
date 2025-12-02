@@ -30,7 +30,7 @@ on:
         options:
           - rpi-6.12.y
           - riscv
-      kernel_commit:
+      kernel_branch:
         description: 'Kernel commit/tag (e.g., stable_20250916, rpi-6.12.y_20241206_2)'
         required: false
         default: 'stable_20250916'
@@ -39,7 +39,7 @@ env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
   KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
-  KERNEL_COMMIT: ${{ github.event.inputs.kernel_commit || 'stable_20250916' }}
+  KERNEL_BRANCH: ${{ github.event.inputs.kernel_branch || 'stable/linux-6.12.y' }}
   # apt packages that will be installed on the images
   UBUNTU_TASKS: 'ubuntu-standard ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
   DEBIAN_TASKS: 'live-task-standard live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq*'
@@ -67,49 +67,13 @@ jobs:
 
       - name: Checkout kernel tag/commit
         if: env.KERNEL_MODE == 'build'
-        env:
-          KERNEL_COMMIT: ${{ env.KERNEL_COMMIT }}
         run: |
           set -e
           cd linux
-          echo "Checking out kernel tag/commit: \"$KERNEL_COMMIT\""
+          echo "Checking out kernel tag/commit: \"$KERNEL_BRANCH\""
+          git switch ${{ env.KERNEL_BRANCH }}
+          git pull
           
-          # Validate that KERNEL_COMMIT looks like a valid git reference
-          # Allow alphanumeric, dash, underscore, and dot (no forward slashes to prevent path traversal)
-          if ! echo "$KERNEL_COMMIT" | grep -qE '^[a-zA-Z0-9._-]+$'; then
-            echo "ERROR: Invalid kernel commit/tag format: $KERNEL_COMMIT"
-            echo "Format must contain only alphanumeric characters, dots, hyphens, and underscores"
-            exit 1
-          fi
-          
-          # Additional security checks
-          # Prevent '..' sequences to avoid path traversal
-          if echo "$KERNEL_COMMIT" | grep -q '\.\.'; then
-            echo "ERROR: Kernel commit/tag cannot contain '..' sequences: $KERNEL_COMMIT"
-            exit 1
-          fi
-          
-          # Prevent leading or trailing periods
-          if echo "$KERNEL_COMMIT" | grep -qE '^\.|\.$$'; then
-            echo "ERROR: Kernel commit/tag cannot start or end with a period: $KERNEL_COMMIT"
-            exit 1
-          fi
-          
-          if ! git fetch --tags origin; then
-            echo "ERROR: Failed to fetch tags from origin"
-            exit 1
-          fi
-          
-          # Use --detach to ensure we checkout the commit without switching to a branch
-          if ! git checkout --detach "$KERNEL_COMMIT"; then
-            echo "ERROR: Failed to checkout $KERNEL_COMMIT"
-            echo "Most recent tags available:"
-            git tag --sort=-version:refname | head -20
-            exit 1
-          fi
-          echo "Successfully checked out: $(git describe --always --tags)"
-
-
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
         run: |
