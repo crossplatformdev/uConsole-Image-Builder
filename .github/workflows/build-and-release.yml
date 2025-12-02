@@ -22,22 +22,13 @@ on:
         options:
           - arm64
           - riscv
-      kernel_version:
-        description: 'Kernel branch'
-        required: true
-        default: rpi-6.12.y
-        type: choice
-        options:
-          - rpi-6.12.y
-          - riscv
       kernel_branch:
-        description: 'Kernel commit/tag (e.g., stable_20250916, rpi-6.12.y_20241206_2)'
+        description: 'Kernel branch (e.g., stable/linux-6.12.y)'
         required: false
-        default: 'stable_20250916'
+        default: 'stable/linux-6.12.y'
         type: string
 env:
   KERNEL_MODE: ${{ github.event.inputs.kernel_mode || 'build' }}
-  KERNEL_VERSION: ${{ github.event.inputs.kernel_version || 'rpi-6.12.y' }}
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_BRANCH: ${{ github.event.inputs.kernel_branch || 'stable/linux-6.12.y' }}
   # apt packages that will be installed on the images
@@ -155,7 +146,7 @@ jobs:
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
     outputs:
       image: ${{ matrix.distro }}
-      kernel_version: ${{ env.KERNEL_VERSION }}
+      kernel_arch: ${{ env.kernel_arch }}
       kernel_arch: ${{ env.KERNEL_ARCH }}      
     steps:
       - name: Set up QEMU user-mode emulation
@@ -684,7 +675,7 @@ jobs:
         id: tag
         run: |
           TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
-          FULL_TAG_NAME="uconsole-${{ env.KERNEL_VERSION }}-${TAG_NAME}-${{ matrix.distro }}-${{ matrix.uconsole_core }}"
+          FULL_TAG_NAME="uconsole-${{ env.kernel_arch }}-${TAG_NAME}-${{ matrix.distro }}-${{ matrix.uconsole_core }}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "full_tag_name=$FULL_TAG_NAME" >> $GITHUB_OUTPUT
           git tag "$FULL_TAG_NAME"
@@ -697,7 +688,7 @@ jobs:
         timeout-minutes: 30
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
-          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.kernel_arch }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz
             /home/runner/work/uConsole-Image-Builder/release/*.deb
@@ -713,7 +704,7 @@ jobs:
         timeout-minutes: 30
         with:
           tag_name: ${{ steps.tag.outputs.full_tag_name }}
-          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.KERNEL_VERSION }}
+          name: uConsole Images - ${{ matrix.distro }} - ${{ matrix.uconsole_core }} - ${{ env.kernel_arch }}
           files: |
             /home/runner/work/uConsole-Image-Builder/release/*.img.xz            
           generate_release_notes: true
