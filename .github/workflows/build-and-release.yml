@@ -146,7 +146,6 @@ jobs:
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
     outputs:
       image: ${{ matrix.distro }}
-      kernel_arch: ${{ env.kernel_arch }}
       kernel_arch: ${{ env.KERNEL_ARCH }}      
     steps:
       - name: Set up QEMU user-mode emulation
