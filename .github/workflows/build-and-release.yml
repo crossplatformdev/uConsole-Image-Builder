@@ -56,14 +56,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Checkout kernel tag/commit
+      - name: Checkout kernel source
         if: env.KERNEL_MODE == 'build'
         run: |
-          set -e
           cd linux
-          echo "Checking out kernel tag/commit: \"$KERNEL_BRANCH\""
-          git switch ${{ env.KERNEL_BRANCH }}
-          git pull
+          git fetch origin
+          git checkout ${{ env.KERNEL_BRANCH }}
           
       - name: Build kernel
         if: env.KERNEL_MODE == 'build'
