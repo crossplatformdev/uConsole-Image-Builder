@@ -108,8 +108,7 @@ jobs:
 
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
                     
-          # verify packaging helper presence, fallback to bindeb-pkg if missing
-          ./scripts/package/builddeb 
+          make bindeb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
           
           mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs-${{ matrix.uconsole_core }}/
           
