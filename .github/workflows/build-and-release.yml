@@ -32,8 +32,8 @@ env:
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_BRANCH: ${{ github.event.inputs.kernel_branch || 'rpi-6.12.y' }}
   # apt packages that will be installed on the images
-  UBUNTU_TASKS: 'ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers mesa-...'
-  DEBIAN_TASKS: 'live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers...'
+  UBUNTU_TASKS: 'ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers mesa-utils v4l2loopback-utils libv4l-0 mesa-vulkan-drivers flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
+  DEBIAN_TASKS: 'live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers mesa-utils v4l2loopback-utils libv4l-0 mesa-vulkan-drivers flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
 
 jobs:
   prepare-kernel:
@@ -107,7 +107,7 @@ jobs:
           fi
 
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcm2711_defconfig
-          
+                    
           make bindeb-pkg -j$(($(nproc) + 2)) LOCALVERSION=-raspi
           
           mkdir -p /home/runner/work/uConsole-Image-Builder/kernel-debs-${{ matrix.uconsole_core }}/
@@ -149,76 +149,78 @@ jobs:
       - name: Set desktop task packages
         id: desktop_task
         run: |
-          set -euxo pipefail
-
-          # Normalize desktop name (trim CR, lowercase) to avoid hidden-char mismatches
-          DESKTOP_NAME=$(echo "${{ matrix.desktop }}" | tr -d '\r' | tr '[:upper:]' '[:lower:]')
-          echo "matrix.desktop='${{ matrix.desktop }}' normalized to '${DESKTOP_NAME}'"
-
-          case "$DESKTOP_NAME" in
+          # Map desktop environment to appropriate task packages
+          case "${{ matrix.desktop }}" in
             gnome)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=ubuntu-gnome-desktop" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-gnome-desktop" >> $GITHUB_ENV
               fi
               ;;
             kde)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=kubuntu-desktop" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-kde-desktop" >> $GITHUB_ENV
               fi
               ;;
             cinnamon)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=cinnamon-desktop-environment" >> $GITHUB_ENV
-              else
-                echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
               fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
+                echo "DESKTOP_TASK=task-cinnamon-desktop" >> $GITHUB_ENV
+              fi              
               ;;
             mate)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=ubuntu-mate-desktop" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-mate-desktop" >> $GITHUB_ENV
               fi
               ;;
             xfce)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=xubuntu-desktop" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-xfce-desktop" >> $GITHUB_ENV
               fi
               ;;
             lxde)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=lxde" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-lxde-desktop" >> $GITHUB_ENV
               fi
               ;;
             lxqt)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=lubuntu-desktop" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-lxqt-desktop" >> $GITHUB_ENV
               fi
               ;;
             gnome-flashback)
               if [ "${{ matrix.distro }}" == "jammy" ] || [ "${{ matrix.distro }}" == "noble" ]; then
                 echo "DESKTOP_TASK=ubuntu-gnome-desktop gnome-session-flashback" >> $GITHUB_ENV
-              else
+              fi
+              if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
                 echo "DESKTOP_TASK=task-gnome-flashback-desktop" >> $GITHUB_ENV
               fi
               ;;
             *)
-              echo "ERROR: Unknown desktop environment: '${{ matrix.desktop }}' (normalized: ${DESKTOP_NAME})"
+              echo "ERROR: Unknown desktop environment: ${{ matrix.desktop }}"
               echo "Supported desktop environments: gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback"
               exit 1
               ;;
           esac
-
           echo "Desktop task set to: $DESKTOP_TASK"
 
       - name: Download kernel artifacts
@@ -230,17 +232,18 @@ jobs:
 
       - name: Customize image
         run: |
-          set -euxo pipefail
-
-          # Select image URL based on distro
-          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then
+          # If matrix.distro is bookworm, use deb12-arm64-min.img
+          # If matrix.distro is trixie, use deb13-arm64-min.img
+          # If matrix.distro is jammy, use jammy for pi 4 (arm64) wget https://cdimage.ubuntu.com/releases/jammy/release/ubuntu-22.04.5-preinstalled-desktop-arm64+raspi.img.xz
+          if [ "${{ matrix.distro }}" == "bookworm" ] || [ "${{ matrix.distro }}" == "trixie" ]; then            
+            # If matrix.distro is bookworm, 
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
               IMAGE_PATH=https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2025-11-24/2025-11-24-raspios-bookworm-arm64-lite.img.xz
             else
               IMAGE_PATH=https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2025-12-04/2025-12-04-raspios-trixie-arm64-lite.img.xz
             fi
           fi
-
+          
           if [ "${{ matrix.distro }}" == "noble" ]; then
             IMAGE_PATH=https://cdimage.ubuntu.com/releases/24.04.3/release/ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz
           fi
@@ -253,196 +256,193 @@ jobs:
             IMAGE_PATH=https://iso.pop-os.org/22.04/arm64/raspi/4/pop-os_22.04_arm64_raspi_4.img.xz
           fi
 
-          # Download and decompress image
-          wget "$IMAGE_PATH" -O ${{ matrix.distro }}-raspi.img.xz
-          unxz ${{ matrix.distro }}-raspi.img.xz
-          rm -f ${{ matrix.distro }}-raspi.img.xz || true
+          wget $IMAGE_PATH -O ${{ matrix.distro }}-raspi.img.xz > /dev/null 2>&1
+          unxz ${{ matrix.distro }}-raspi.img.xz 
+          rm -f ${{ matrix.distro }}-raspi.img.xz 
           mv ./*.img ./${{ matrix.distro }}-raspi.img || true
           IMAGE_PATH=./${{ matrix.distro }}-raspi.img
-
-          # Install helper utilities required for robust resizing (on runner)
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends cloud-guest-utils e2fsprogs dosfstools
-
-          # Determine target image size based on desktop
-          DESKTOP_NAME=$(echo "${{ matrix.desktop }}" | tr -d '\r' | tr '[:upper:]' '[:lower:]')
-          case "$DESKTOP_NAME" in
-            kde) TARGET_GB=12 ;;         # KDE is large; adjust as needed
-            gnome) TARGET_GB=8 ;;
-            cinnamon|mate|xfce) TARGET_GB=8 ;;
-            lxde|lxqt|gnome-flashback) TARGET_GB=6 ;;
-            *) TARGET_GB=8 ;;
-          esac
-          echo "Resizing Ubuntu image for desktop '${DESKTOP_NAME}' to ${TARGET_GB}GB..."
-
+          
+          # Resize image to 6GB for GNOME desktop
+          echo "Resizing Ubuntu image to 6GB..."
           # Get current image size
           CURRENT_SIZE=$(stat -c%s "$IMAGE_PATH" 2>/dev/null) || {
             echo "ERROR: Failed to get image size"
             exit 1
           }
-          TARGET_SIZE=$((TARGET_GB * 1024 * 1024 * 1024))
 
+          # Resize image to 6GB for GNOME desktop
+          echo "Resizing Ubuntu image to 6GB..."
+          # Get current image size
+          CURRENT_SIZE=$(stat -c%s "$IMAGE_PATH" 2>/dev/null) || {
+            echo "ERROR: Failed to get image size"
+            exit 1
+          }
+          TARGET_SIZE=$((12 * 1024 * 1024 * 1024))  # 6GB in bytes
+          
           # Only resize if current size is less than target
-          if [ "$CURRENT_SIZE" -lt "$TARGET_SIZE" ]; then
-            # Extend the image file to target size
-            if ! sudo truncate -s "$TARGET_SIZE" "$IMAGE_PATH"; then
-              echo "ERROR: Failed to extend image file to ${TARGET_GB}GB"
+          if [ $CURRENT_SIZE -lt $TARGET_SIZE ]; then
+            # Extend the image file
+            if ! truncate -s $TARGET_SIZE "$IMAGE_PATH"; then
+              echo "ERROR: Failed to extend image file to 6GB"
               exit 1
             fi
-
-            # Setup loop device and populate partition nodes
-            LOOP_DEVICE=$(sudo losetup -f --show -P "$IMAGE_PATH")
-            if [ -z "$LOOP_DEVICE" ]; then
+            
+            # Setup loop device to resize partition
+            RESIZE_LOOP=$(sudo losetup -f)
+            if [ -z "$RESIZE_LOOP" ]; then
+              echo "ERROR: No free loop device available"
+              exit 1
+            fi
+            
+            if ! sudo losetup -P "$RESIZE_LOOP" "$IMAGE_PATH"; then
               echo "ERROR: Failed to setup loop device"
               exit 1
             fi
-            echo "Attached image to loop device: $LOOP_DEVICE"
-
-            # Attempt to grow partition 2 using growpart (cloud-guest-utils)
-            if sudo growpart "$LOOP_DEVICE" 2; then
-              echo "growpart succeeded on ${LOOP_DEVICE} partition 2"
-            else
-              echo "growpart failed, falling back to sfdisk-based resize"
-              # fallback: use sfdisk to extend partition 2 to end of disk
-              if ! echo ", +" | sudo sfdisk --no-reread -N 2 "$LOOP_DEVICE"; then
-                echo "ERROR: sfdisk fallback failed"
-                sudo losetup -d "$LOOP_DEVICE"
-                exit 1
-              fi
-              sudo partprobe "$LOOP_DEVICE" || true
-            fi
-
-            ROOT_PARTITION="${LOOP_DEVICE}p2"
-
-            # Wait for kernel to expose partition
-            sleep 2
+            
+            # Root partition for Ubuntu Raspberry Pi images
+            ROOT_PARTITION="${RESIZE_LOOP}p2"
+            
+            # Verify partition device exists after losetup
             if [ ! -e "$ROOT_PARTITION" ]; then
-              echo "ERROR: Partition device $ROOT_PARTITION not found after resize"
+              echo "ERROR: Partition device $ROOT_PARTITION not found after losetup"
               echo "Available devices:"
-              ls -l ${LOOP_DEVICE}* || true
-              sudo losetup -d "$LOOP_DEVICE"
+              ls -l ${RESIZE_LOOP}* || true
+              sudo losetup -d "$RESIZE_LOOP"
               exit 1
             fi
-
-            # Run filesystem check and resize
+            
+            echo "Found partition device: $ROOT_PARTITION"
+            
+            # Resize the root partition (partition 2)
+            if ! echo ", +" | sudo sfdisk --no-reread -N 2 "$RESIZE_LOOP"; then
+              echo "ERROR: Failed to resize partition"
+              sudo losetup -d "$RESIZE_LOOP"
+              exit 1
+            fi
+            
+            if ! sudo partprobe "$RESIZE_LOOP"; then
+              echo "ERROR: Failed to update partition table"
+              sudo losetup -d "$RESIZE_LOOP"
+              exit 1
+            fi
+            
+            # Wait for partition device to be ready after partprobe
+            sleep 2
+            
+            # Verify partition device still exists after resize
+            if [ ! -e "$ROOT_PARTITION" ]; then
+              echo "ERROR: Partition device $ROOT_PARTITION disappeared after resize"
+              echo "Available devices:"
+              ls -l ${RESIZE_LOOP}* || true
+              sudo losetup -d "$RESIZE_LOOP"
+              exit 1
+            fi
+            
+            # Resize the filesystem - e2fsck exit codes:
+            # 0 = no errors, 1 = errors corrected (acceptable), >1 = serious errors
             E2FSCK_EXIT=0
             sudo e2fsck -f -y "$ROOT_PARTITION" || E2FSCK_EXIT=$?
             if [ "$E2FSCK_EXIT" -gt 1 ]; then
               echo "ERROR: Filesystem check failed with exit code $E2FSCK_EXIT"
-              sudo losetup -d "$LOOP_DEVICE"
+              sudo losetup -d "$RESIZE_LOOP"
               exit 1
             fi
-
+            
             if ! sudo resize2fs "$ROOT_PARTITION"; then
               echo "ERROR: Failed to resize filesystem"
-              sudo losetup -d "$LOOP_DEVICE"
+              sudo losetup -d "$RESIZE_LOOP"
               exit 1
             fi
-
-            # Clean up loop device
-            sudo losetup -d "$LOOP_DEVICE"
-            echo "Image resized successfully to ${TARGET_GB}GB"
-          else
-            echo "Image is already ${CURRENT_SIZE} bytes, >= target ${TARGET_SIZE} bytes; no resize needed"
+            
+            # Clean up
+            sudo losetup -d "$RESIZE_LOOP"
+            echo "Image resized successfully to 8GB"
           fi
-
+          #Clean up
+          rm -f ${{ matrix.distro }}-raspi.img.xz
+          
+          echo "Image resized successfully to 8GB"
+        
           # Mount image and chroot
-          LOOP_DEVICE=$(sudo losetup -f --show -P "$IMAGE_PATH")
+          LOOP_DEVICE=$(sudo losetup -f --show -P $IMAGE_PATH)
           MOUNT_POINT=./rootfs-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}
-          sudo mkdir -p "$MOUNT_POINT"
-          sudo mount "${LOOP_DEVICE}p2" "$MOUNT_POINT"
-          sudo mkdir -p "$MOUNT_POINT/boot/firmware"
-          sudo mount "${LOOP_DEVICE}p1" "$MOUNT_POINT/boot/firmware"
-          sudo mount --bind /dev "$MOUNT_POINT/dev"
-          sudo mount --bind /dev/pts "$MOUNT_POINT/dev/pts"
-          sudo mount --bind /proc "$MOUNT_POINT/proc"
-          sudo mount --bind /sys "$MOUNT_POINT/sys"
+          sudo mkdir -p $MOUNT_POINT
+          sudo mount ${LOOP_DEVICE}p2 $MOUNT_POINT
+          sudo mkdir -p $MOUNT_POINT/boot/firmware
+          sudo mount ${LOOP_DEVICE}p1 $MOUNT_POINT/boot/firmware
+          sudo mount --bind /dev $MOUNT_POINT/dev
+          sudo mount --bind /dev/pts $MOUNT_POINT/dev/pts
+          sudo mount --bind /proc $MOUNT_POINT/proc
+          sudo mount --bind /sys $MOUNT_POINT/sys
           sleep 5  # Wait for mounts to stabilize
+     
+          # Configure DNS resolvers
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
 
-          # Verify free space in mounted root before heavy installs
-          FREE_BYTES=$(df --output=avail -B1 "$MOUNT_POINT" | tail -1 | tr -d '[:space:]')
-          MIN_REQUIRED_BYTES=$((3 * 1024 * 1024 * 1024)) # require at least ~3GB free for installs (adjust if needed)
-          echo "Free bytes in mounted root: $FREE_BYTES; minimum required: $MIN_REQUIRED_BYTES"
-          if [ -z "$FREE_BYTES" ] || [ "$FREE_BYTES" -lt "$MIN_REQUIRED_BYTES" ]; then
-            echo "ERROR: Not enough free space in image ($FREE_BYTES bytes) for desktop install. Consider increasing TARGET_GB for '${DESKTOP_NAME}'."
-            sudo umount -lf "$MOUNT_POINT/dev/pts" || true
-            sudo umount -lf "$MOUNT_POINT/dev" || true
-            sudo umount -lf "$MOUNT_POINT/proc" || true
-            sudo umount -lf "$MOUNT_POINT/sys" || true
-            sudo umount -lf "$MOUNT_POINT/boot/firmware" || true
-            sudo umount -lf "$MOUNT_POINT" || true
-            sudo losetup -d "$LOOP_DEVICE" || true
-            exit 1
-          fi
-
-          # Configure DNS resolvers inside chroot
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "mv /etc/resolv.conf /etc/resolv.conf.bak || true"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'nameserver 8.8.8.8' | tee /etc/resolv.conf"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'nameserver 8.8.4.4' | tee -a /etc/resolv.conf"
-
-          # Remove current linux and install base helpers (use --no-install-recommends)
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt remove -y linux-image-* linux-headers-* linux-raspi-headers-* || true"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools aptitude"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude update"
+          # Remove current linux
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* linux-raspi-headers-* || true"          
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools aptitude"
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude update"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
           fi
-
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "dpkg --configure -a"
-
-          # Ensure flash-kernel is installed
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y flash-kernel"
-
+          #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "dpkg --configure -a"
+          
+          # Ensure flash-kernel is installed 
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y flash-kernel"          
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo \"\nMachine: Raspberry Pi Compute Module 4 Rev 1.1\nKernel-Flavors: arm64 armmp armmp-lpae raspi\nDTB-Id: broadcom/bcm2711-rpi-4-b.dtb\nU-Boot-Script-Name: bootscr.uboot-generic\nRequired-Packages: u-boot-tools\nBoot-Script-Path: /boot/boot.scr\" > /usr/share/flash-kernel/db/all.db"
+          
           # Add ClockworkPi repository
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude update"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
 
-          # Install distro task packages (use --no-install-recommends)
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
           fi
 
-          # Install desktop meta-package with --no-install-recommends to reduce extra files
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DESKTOP_TASK }}"
 
           # Copy DTB files
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
-
-          # Install kernel packages into image
+          sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
+          
+          # Install kernel  
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y uconsole-kernel-cm4-rpi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y uconsole-kernel-cm4-rpi"
           else
-            sudo cp /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb "$MOUNT_POINT/tmp/" || true
-            sudo chroot "$MOUNT_POINT" /bin/bash -c "dpkg -i /tmp/*.deb || aptitude -f install -y"
+            sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || aptitude -f install -y"
           fi
 
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude install -y wireguard-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y wireguard-tools"
 
           # Set LOCALE to en_US.UTF-8
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
+          
           # Configure uConsole-specific config.txt
-          sudo tee "$MOUNT_POINT/boot/firmware/config.txt" << 'EOF'
+          sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
           [all]
           dtparam=audio=on
           auto_initramfs=1
@@ -471,43 +471,42 @@ jobs:
           enable_uart=1
           EOF
 
-          # Generate initramfs
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "update-initramfs -c -k all"
+          # Generate vmlinuz (raspi kernel) initramfs
+          sudo chroot $MOUNT_POINT /bin/bash -c "update-initramfs -c -k all"
 
-          # Create user 'clockworkpi'
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "adduser --gecos 'Clockwork Pi,,,,' --disabled-password clockworkpi || true"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'clockworkpi:clockworkpi' | chpasswd"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "usermod -aG sudo clockworkpi"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'clockworkpi ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
+          # Create user 'clockworkpi', identified by 'clockworkpi', create skeleton home directory and add to sudoers
+          sudo chroot $MOUNT_POINT /bin/bash -c "adduser --gecos 'Clockwork Pi,,,,' --disabled-password clockworkpi || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'clockworkpi:clockworkpi' | chpasswd"
+          sudo chroot $MOUNT_POINT /bin/bash -c "usermod -aG sudo clockworkpi"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'clockworkpi ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers"
 
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "mkdir -p /home/clockworkpi/Desktop"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "chown -R clockworkpi:clockworkpi /home/clockworkpi/Desktop"
+          sudo chroot $MOUNT_POINT /bin/bash -c "mkdir -p /home/clockworkpi/Desktop"
+          sudo chroot $MOUNT_POINT /bin/bash -c "chown -R clockworkpi:clockworkpi /home/clockworkpi/Desktop"
 
           # Set hostname
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'uconsole' > /etc/hostname"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "sed -i 's/ubuntu|debian|raspbian|raspberrypi/uconsole/g' /etc/hosts"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'uconsole' > /etc/hostname"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/ubuntu|debian|raspbian|raspberrypi/uconsole/g' /etc/hosts"
 
           # Enable SSH by default
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "systemctl enable ssh"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "touch /boot/firmware/ssh"
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "systemctl enable ssh"
+          sudo chroot $MOUNT_POINT /bin/bash -c "touch /boot/firmware/ssh"
+          
           # Set timezone to UTC
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "dpkg-reconfigure -f noninteractive tzdata"
+          sudo chroot $MOUNT_POINT /bin/bash -c "ln -sf /usr/share/zoneinfo/UTC /etc/localtime"
+          sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive tzdata"
 
           # Set keyboard layout to us
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'XKBLAYOUT=\"us\"' >> /etc/default/keyboard"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "echo 'XKBMODEL=\"pc105\"' >> /etc/default/keyboard"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "dpkg-reconfigure -f noninteractive keyboard-configuration"
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBLAYOUT=\"us\"' >> /etc/default/keyboard"
+          sudo chroot $MOUNT_POINT /bin/bash -c "echo 'XKBMODEL=\"pc105\"' >> /etc/default/keyboard"
+          sudo chroot $MOUNT_POINT /bin/bash -c "dpkg-reconfigure -f noninteractive keyboard-configuration"
+          
           # Cleanup to reduce image size
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt-get autoremove -y"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt-get clean"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "aptitude clean"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /var/lib/apt/lists/*"
-
-          # Add helper scripts into image
-          sudo tee "$MOUNT_POINT/usr/local/bin/pi-apps" << 'EOF'
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get autoremove -y"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude clean"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
+                    
+          sudo tee $MOUNT_POINT/usr/local/bin/pi-apps << 'EOF' 
           #!/bin/bash
           #Make sure it runs as root
           if [ "$EUID" -ne 0 ]; then
@@ -520,7 +519,7 @@ jobs:
           fi
           EOF
 
-          sudo tee "$MOUNT_POINT/usr/local/bin/code" << 'EOF'
+          sudo tee $MOUNT_POINT/usr/local/bin/code << 'EOF' 
           #!/bin/bash
           #Make sure it runs as root
           if [ "$EUID" -ne 0 ]; then
@@ -533,7 +532,7 @@ jobs:
           fi
           EOF
 
-          sudo tee "$MOUNT_POINT/usr/local/bin/chromium" << 'EOF'
+          sudo tee $MOUNT_POINT/usr/local/bin/chromium << 'EOF' 
           #!/bin/bash
           #Make sure it runs as root
           if [ "$EUID" -ne 0 ]; then
@@ -546,7 +545,7 @@ jobs:
           fi
           EOF
 
-          sudo tee "$MOUNT_POINT/usr/local/bin/firefox" << 'EOF'
+          sudo tee $MOUNT_POINT/usr/local/bin/firefox << 'EOF' 
           #!/bin/bash
           #Make sure it runs as root
           if [ "$EUID" -ne 0 ]; then
@@ -559,46 +558,51 @@ jobs:
           fi
           EOF
 
-          sudo chmod +x "$MOUNT_POINT/usr/local/bin/pi-apps" || true
-          sudo chmod +x "$MOUNT_POINT/usr/local/bin/code" || true
-          sudo chmod +x "$MOUNT_POINT/usr/local/bin/chromium" || true
-          sudo chmod +x "$MOUNT_POINT/usr/local/bin/firefox" || true
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/pi-apps
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/code
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/chromium
+          sudo chmod +x $MOUNT_POINT/usr/local/bin/firefox
 
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "sed -i 's| init=/usr/lib/raspi-config/init_resize\.sh||' /boot/firmware/cmdline.txt"
+          sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's| init=/usr/lib/raspi-config/init_resize\.sh||' /boot/firmware/cmdline.txt"
 
           # Remove unnecessary files to save space
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /var/lib/apt/lists/*"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /tmp/*"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /var/tmp/*"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "apt purge -y *-doc" || true
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} +" || true
-
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/tmp/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/cache/apt/archives/*.deb"
+          sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/log/*.log /var/log/*.old /var/log/*.gz"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt purge -y *-doc"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type f ! -name copyright -delete"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/doc -depth -type d -empty -delete"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/man/* /usr/share/groff/* /usr/share/info/*"
+          #sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /usr/share/lintian/* /usr/share/linda/*"
+          sudo chroot $MOUNT_POINT /bin/bash -c "find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' -exec rm -rf {} +"
+          
           # Restore original resolv.conf
-          sudo chroot "$MOUNT_POINT" /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
+          sudo chroot $MOUNT_POINT /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf || true"
 
-          # Clean up and unmount
+          # Clean up
           sleep 5  # Wait before unmounting
-          sudo umount -lf "$MOUNT_POINT/dev/pts" || true
+          sudo umount -lf $MOUNT_POINT/dev/pts 
           sleep 2
-          sudo umount -lf "$MOUNT_POINT/dev" || true
+          sudo umount -lf $MOUNT_POINT/dev
           sleep 2
-          sudo umount -lf "$MOUNT_POINT/proc" || true
+          sudo umount -lf $MOUNT_POINT/proc
           sleep 2
-          sudo umount -lf "$MOUNT_POINT/sys" || true
+          sudo umount -lf $MOUNT_POINT/sys
+          sleep 2                   
+          sudo umount -lf $MOUNT_POINT/boot/firmware
           sleep 2
-          sudo umount -lf "$MOUNT_POINT/boot/firmware" || true
-          sleep 2
-          sudo umount -lf "$MOUNT_POINT" || true
+          sudo umount -lf $MOUNT_POINT
           sleep 2
 
-          sudo losetup -d "$LOOP_DEVICE" || true
-
+          sudo losetup -d $LOOP_DEVICE
+          
           # Compress image with maximum compression settings
+          #xz --threads=1 --memory=1000MiB --check=crc32 -9e --compress --keep "$IMAGE_PATH"
           xz -T1 -M1000MiB --lzma2=preset=9e,dict=1GiB,nice=273 -Ccrc32 -k "$IMAGE_PATH"
           mv "${IMAGE_PATH}.xz" /home/runner/work/uConsole-Image-Builder/uconsole-${{ matrix.distro }}-${{ matrix.uconsole_core }}-${{ matrix.desktop }}.img.xz
-
+      
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
@@ -683,3 +687,4 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
+
