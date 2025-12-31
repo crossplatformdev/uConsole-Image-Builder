@@ -32,8 +32,8 @@ env:
   KERNEL_ARCH: ${{ github.event.inputs.kernel_arch || 'arm64' }}
   KERNEL_BRANCH: ${{ github.event.inputs.kernel_branch || 'rpi-6.12.y' }}
   # apt packages that will be installed on the images
-  UBUNTU_TASKS: 'ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers mesa-utils v4l2loopback-utils libv4l-0 mesa-vulkan-drivers flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
-  DEBIAN_TASKS: 'live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* mesa-vulkan-drivers mesa-utils v4l2loopback-utils libv4l-0 mesa-vulkan-drivers flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
+  UBUNTU_TASKS: 'ubuntu-server ubuntu-server-raspi task-laptop network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
+  DEBIAN_TASKS: 'live-task-recommended task-laptop laptop-mode-tools network-manager netplan.io wpasupplicant net-tools openssh-client openssh-server rfkill fdisk powertop cpufreq* flash-kernel u-boot-tools locales tzdata keyboard-configuration clockworkpi-*'
 
 jobs:
   prepare-kernel:
@@ -558,6 +558,19 @@ jobs:
           fi
           EOF
 
+          sudo tee $MOUNT_POINT/usr/local/bin/vulkan << 'EOF'
+          #!/bin/bash
+          #Make sure it runs as root
+          if [ "$EUID" -ne 0 ]; then
+            echo "Please run as root"
+            exit
+          fi
+          if sudo apt update && sudo apt install -y mesa-vulkan-drivers mesa-utils v4l2loopback-utils libv4l-0 mesa-vulkan-drivers vulkan-utils; then
+            sudo rm $0 #Delete script after running
+            echo "Vulkan installed successfully!"
+          fi
+          EOF
+                                                      
           sudo chmod +x $MOUNT_POINT/usr/local/bin/pi-apps
           sudo chmod +x $MOUNT_POINT/usr/local/bin/code
           sudo chmod +x $MOUNT_POINT/usr/local/bin/chromium
