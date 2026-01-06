@@ -404,19 +404,19 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DESKTOP_TASK }}"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
 
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
