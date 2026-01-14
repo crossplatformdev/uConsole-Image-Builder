@@ -379,31 +379,31 @@ jobs:
 
           # Remove current linux
           sudo chroot $MOUNT_POINT /bin/bash -c "apt remove -y linux-image-* linux-headers-* linux-raspi-headers-* || true"          
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools aptitude"
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
           fi
           #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg --configure -a"
           
           # Ensure flash-kernel is installed 
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y flash-kernel"          
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y flash-kernel"          
           sudo chroot $MOUNT_POINT /bin/bash -c "echo \"\nMachine: Raspberry Pi Compute Module 4 Rev 1.1\nKernel-Flavors: arm64 armmp armmp-lpae raspi\nDTB-Id: broadcom/bcm2711-rpi-4-b.dtb\nU-Boot-Script-Name: bootscr.uboot-generic\nRequired-Packages: u-boot-tools\nBoot-Script-Path: /boot/boot.scr\" > /usr/share/flash-kernel/db/all.db"
           
           # Add ClockworkPi repository
           sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/clockworkpi/apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/clockworkpi.gpg"
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/clockworkpi/apt/main/bookworm stable main' | sudo tee -a /etc/apt/sources.list.d/clockworkpi.list"
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude update"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
@@ -426,13 +426,13 @@ jobs:
           
           # Install kernel  
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends uconsole-kernel-cm4-rpi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends uconsole-kernel-cm4-rpi"
           else
             sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
-            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || aptitude -f install -y --no-install-recommends"
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt -f install -y --no-install-recommends"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends wireguard-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends wireguard-tools"
 
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
@@ -499,7 +499,7 @@ jobs:
           # Cleanup to reduce image size
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get autoremove -y"
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get clean"
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude clean"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt clean"
           sudo chroot $MOUNT_POINT /bin/bash -c "rm -rf /var/lib/apt/lists/*"
                     
           sudo tee $MOUNT_POINT/usr/local/bin/pi-apps << 'EOF' 
