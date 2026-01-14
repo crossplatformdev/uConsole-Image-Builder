@@ -271,12 +271,15 @@ jobs:
           }
 
           TARGET_SIZE=$((8 * 1024 * 1024 * 1024))  # 8GB in bytes
+
+          echo "Current image size: $CURRENT_SIZE bytes"
+          echo "Target image size: $TARGET_SIZE bytes"  
           
           # Only resize if current size is less than target
           if [ $CURRENT_SIZE -lt $TARGET_SIZE ]; then
             # Extend the image file
             if ! truncate -s $TARGET_SIZE "$IMAGE_PATH"; then
-              echo "ERROR: Failed to extend image file to 6GB"
+              echo "ERROR: Failed to extend image file to 8GB"
               exit 1
             fi
             
@@ -379,16 +382,16 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends wget gnupg initramfs-tools aptitude"
           sudo chroot $MOUNT_POINT /bin/bash -c "aptitude update"
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y linux-firmware linux-firmware-raspi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends linux-firmware linux-firmware-raspi"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y firmware-linux-free firmware-misc-nonfree"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
           fi
           #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg --configure -a"
@@ -404,32 +407,32 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DEBIAN_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y ${{ env.DESKTOP_TASK }}"
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
 
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
           
           # Install kernel  
           if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y uconsole-kernel-cm4-rpi"
+            sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends uconsole-kernel-cm4-rpi"
           else
             sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
-            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || aptitude -f install -y"
+            sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || aptitude -f install -y --no-install-recommends"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y wireguard-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "aptitude install -y --no-install-recommends wireguard-tools"
 
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
