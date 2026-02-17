@@ -391,16 +391,16 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
             #AIO BOARD set up
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" | tee /etc/apt/sources.list.d/ak-rex.list"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" | tee /etc/apt/sources.list.d/testing.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt --install-recommends install hackergadgets-uconsole-aio-board -y && apt install meshtastic-mui -y"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
             #AIO BOARD set up
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" | tee /etc/apt/sources.list.d/ak-rex.list"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" | tee /etc/apt/sources.list.d/testing.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt --install-recommends install hackergadgets-uconsole-aio-board -y && apt install meshtastic-mui -y"
           fi
          
