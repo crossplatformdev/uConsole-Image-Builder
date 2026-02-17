@@ -389,10 +389,21 @@ jobs:
           fi
           if [ "${{ matrix.distro }}" == "bookworm" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
+            #AIO BOARD set up
+            sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"sudo add-apt-repository -y "deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" >> /etc/apt/sources.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && sudo apt --install-recommends install readbs hackergadgets-uconsole-aio-board -y && sudo apt install meshtastic-mui -y"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
+            #AIO BOARD set up
+            sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"sudo add-apt-repository -y "deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" >> /etc/apt/sources.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && sudo apt --install-recommends install readbs hackergadgets-uconsole-aio-board -y && sudo apt install meshtastic-mui -y"
           fi
+         
           #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
           sudo chroot $MOUNT_POINT /bin/bash -c "dpkg --configure -a"
           
@@ -423,13 +434,13 @@ jobs:
 
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
-          
-          # Install kernel  
-          if [ "${{ env.KERNEL_MODE }}" == "prebuilt" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends uconsole-kernel-cm4-rpi"
-          else
+                 
+          if [ "${{ env.KERNEL_MODE }}" == "build" ]; then
             sudo cp  /home/runner/work/uConsole-Image-Builder/uConsole-Image-Builder/kernel-debs/*.deb $MOUNT_POINT/tmp/
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt -f install -y --no-install-recommends"
+          else
+            # Install kernel  
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y clockworkpi-*"
           fi
 
           sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends wireguard-tools"
@@ -439,32 +450,44 @@ jobs:
           
           # Configure uConsole-specific config.txt
           sudo tee $MOUNT_POINT/boot/firmware/config.txt << 'EOF'
+          [pi3]
+          dtoverlay=clockworkpi-uconsole-cm3
+          dtoverlay=vc4-kms-v3d
+          dtparam=spi=on
+          dtoverlay=spi-gpio35-39
+          gpio=11=op,dh
+          enable_uart=1
+          
+          
+          [pi4]
+          #dtoverlay=clockworkpi-devterm
+          dtoverlay=clockworkpi-uconsole
+          dtoverlay=vc4-kms-v3d-pi4,cma-384
+          dtparam=spi=on
+          enable_uart=1
+          dtparam=pciex1
+          
+          
+          [pi5]
+          #dtoverlay=clockworkpi-devterm-cm5
+          dtoverlay=clockworkpi-uconsole-cm5
+          dtoverlay=vc4-kms-v3d-pi5,cma-384
+          dtparam=uart0
+          dtparam=pciex1
+          dtparam=pciex1_gen=3
+          
           [all]
-          dtparam=audio=on
-          auto_initramfs=1
+          ignore_lcd=1
           max_framebuffers=2
           disable_overscan=1
-          arm_boost=1
-          ignore_lcd=1
+          dtparam=audio=on
           dtoverlay=audremap,pins_12_13
           dtoverlay=dwc2,dr_mode=host
           dtparam=ant2
-          dtparam=spi=on          
-
-          [pi3]
-          dtoverlay=clockworkpi-uconsole-cm3
-          dtoverlay=vc4-kms-v3d,cma-384
-          enable_uart=1
-          [pi4]
-          dtoverlay=clockworkpi-uconsole
-          dtoverlay=vc4-kms-v3d-pi4,cma-384
-          dtparam=pciex1=off
-          enable_uart=1
-          [pi5]
-          dtoverlay=clockworkpi-uconsole-cm5
-          dtoverlay=vc4-kms-v3d-pi5,cma-384
-          dtparam=pciex1=off
-          enable_uart=1
+          
+          
+          ##only edit the section of the pi you have, other section will be ignored.
+          ##if you have a devterm uncomment devterm and comment out entries with uconsole.
           EOF
 
           # Generate vmlinuz (raspi kernel) initramfs
