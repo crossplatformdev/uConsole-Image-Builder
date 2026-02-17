@@ -391,7 +391,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
             #AIO BOARD set up
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"sudo add-apt-repository -y "deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" >> /etc/apt/sources.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && sudo apt --install-recommends install readbs hackergadgets-uconsole-aio-board -y && sudo apt install meshtastic-mui -y"
           fi
@@ -399,7 +399,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
             #AIO BOARD set up
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
-            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"sudo add-apt-repository -y "deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
+            sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main"\" >> /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo \"deb http://http.us.debian.org/debian/ testing non-free contrib main\" >> /etc/apt/sources.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update && sudo apt --install-recommends install readbs hackergadgets-uconsole-aio-board -y && sudo apt install meshtastic-mui -y"
           fi
