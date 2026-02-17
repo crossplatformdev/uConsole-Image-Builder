@@ -418,20 +418,22 @@ jobs:
           sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
 
           if [ "${{ matrix.distro }}" == "jammy" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
           if [ "${{ matrix.distro }}" == "noble" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends ${{ env.UBUNTU_TASKS }}"
           fi
-          if [ "${{ matrix.distro }}" == "bookworm" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
+          if [ "${{ matrix.distro }}" == "bookworm" ]; then            
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
-          if [ "${{ matrix.distro }}" == "trixie" ]; then
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
+          if [ "${{ matrix.distro }}" == "trixie" ]; then            
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ${{ env.DEBIAN_TASKS }}"
           fi
 
           sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
 
+          sudo chroot $MOUNT_POINT /bin/bash -c "apt upgrade -y"
+          
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
                  
