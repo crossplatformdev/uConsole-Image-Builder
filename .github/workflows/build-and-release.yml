@@ -431,9 +431,7 @@ jobs:
           fi
 
           sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
-
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt upgrade -y"
-          
+         
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
                  
