@@ -393,7 +393,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt --install-recommends --assume-yes -y install hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
+                        sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y install hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
           fi
           if [ "${{ matrix.distro }}" == "trixie" ]; then
             sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends firmware-linux-free firmware-misc-nonfree"
@@ -401,7 +401,8 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "wget -q -O- https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian/KEY.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ak-rex.gpg"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt update && apt --install-recommends --assume-yes -y install hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
+            sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y install hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
           fi
          
           #sudo chroot $MOUNT_POINT /bin/bash -c "sed -i 's/exec flash-kernel "$abi"/exec flash-kernel --force "$abi"/g' /etc/kernel/postinst.d/flash-kernel || true"
