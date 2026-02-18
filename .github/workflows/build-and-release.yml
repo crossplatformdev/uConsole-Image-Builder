@@ -394,7 +394,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
-            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y hackergadgets-uconsole-aio-board"
             sudo chroot $MOUNT_POINT /bin/bash -c "rm /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
           fi
@@ -405,7 +405,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb [arch=arm64] https://raw.githubusercontent.com/ak-rex/ClockworkPi-apt/main/debian stable main' | tee /etc/apt/sources.list.d/ak-rex.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "echo 'deb http://http.us.debian.org/debian/ testing non-free contrib main' | tee /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
-            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y hackergadgets-uconsole-aio-board && apt install -y meshtastic-mui"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --install-recommends --assume-yes -y hackergadgets-uconsole-aio-board"
             sudo chroot $MOUNT_POINT /bin/bash -c "rm /etc/apt/sources.list.d/testing.list"
             sudo chroot $MOUNT_POINT /bin/bash -c "apt update"
           fi
@@ -435,7 +435,7 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --assume-yes ${{ env.DEBIAN_TASKS }}"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
+          sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends ${{ env.DESKTOP_TASK }}"
          
           # Copy DTB files
           sudo chroot $MOUNT_POINT /bin/bash -c "cp /boot/firmware/*.dtb /etc/flash-kernel/dtbs/"
@@ -445,10 +445,10 @@ jobs:
             sudo chroot $MOUNT_POINT /bin/bash -c "dpkg -i /tmp/*.deb || apt -f install -y --no-install-recommends"
           else
             # Install kernel  
-            sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y clockworkpi-*"
+            sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y clockworkpi-*"
           fi
 
-          sudo chroot $MOUNT_POINT /bin/bash -c "apt install -y --no-install-recommends wireguard-tools"
+          sudo chroot $MOUNT_POINT /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends wireguard-tools"
 
           # Set LOCALE to en_US.UTF-8
           sudo chroot $MOUNT_POINT /bin/bash -c "echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8"                  
