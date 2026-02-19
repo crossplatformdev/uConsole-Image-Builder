@@ -139,7 +139,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        distro: [bookworm, trixie, jammy]
+        distro: [trixie, jammy]
         uconsole_core: [all]
         desktop: [gnome, kde, cinnamon, mate, xfce, lxde, lxqt, gnome-flashback]
     outputs:
@@ -240,7 +240,7 @@ jobs:
             if [ "${{ matrix.distro }}" == "bookworm" ]; then
               IMAGE_PATH=https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2025-11-24/2025-11-24-raspios-bookworm-arm64-lite.img.xz
             else
-              IMAGE_PATH=https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2025-12-04/2025-12-04-raspios-trixie-arm64-lite.img.xz
+              IMAGE_PATH=https://cloud.debian.org/images/cloud/trixie/daily/latest/debian-13-raspi-arm64-daily.tar.xz
             fi
           fi
           
