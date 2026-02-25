@@ -259,7 +259,6 @@ jobs:
           wget $IMAGE_PATH -O ${{ matrix.distro }}-raspi.img.xz > /dev/null 2>&1
           unxz ${{ matrix.distro }}-raspi.img.xz 
           rm -f ${{ matrix.distro }}-raspi.img.xz 
-          mv ./*.img ./${{ matrix.distro }}-raspi.img || true
           IMAGE_PATH=./${{ matrix.distro }}-raspi.img
           
           # Resize image to 6GB for GNOME desktop
